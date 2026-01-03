@@ -110,21 +110,38 @@ export default function ClassDetailPage() {
             {assignments.map((assignment) => (
               <Link
                 key={assignment._id}
-                href={`/classes/${classId}/${assignment._id}`}
+                href={
+                  assignment.isDraft
+                    ? `/classes/${classId}/new-assignment`
+                    : `/classes/${classId}/${assignment._id}`
+                }
                 className="group"
               >
-                <Card className="transition-all hover:shadow-md hover:border-primary/50 group-hover:bg-muted/30">
+                <Card
+                  className={`transition-all hover:shadow-md hover:border-primary/50 group-hover:bg-muted/30 ${
+                    assignment.isDraft ? "border-dashed border-2" : ""
+                  }`}
+                >
                   <CardContent className="flex items-center gap-4 p-4">
                     <div className="rounded-lg bg-muted p-2">
                       <FileText className="h-5 w-5 text-muted-foreground" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold group-hover:text-primary transition-colors truncate">
-                        {assignment.name}
-                      </h3>
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-semibold group-hover:text-primary transition-colors truncate">
+                          {assignment.name}
+                        </h3>
+                        {assignment.isDraft && (
+                          <Badge variant="outline" className="text-xs">
+                            Draft
+                          </Badge>
+                        )}
+                      </div>
                       <p className="text-sm text-muted-foreground">
-                        {assignment.notesCount}{" "}
-                        {assignment.notesCount === 1 ? "note" : "notes"}
+                        {assignment.assignmentFilesCount} assignment file
+                        {assignment.assignmentFilesCount !== 1 ? "s" : ""},{" "}
+                        {assignment.notesFilesCount} note
+                        {assignment.notesFilesCount !== 1 ? "s" : ""}
                       </p>
                     </div>
                     <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />

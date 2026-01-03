@@ -15,12 +15,23 @@ export default defineSchema({
   assignments: defineTable({
     name: v.string(),
     classId: v.id("classes"),
-    notes: v.array(
+    assignmentFiles: v.array(
       v.object({
         storageId: v.id("_storage"),
         fileName: v.string(),
         contentType: v.string(),
+        size: v.optional(v.number()),
       }),
     ),
+    notesFiles: v.array(
+      v.object({
+        storageId: v.id("_storage"),
+        fileName: v.string(),
+        contentType: v.string(),
+        size: v.optional(v.number()),
+      }),
+    ),
+    additionalInfo: v.optional(v.string()),
+    isDraft: v.optional(v.boolean()),
   }).index("by_classId", ["classId"]),
 });
