@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import {
   Settings,
   LogOut,
@@ -59,9 +59,12 @@ import {
 } from "@/components/ui/dialog";
 
 export function AppSidebar() {
-  // Use lazy initialization for mounted state (client-side only)
-  const [mounted] = useState(() => typeof window !== "undefined");
+  const [mounted, setMounted] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
   const pathname = usePathname();
   const { signOut } = useAuthActions();
   const router = useRouter();
