@@ -39,6 +39,7 @@ import {
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
 import { toast } from "sonner";
+import { ClassAnalyticsDashboard } from "./_components/analytics/ClassAnalyticsDashboard";
 
 export default function ClassDetailPage() {
   const params = useParams();
@@ -263,6 +264,17 @@ export default function ClassDetailPage() {
           </div>
         )}
       </div>
+
+      {/* Student Analytics Section */}
+      {assignments.filter((a) => !a.isDraft).length > 0 && (
+        <div className="space-y-4">
+          <h2 className="text-xl font-semibold">Student Analytics</h2>
+          <ClassAnalyticsDashboard
+            classId={classId}
+            assignments={assignments}
+          />
+        </div>
+      )}
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>

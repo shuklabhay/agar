@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as analytics from "../analytics.js";
 import type * as answerGeneration from "../answerGeneration.js";
 import type * as assignments from "../assignments.js";
 import type * as auth from "../auth.js";
@@ -30,6 +31,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  analytics: typeof analytics;
   answerGeneration: typeof answerGeneration;
   assignments: typeof assignments;
   auth: typeof auth;
