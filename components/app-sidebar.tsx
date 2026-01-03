@@ -64,6 +64,7 @@ export function AppSidebar() {
 
   useEffect(() => {
     setMounted(true);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Hydration pattern for client-only rendering
   }, []);
   const pathname = usePathname();
   const { signOut } = useAuthActions();

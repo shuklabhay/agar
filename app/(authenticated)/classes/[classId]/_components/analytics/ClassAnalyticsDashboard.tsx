@@ -62,15 +62,22 @@ export function ClassAnalyticsDashboard({
   const [boxPlotView, setBoxPlotView] = useState<BoxPlotView>("per-assignment");
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   // Load sort preferences from cookies via lazy initialization
-  const [questionSortField, setQuestionSortField] =
-    useState<QuestionSortField>(() => {
+  const [questionSortField, setQuestionSortField] = useState<QuestionSortField>(
+    () => {
       if (typeof window === "undefined") return "questionNumber";
-      return (Cookies.get("agar_question_sort_field") as QuestionSortField) || "questionNumber";
-    });
+      return (
+        (Cookies.get("agar_question_sort_field") as QuestionSortField) ||
+        "questionNumber"
+      );
+    },
+  );
   const [questionSortDirection, setQuestionSortDirection] =
     useState<QuestionSortDirection>(() => {
       if (typeof window === "undefined") return "asc";
-      return (Cookies.get("agar_question_sort_dir") as QuestionSortDirection) || "asc";
+      return (
+        (Cookies.get("agar_question_sort_dir") as QuestionSortDirection) ||
+        "asc"
+      );
     });
   // Get user preferences for metric display
   const userPreferences = useQuery(api.myFunctions.getUserPreferences);
@@ -167,9 +174,8 @@ export function ClassAnalyticsDashboard({
             </div>
             <h3 className="font-medium mb-1">No Student Data Yet</h3>
             <p className="text-sm text-muted-foreground max-w-sm">
-              Analytics will appear here once students start working on your
-              assignments. Share the assignment link with your students to get
-              started.
+              Analytics will appear here once students start working on
+              assignments.
             </p>
           </div>
         </CardContent>

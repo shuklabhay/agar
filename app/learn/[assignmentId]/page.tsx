@@ -61,7 +61,6 @@ export default function LearnPage() {
   // Mutations
   const startSession = useMutation(api.studentSessions.startSession);
   const resumeSession = useMutation(api.studentSessions.resumeSession);
-  const updateLastQuestionIndex = useMutation(api.studentSessions.updateLastQuestionIndex);
   const recordTimeSpent = useMutation(api.studentProgress.recordTimeSpent);
   const restartTimeTracking = useMutation(api.studentProgress.restartTimeTracking);
 
@@ -73,8 +72,8 @@ export default function LearnPage() {
     }
   }, [assignmentId]);
 
-  // Track if we've restored the question index
-  const hasRestoredIndex = useRef(false);
+  // Track if we've set the initial question index
+  const hasSetInitialIndex = useRef(false);
 
   // Track previous question for time recording
   const previousQuestionId = useRef<Id<"questions"> | null>(null);
@@ -84,28 +83,30 @@ export default function LearnPage() {
     if (session) {
       setSessionId(session._id);
       setShowWelcome(false);
-      // Restore last question index if available and not already restored
-      if (!hasRestoredIndex.current) {
-        if (session.lastQuestionIndex !== undefined) {
-          setCurrentQuestionIndex(session.lastQuestionIndex);
-        }
-        hasRestoredIndex.current = true;
-      }
     } else if (sessionToken && session === null) {
       // Token is invalid, clear it
       Cookies.remove(`${COOKIE_PREFIX}${assignmentId}`);
       setSessionToken(null);
       setShowWelcome(true);
-      hasRestoredIndex.current = false;
+      hasSetInitialIndex.current = false;
     }
   }, [session, sessionToken, assignmentId]);
 
-  // Save question index when it changes
+  // Set initial question to earliest not-correct question
   useEffect(() => {
-    if (sessionId && hasRestoredIndex.current) {
-      updateLastQuestionIndex({ sessionId, questionIndex: currentQuestionIndex });
+    if (!questions || !progress || hasSetInitialIndex.current) return;
+
+    // Find the first question that is not correct
+    const firstIncompleteIndex = questions.findIndex((q) => {
+      const questionProgress = progress.find((p) => p.questionId === q._id);
+      return !questionProgress || questionProgress.status !== "correct";
+    });
+
+    if (firstIncompleteIndex !== -1) {
+      setCurrentQuestionIndex(firstIncompleteIndex);
     }
-  }, [sessionId, currentQuestionIndex, updateLastQuestionIndex]);
+    hasSetInitialIndex.current = true;
+  }, [questions, progress]);
 
   // Auto-advance to next unanswered question when current question is answered correctly
   useEffect(() => {

@@ -42,6 +42,8 @@ export function DynamicBreadcrumb() {
     } else if (isClassDetail && classData === undefined) {
       breadcrumbs.push({ label: "..." });
     }
+  } else if (segments[0] === "analytics") {
+    breadcrumbs.push({ label: "Analytics" });
   } else if (segments[0] === "settings") {
     breadcrumbs.push({ label: "Settings" });
   }

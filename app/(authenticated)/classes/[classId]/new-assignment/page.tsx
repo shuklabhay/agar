@@ -155,6 +155,7 @@ export default function NewAssignmentPage() {
   );
 
   // Load existing draft on mount
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- Intentional one-time initialization from server data
   useEffect(() => {
     if (existingDraft && !draftLoaded) {
       setDraftId(existingDraft._id);
