@@ -1,20 +1,227 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { useParams } from "next/navigation";
+import { useQuery, useMutation } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import { Id } from "@/convex/_generated/dataModel";
+import Cookies from "js-cookie";
+
+import { WelcomeDialog } from "./_components/WelcomeDialog";
+import { QuestionPanel } from "./_components/QuestionPanel";
+import { ChatPanel } from "./_components/ChatPanel";
+import { ProgressBar } from "./_components/ProgressBar";
 import { Card, CardContent } from "@/components/ui/card";
-import { BookOpen } from "lucide-react";
+import { BookOpen, Loader2, AlertCircle } from "lucide-react";
+
+const COOKIE_PREFIX = "agar_session_";
 
 export default function LearnPage() {
+  const params = useParams();
+  const assignmentId = params.assignmentId as Id<"assignments">;
+
+  // Session state
+  const [sessionToken, setSessionToken] = useState<string | null>(null);
+  const [sessionId, setSessionId] = useState<Id<"studentSessions"> | null>(null);
+  const [showWelcome, setShowWelcome] = useState(true);
+  const [isStarting, setIsStarting] = useState(false);
+
+  // Question navigation
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+
+  // Queries
+  const assignment = useQuery(api.studentSessions.getAssignmentForStudent, {
+    assignmentId,
+  });
+  const existingStudents = useQuery(api.studentSessions.getExistingStudents, {
+    assignmentId,
+  });
+  const session = useQuery(
+    api.studentSessions.getSession,
+    sessionToken ? { sessionToken } : "skip"
+  );
+  const questions = useQuery(
+    api.studentProgress.getQuestionsForStudent,
+    sessionId ? { assignmentId } : "skip"
+  );
+  const progress = useQuery(
+    api.studentProgress.getProgress,
+    sessionId ? { sessionId } : "skip"
+  );
+
+  // Mutations
+  const startSession = useMutation(api.studentSessions.startSession);
+  const resumeSession = useMutation(api.studentSessions.resumeSession);
+
+  // Check for existing session cookie on mount
+  useEffect(() => {
+    const token = Cookies.get(`${COOKIE_PREFIX}${assignmentId}`);
+    if (token) {
+      setSessionToken(token);
+    }
+  }, [assignmentId]);
+
+  // Sync session from query result
+  useEffect(() => {
+    if (session) {
+      setSessionId(session._id);
+      setShowWelcome(false);
+    } else if (sessionToken && session === null) {
+      // Token is invalid, clear it
+      Cookies.remove(`${COOKIE_PREFIX}${assignmentId}`);
+      setSessionToken(null);
+      setShowWelcome(true);
+    }
+  }, [session, sessionToken, assignmentId]);
+
+  // Handle starting a new session
+  const handleStartNew = async (name: string) => {
+    setIsStarting(true);
+    try {
+      const result = await startSession({
+        assignmentId,
+        studentName: name,
+      });
+      // Save token to cookie (30 day expiry)
+      Cookies.set(`${COOKIE_PREFIX}${assignmentId}`, result.sessionToken, {
+        expires: 30,
+      });
+      setSessionToken(result.sessionToken);
+      setSessionId(result.sessionId);
+      setShowWelcome(false);
+    } catch (error) {
+      console.error("Failed to start session:", error);
+    } finally {
+      setIsStarting(false);
+    }
+  };
+
+  // Handle resuming an existing session
+  const handleResume = async (existingSessionId: Id<"studentSessions">) => {
+    setIsStarting(true);
+    try {
+      const result = await resumeSession({ sessionId: existingSessionId });
+      // Save new token to cookie
+      Cookies.set(`${COOKIE_PREFIX}${assignmentId}`, result.sessionToken, {
+        expires: 30,
+      });
+      setSessionToken(result.sessionToken);
+      setSessionId(result.sessionId);
+      setShowWelcome(false);
+    } catch (error) {
+      console.error("Failed to resume session:", error);
+    } finally {
+      setIsStarting(false);
+    }
+  };
+
+  // Loading state
+  if (assignment === undefined) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <div className="flex items-center gap-2 text-muted-foreground">
+          <Loader2 className="h-5 w-5 animate-spin" />
+          <span>Loading assignment...</span>
+        </div>
+      </div>
+    );
+  }
+
+  // Assignment not found or not ready
+  if (assignment === null) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <Card className="max-w-md w-full">
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <div className="rounded-full bg-destructive/10 p-4 mb-4">
+              <AlertCircle className="h-8 w-8 text-destructive" />
+            </div>
+            <h1 className="text-xl font-semibold mb-2">Assignment Not Available</h1>
+            <p className="text-muted-foreground text-center">
+              This assignment doesn't exist or isn't ready for students yet.
+              Please check with your teacher.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Current question data
+  const currentQuestion = questions?.[currentQuestionIndex];
+  const currentProgress = progress?.find(
+    (p) => p.questionId === currentQuestion?._id
+  );
+
+  // Show welcome dialog if no session
+  if (showWelcome || !sessionId) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4 bg-muted/30">
+        <WelcomeDialog
+          open={true}
+          assignmentName={assignment.name}
+          className={assignment.className}
+          existingStudents={existingStudents ?? []}
+          onStartNew={handleStartNew}
+          onResume={handleResume}
+          isLoading={isStarting}
+        />
+      </div>
+    );
+  }
+
+  // Main learning interface
   return (
-    <div className="min-h-screen flex items-center justify-center p-4">
-      <Card className="max-w-md w-full">
-        <CardContent className="flex flex-col items-center justify-center py-12">
-          <div className="rounded-full bg-muted p-4 mb-4">
-            <BookOpen className="h-8 w-8 text-muted-foreground" />
+    <div className="h-screen flex flex-col bg-background">
+      {/* Header */}
+      <header className="border-b px-4 py-3 bg-background shrink-0">
+        <div className="max-w-7xl mx-auto space-y-2">
+          <div className="flex items-center gap-2">
+            <BookOpen className="h-4 w-4 text-primary" />
+            <h1 className="text-sm font-semibold">{assignment.name}</h1>
+            <span className="text-xs text-muted-foreground">
+              {assignment.className}
+            </span>
           </div>
-          <h1 className="text-xl font-semibold mb-2">Coming Soon</h1>
-          <p className="text-muted-foreground text-center">
-            The student learning experience is under construction.
-          </p>
-        </CardContent>
-      </Card>
+          <ProgressBar
+            questions={questions ?? []}
+            progress={progress ?? []}
+            currentIndex={currentQuestionIndex}
+            onQuestionClick={setCurrentQuestionIndex}
+          />
+        </div>
+      </header>
+
+      {/* Main content - split panel */}
+      <main className="flex-1 flex overflow-hidden">
+        {/* Left Panel - Question */}
+        <div className="w-1/2 border-r overflow-y-auto bg-background">
+          <QuestionPanel
+            question={currentQuestion}
+            progress={currentProgress}
+            questionIndex={currentQuestionIndex}
+            totalQuestions={questions?.length ?? 0}
+            onPrevious={() =>
+              setCurrentQuestionIndex((i) => Math.max(0, i - 1))
+            }
+            onNext={() =>
+              setCurrentQuestionIndex((i) =>
+                Math.min((questions?.length ?? 1) - 1, i + 1)
+              )
+            }
+            sessionId={sessionId}
+          />
+        </div>
+
+        {/* Right Panel - Chat */}
+        <div className="w-1/2 overflow-hidden bg-muted/20">
+          <ChatPanel
+            sessionId={sessionId}
+            questionId={currentQuestion?._id}
+            question={currentQuestion}
+          />
+        </div>
+      </main>
     </div>
   );
 }

@@ -73,4 +73,65 @@ export default defineSchema({
       v.literal("approved"),
     ),
   }).index("by_assignmentId", ["assignmentId"]),
+
+  // Student session (cookie-based identity, no accounts)
+  studentSessions: defineTable({
+    name: v.string(),
+    sessionToken: v.string(), // UUID stored in cookie
+    assignmentId: v.id("assignments"),
+    startedAt: v.number(),
+    lastActiveAt: v.number(),
+  })
+    .index("by_sessionToken", ["sessionToken"])
+    .index("by_assignmentId", ["assignmentId"]),
+
+  // Per-question progress tracking
+  studentProgress: defineTable({
+    sessionId: v.id("studentSessions"),
+    questionId: v.id("questions"),
+    status: v.union(
+      v.literal("not_started"),
+      v.literal("in_progress"),
+      v.literal("correct"),
+      v.literal("incorrect"),
+    ),
+    selectedAnswer: v.optional(v.string()),
+    submittedText: v.optional(v.string()),
+    attempts: v.number(),
+    completedAt: v.optional(v.number()),
+  })
+    .index("by_sessionId", ["sessionId"])
+    .index("by_sessionId_questionId", ["sessionId", "questionId"]),
+
+  // Chat history for tutor conversations
+  chatMessages: defineTable({
+    sessionId: v.id("studentSessions"),
+    questionId: v.id("questions"),
+    role: v.union(
+      v.literal("student"),
+      v.literal("tutor"),
+      v.literal("system"),
+    ),
+    content: v.string(),
+    timestamp: v.number(),
+    toolCall: v.optional(
+      v.object({
+        name: v.string(),
+        args: v.any(),
+        result: v.optional(v.any()),
+      }),
+    ),
+  })
+    .index("by_session_question", ["sessionId", "questionId"])
+    .index("by_sessionId", ["sessionId"]),
+
+  // Student file uploads
+  studentUploads: defineTable({
+    sessionId: v.id("studentSessions"),
+    questionId: v.id("questions"),
+    storageId: v.id("_storage"),
+    fileName: v.string(),
+    contentType: v.string(),
+    uploadedAt: v.number(),
+  }).index("by_session_question", ["sessionId", "questionId"]),
 });

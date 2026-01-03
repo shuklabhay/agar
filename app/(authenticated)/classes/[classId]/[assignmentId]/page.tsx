@@ -130,9 +130,7 @@ export default function AssignmentDetailPage() {
     }>,
   ) => {
     if (files.length === 0) {
-      return (
-        <p className="text-sm text-muted-foreground">No files</p>
-      );
+      return <p className="text-sm text-muted-foreground">No files</p>;
     }
 
     return (
@@ -141,11 +139,14 @@ export default function AssignmentDetailPage() {
           <Card
             key={index}
             className="cursor-pointer hover:bg-muted/50 transition-colors"
-            onClick={() => file.url && setPreviewFile({
-              fileName: file.fileName,
-              contentType: file.contentType,
-              url: file.url,
-            })}
+            onClick={() =>
+              file.url &&
+              setPreviewFile({
+                fileName: file.fileName,
+                contentType: file.contentType,
+                url: file.url,
+              })
+            }
           >
             <CardContent className="flex items-center gap-2 p-2">
               {getFileIcon(file.contentType)}
@@ -242,17 +243,17 @@ export default function AssignmentDetailPage() {
             <code className="flex-1 rounded-md bg-muted px-3 py-2 text-sm font-mono break-all">
               {studentLink}
             </code>
+            <Button variant="outline" size="icon" asChild>
+              <a href={studentLink} target="_blank" rel="noopener noreferrer">
+                <ExternalLink className="h-4 w-4" />
+              </a>
+            </Button>
             <Button variant="outline" size="icon" onClick={handleCopyLink}>
               {copied ? (
                 <Check className="h-4 w-4 text-green-500" />
               ) : (
                 <Copy className="h-4 w-4" />
               )}
-            </Button>
-            <Button variant="outline" size="icon" asChild>
-              <a href={studentLink} target="_blank" rel="noopener noreferrer">
-                <ExternalLink className="h-4 w-4" />
-              </a>
             </Button>
           </div>
         </CardContent>
@@ -297,10 +298,11 @@ export default function AssignmentDetailPage() {
       {/* Questions Review Section */}
       {(() => {
         const allQuestions = questions || [];
-        const isProcessing = assignment.processingStatus === "extracting" ||
-                            assignment.processingStatus === "generating_answers";
+        const isProcessing =
+          assignment.processingStatus === "extracting" ||
+          assignment.processingStatus === "generating_answers";
         const completedQuestions = allQuestions.filter(
-          (q) => q.status === "ready" || q.status === "approved"
+          (q) => q.status === "ready" || q.status === "approved",
         );
 
         // Show section if processing or has questions
@@ -310,24 +312,27 @@ export default function AssignmentDetailPage() {
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-semibold">
-                Questions {allQuestions.length > 0 && `(${allQuestions.length})`}
+                Questions{" "}
+                {allQuestions.length > 0 && `(${allQuestions.length})`}
               </h2>
               <div className="flex items-center gap-2">
                 {isProcessing && (
                   <Badge variant="secondary" className="text-xs">
                     <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                    {assignment.processingStatus === "extracting" ? "Extracting questions..." : "Generating answers..."}
+                    {assignment.processingStatus === "extracting"
+                      ? "Extracting questions..."
+                      : "Generating answers..."}
                   </Badge>
                 )}
                 {(() => {
                   const readyCount = completedQuestions.filter(
-                    (q) => q.status === "ready"
+                    (q) => q.status === "ready",
                   ).length;
                   const webSourcedCount = completedQuestions.filter(
-                    (q) => q.source && Array.isArray(q.source)
+                    (q) => q.source && Array.isArray(q.source),
                   ).length;
                   const approvedCount = completedQuestions.filter(
-                    (q) => q.status === "approved"
+                    (q) => q.status === "approved",
                   ).length;
                   if (completedQuestions.length === 0) return null;
                   return (
@@ -401,7 +406,10 @@ export default function AssignmentDetailPage() {
 
       {/* File Preview Dialog */}
       <Dialog open={!!previewFile} onOpenChange={() => setPreviewFile(null)}>
-        <DialogContent className="!max-w-none flex flex-col" style={{ width: "80vw", height: "85vh" }}>
+        <DialogContent
+          className="!max-w-none flex flex-col"
+          style={{ width: "80vw", height: "85vh" }}
+        >
           <DialogHeader>
             <DialogTitle className="truncate pr-8">
               {previewFile?.fileName}
