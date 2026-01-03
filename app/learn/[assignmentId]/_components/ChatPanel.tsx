@@ -43,11 +43,15 @@ export function ChatPanel({ sessionId, questionId, question, questions }: ChatPa
   );
 
   const sendMessage = useAction(api.chat.sendMessageToTutor);
+  const isInitialMount = useRef(true);
 
   // Scroll to bottom on new messages or question change (for divider visibility)
   useEffect(() => {
     const timer = setTimeout(() => {
-      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      messagesEndRef.current?.scrollIntoView({
+        behavior: isInitialMount.current ? "instant" : "smooth"
+      });
+      isInitialMount.current = false;
     }, 150);
     return () => clearTimeout(timer);
   }, [chatHistory, questionId]);
@@ -209,7 +213,7 @@ export function ChatPanel({ sessionId, questionId, question, questions }: ChatPa
       )}
 
       {/* Input Area */}
-      <div className="border-t p-3 bg-background">
+      <div className="border-t p-4 bg-background">
         <div className="flex gap-2 items-end">
           <input
             ref={fileInputRef}

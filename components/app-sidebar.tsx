@@ -9,6 +9,7 @@ import {
   Sparkles,
   BookOpen,
   Plus,
+  BarChart3,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
@@ -176,6 +177,20 @@ export function AppSidebar() {
                   )}
                 </SidebarMenuItem>
               </Collapsible>
+
+              {/* Analytics Menu Item */}
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  isActive={pathname.startsWith("/analytics")}
+                  tooltip="Analytics"
+                >
+                  <Link href="/analytics">
+                    <BarChart3 />
+                    <span>Analytics</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

@@ -8,11 +8,22 @@ type RioMood = "idle" | "happy" | "thinking" | "correct" | "incorrect";
 interface RioEyesProps {
   mood?: RioMood;
   size?: "sm" | "md";
+  shaking?: boolean;
 }
 
-export function RioEyes({ mood = "idle", size = "md" }: RioEyesProps) {
+export function RioEyes({ mood = "idle", size = "md", shaking = false }: RioEyesProps) {
   const [lookDirection, setLookDirection] = useState({ x: 0, y: 0 });
   const [isBlinking, setIsBlinking] = useState(false);
+  const [isShaking, setIsShaking] = useState(false);
+
+  // Trigger shake animation
+  useEffect(() => {
+    if (shaking) {
+      setIsShaking(true);
+      const timer = setTimeout(() => setIsShaking(false), 500);
+      return () => clearTimeout(timer);
+    }
+  }, [shaking]);
 
   // Idle animation - random looking around
   useEffect(() => {
@@ -57,8 +68,12 @@ export function RioEyes({ mood = "idle", size = "md" }: RioEyesProps) {
     <div
       className={cn(
         "rounded-full bg-violet-100 dark:bg-violet-900/30 flex items-center justify-center shrink-0",
-        containerSize
+        containerSize,
+        isShaking && "animate-head-shake"
       )}
+      style={isShaking ? {
+        animation: "headShake 0.5s ease-in-out"
+      } : undefined}
     >
       <div className="flex items-center gap-[3px]">
         {/* Left eye */}

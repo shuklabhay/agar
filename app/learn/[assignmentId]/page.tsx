@@ -316,9 +316,9 @@ export default function LearnPage() {
       <header className="border-b px-4 py-3 bg-background shrink-0">
         <div className="max-w-7xl mx-auto space-y-2">
           <div className="flex items-center gap-2">
-            <BookOpen className="h-4 w-4 text-primary" />
-            <h1 className="text-sm font-semibold">{assignment.name}</h1>
-            <span className="text-xs text-muted-foreground">
+            <BookOpen className="h-5 w-5 text-primary" />
+            <h1 className="text-lg font-semibold">{assignment.name}</h1>
+            <span className="text-sm text-muted-foreground">
               {assignment.className}
             </span>
           </div>
@@ -365,7 +365,7 @@ export default function LearnPage() {
 
         {/* Right Panel - Chat */}
         <div
-          className="overflow-hidden bg-muted/20"
+          className="overflow-hidden bg-background"
           style={{ width: `${100 - leftPanelWidth}%` }}
         >
           <ChatPanel

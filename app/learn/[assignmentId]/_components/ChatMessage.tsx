@@ -31,6 +31,7 @@ export function ChatMessage({ message, showRio = false, isLastFromSender = true,
   // Rio should hide when sending (fade out early)
   const shouldShowRio = showRio && !isSending;
   const [isNew, setIsNew] = useState(true);
+  const [shouldShake, setShouldShake] = useState(false);
   const hasAnimated = useRef(false);
 
   // Track if this message has already been shown (not new anymore)
@@ -39,9 +40,18 @@ export function ChatMessage({ message, showRio = false, isLastFromSender = true,
       hasAnimated.current = true;
       // Keep isNew true for animation, then set to false
       const timer = setTimeout(() => setIsNew(false), 1500);
+
+      // Check if answer was incorrect and trigger shake 10% of the time
+      if (message.toolCall?.name === "evaluate_response" &&
+          !(message.toolCall.args.isCorrect as boolean) &&
+          Math.random() < 0.1) {
+        setTimeout(() => setShouldShake(true), 500);
+        setTimeout(() => setShouldShake(false), 1000);
+      }
+
       return () => clearTimeout(timer);
     }
-  }, [showRio, isTutor]);
+  }, [showRio, isTutor, message.toolCall]);
 
   // Determine Rio's mood based on tool call
   const getRioMood = () => {
@@ -109,7 +119,7 @@ export function ChatMessage({ message, showRio = false, isLastFromSender = true,
       {/* Message row with Rio */}
       <div
         className={cn(
-          "flex",
+          "flex w-full",
           isStudent ? "flex-row-reverse" : "flex-row items-end gap-2"
         )}
       >
@@ -126,7 +136,7 @@ export function ChatMessage({ message, showRio = false, isLastFromSender = true,
                 : "width 550ms ease-in-out, opacity 550ms ease-in-out"
             }}
           >
-            <RioEyes mood={getRioMood()} />
+            <RioEyes mood={getRioMood()} shaking={shouldShake} />
           </div>
         )}
 

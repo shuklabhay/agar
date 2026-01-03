@@ -20,7 +20,11 @@ import { cn } from "@/lib/utils";
 import { MetricCard } from "./MetricCard";
 import { HorizontalBoxPlot } from "./BoxPlotChart";
 import { StudentPerformanceTable } from "./StudentPerformanceTable";
-import { QuestionDifficultyTable, QuestionSortField, QuestionSortDirection } from "./QuestionDifficultyTable";
+import {
+  QuestionDifficultyTable,
+  QuestionSortField,
+  QuestionSortDirection,
+} from "./QuestionDifficultyTable";
 import { AllStudentsTable } from "./AllStudentsTable";
 
 interface Assignment {
@@ -51,17 +55,25 @@ export function ClassAnalyticsDashboard({
   classId,
   assignments,
 }: ClassAnalyticsDashboardProps) {
-  const [selectedAssignmentIds, setSelectedAssignmentIds] = useState<Set<string>>(new Set());
+  const [selectedAssignmentIds, setSelectedAssignmentIds] = useState<
+    Set<string>
+  >(new Set());
   const [activeTab, setActiveTab] = useState<Tab>("overview");
   const [boxPlotView, setBoxPlotView] = useState<BoxPlotView>("per-assignment");
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [questionSortField, setQuestionSortField] = useState<QuestionSortField>("questionNumber");
-  const [questionSortDirection, setQuestionSortDirection] = useState<QuestionSortDirection>("asc");
+  const [questionSortField, setQuestionSortField] =
+    useState<QuestionSortField>("questionNumber");
+  const [questionSortDirection, setQuestionSortDirection] =
+    useState<QuestionSortDirection>("asc");
 
   // Load sort preferences from cookies on mount
   useEffect(() => {
-    const savedField = Cookies.get("agar_question_sort_field") as QuestionSortField | undefined;
-    const savedDir = Cookies.get("agar_question_sort_dir") as QuestionSortDirection | undefined;
+    const savedField = Cookies.get("agar_question_sort_field") as
+      | QuestionSortField
+      | undefined;
+    const savedDir = Cookies.get("agar_question_sort_dir") as
+      | QuestionSortDirection
+      | undefined;
     if (savedField) setQuestionSortField(savedField);
     if (savedDir) setQuestionSortDirection(savedDir);
   }, []);
@@ -75,7 +87,9 @@ export function ClassAnalyticsDashboard({
   const isAllSelected = selectedAssignmentIds.size === 0;
   const isSingleSelected = selectedAssignmentIds.size === 1;
   const isMultiSelected = selectedAssignmentIds.size > 1;
-  const singleSelectedId = isSingleSelected ? Array.from(selectedAssignmentIds)[0] : null;
+  const singleSelectedId = isSingleSelected
+    ? Array.from(selectedAssignmentIds)[0]
+    : null;
 
   // Queries
   const classAnalytics = useQuery(api.analytics.getClassAnalytics, { classId });
@@ -83,25 +97,27 @@ export function ClassAnalyticsDashboard({
     api.analytics.getAssignmentAnalytics,
     singleSelectedId
       ? { assignmentId: singleSelectedId as Id<"assignments"> }
-      : "skip"
+      : "skip",
   );
   const studentPerformance = useQuery(
     api.analytics.getStudentPerformance,
     singleSelectedId
       ? { assignmentId: singleSelectedId as Id<"assignments"> }
-      : "skip"
+      : "skip",
   );
   const assignmentComparison = useQuery(
     api.analytics.getAssignmentComparisonBoxPlots,
-    { classId }
+    { classId },
   );
   const questionBoxPlots = useQuery(
     api.analytics.getQuestionBoxPlots,
     singleSelectedId
       ? { assignmentId: singleSelectedId as Id<"assignments"> }
-      : "skip"
+      : "skip",
   );
-  const allStudents = useQuery(api.analytics.getAllStudentsInClass, { classId });
+  const allStudents = useQuery(api.analytics.getAllStudentsInClass, {
+    classId,
+  });
 
   // Toggle assignment selection
   const toggleAssignment = (id: string) => {
@@ -128,7 +144,7 @@ export function ClassAnalyticsDashboard({
 
   // Filter assignment comparison data based on selection
   const filteredAssignmentComparison = assignmentComparison?.filter(
-    (a) => isAllSelected || selectedAssignmentIds.has(a.assignmentId)
+    (a) => isAllSelected || selectedAssignmentIds.has(a.assignmentId),
   );
 
   // Loading state
@@ -177,7 +193,9 @@ export function ClassAnalyticsDashboard({
   const getSelectorLabel = () => {
     if (isAllSelected) return "All Assignments";
     if (isSingleSelected) {
-      const assignment = publishedAssignments.find((a) => a._id === singleSelectedId);
+      const assignment = publishedAssignments.find(
+        (a) => a._id === singleSelectedId,
+      );
       return assignment?.name || "1 Assignment";
     }
     return `${selectedAssignmentIds.size} Assignments`;
@@ -197,12 +215,20 @@ export function ClassAnalyticsDashboard({
               className="flex items-center gap-2 px-3 py-2 text-sm border rounded-md bg-background hover:bg-muted/50 min-w-[200px] justify-between"
             >
               <span className="truncate">{getSelectorLabel()}</span>
-              <ChevronDown className={cn("h-4 w-4 transition-transform", isDropdownOpen && "rotate-180")} />
+              <ChevronDown
+                className={cn(
+                  "h-4 w-4 transition-transform",
+                  isDropdownOpen && "rotate-180",
+                )}
+              />
             </button>
 
             {isDropdownOpen && (
               <>
-                <div className="fixed inset-0 z-10" onClick={() => setIsDropdownOpen(false)} />
+                <div
+                  className="fixed inset-0 z-10"
+                  onClick={() => setIsDropdownOpen(false)}
+                />
                 <div className="absolute top-full left-0 mt-1 w-64 bg-background border rounded-md shadow-lg z-20 py-1 max-h-64 overflow-y-auto">
                   <button
                     onClick={() => {
@@ -211,14 +237,20 @@ export function ClassAnalyticsDashboard({
                     }}
                     className={cn(
                       "w-full px-3 py-2 text-sm text-left hover:bg-muted/50 flex items-center gap-2",
-                      isAllSelected && "bg-muted/30"
+                      isAllSelected && "bg-muted/30",
                     )}
                   >
-                    <div className={cn(
-                      "w-4 h-4 rounded border flex items-center justify-center shrink-0",
-                      isAllSelected ? "bg-primary border-primary" : "border-muted-foreground"
-                    )}>
-                      {isAllSelected && <Check className="h-3 w-3 text-primary-foreground" />}
+                    <div
+                      className={cn(
+                        "w-4 h-4 rounded border flex items-center justify-center shrink-0",
+                        isAllSelected
+                          ? "bg-primary border-primary"
+                          : "border-muted-foreground",
+                      )}
+                    >
+                      {isAllSelected && (
+                        <Check className="h-3 w-3 text-primary-foreground" />
+                      )}
                     </div>
                     All Assignments
                   </button>
@@ -231,11 +263,17 @@ export function ClassAnalyticsDashboard({
                         onClick={() => toggleAssignment(assignment._id)}
                         className="w-full px-3 py-2 text-sm text-left hover:bg-muted/50 flex items-center gap-2"
                       >
-                        <div className={cn(
-                          "w-4 h-4 rounded border flex items-center justify-center shrink-0",
-                          isChecked ? "bg-primary border-primary" : "border-muted-foreground"
-                        )}>
-                          {isChecked && <Check className="h-3 w-3 text-primary-foreground" />}
+                        <div
+                          className={cn(
+                            "w-4 h-4 rounded border flex items-center justify-center shrink-0",
+                            isChecked
+                              ? "bg-primary border-primary"
+                              : "border-muted-foreground",
+                          )}
+                        >
+                          {isChecked && (
+                            <Check className="h-3 w-3 text-primary-foreground" />
+                          )}
                         </div>
                         <span className="truncate">{assignment.name}</span>
                       </button>
@@ -257,7 +295,7 @@ export function ClassAnalyticsDashboard({
                 "px-3 py-1.5 text-sm font-medium rounded-md transition-colors",
                 activeTab === tab.id
                   ? "bg-background text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
+                  : "text-muted-foreground hover:text-foreground",
               )}
             >
               {tab.label}
@@ -287,7 +325,7 @@ export function ClassAnalyticsDashboard({
               title="Total Students"
               value={
                 isSingleSelected
-                  ? assignmentAnalytics?.totalStudents ?? 0
+                  ? (assignmentAnalytics?.totalStudents ?? 0)
                   : classAnalytics.totalStudents
               }
               subtitle={
@@ -301,22 +339,27 @@ export function ClassAnalyticsDashboard({
               title="Completion Rate"
               value={`${Math.round(
                 (isSingleSelected
-                  ? assignmentAnalytics?.completionRate ?? 0
-                  : classAnalytics.overallCompletionRate) * 100
+                  ? (assignmentAnalytics?.completionRate ?? 0)
+                  : classAnalytics.overallCompletionRate) * 100,
               )}%`}
               subtitle="questions solved"
               icon={<CheckCircle className="h-4 w-4" />}
             />
             <MetricCard
-              title={defaultMetric === "mean" ? "Avg Messages" : "Median Messages"}
+              title={
+                defaultMetric === "mean" ? "Avg Messages" : "Median Messages"
+              }
               value={
                 isSingleSelected
-                  ? (defaultMetric === "mean"
+                  ? ((defaultMetric === "mean"
                       ? assignmentAnalytics?.messagesBoxPlot?.mean.toFixed(1)
-                      : assignmentAnalytics?.messagesBoxPlot?.median.toFixed(1)) ?? "—"
+                      : assignmentAnalytics?.messagesBoxPlot?.median.toFixed(
+                          1,
+                        )) ?? "—")
                   : defaultMetric === "mean"
                     ? classAnalytics.avgMessagesPerQuestion.toFixed(1)
-                    : (classAnalytics.allMessagesBoxPlot?.median.toFixed(1) ?? "—")
+                    : (classAnalytics.allMessagesBoxPlot?.median.toFixed(1) ??
+                      "—")
               }
               subtitle="per question"
               icon={<MessageSquare className="h-4 w-4" />}
@@ -325,12 +368,12 @@ export function ClassAnalyticsDashboard({
               title={defaultMetric === "mean" ? "Avg Time" : "Median Time"}
               value={formatTime(
                 isSingleSelected
-                  ? (defaultMetric === "mean"
+                  ? ((defaultMetric === "mean"
                       ? assignmentAnalytics?.timeBoxPlot?.mean
-                      : assignmentAnalytics?.timeBoxPlot?.median) ?? 0
+                      : assignmentAnalytics?.timeBoxPlot?.median) ?? 0)
                   : defaultMetric === "mean"
                     ? classAnalytics.avgTimePerQuestionMs
-                    : (classAnalytics.allTimesBoxPlot?.median ?? 0)
+                    : (classAnalytics.allTimesBoxPlot?.median ?? 0),
               )}
               subtitle="per question"
               icon={<Clock className="h-4 w-4" />}
@@ -350,7 +393,7 @@ export function ClassAnalyticsDashboard({
                     "px-3 py-1 text-xs font-medium rounded-md transition-colors",
                     boxPlotView === "per-question"
                       ? "bg-background text-foreground shadow-sm"
-                      : "text-muted-foreground hover:text-foreground"
+                      : "text-muted-foreground hover:text-foreground",
                   )}
                 >
                   Per Question
@@ -362,7 +405,7 @@ export function ClassAnalyticsDashboard({
                   "px-3 py-1 text-xs font-medium rounded-md transition-colors",
                   boxPlotView === "per-assignment"
                     ? "bg-background text-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground"
+                    : "text-muted-foreground hover:text-foreground",
                 )}
               >
                 Per Assignment
@@ -374,10 +417,10 @@ export function ClassAnalyticsDashboard({
                     "px-3 py-1 text-xs font-medium rounded-md transition-colors",
                     boxPlotView === "all"
                       ? "bg-background text-foreground shadow-sm"
-                      : "text-muted-foreground hover:text-foreground"
+                      : "text-muted-foreground hover:text-foreground",
                   )}
                 >
-                  Aggregate
+                  All Assignments
                 </button>
               )}
             </div>
@@ -420,51 +463,52 @@ export function ClassAnalyticsDashboard({
               </>
             )}
 
-            {boxPlotView === "per-assignment" && filteredAssignmentComparison && (
-              <>
-                <HorizontalBoxPlot
-                  title="Messages per Assignment"
-                  data={filteredAssignmentComparison.map((a) => ({
-                    name:
-                      a.assignmentName.length > 20
-                        ? a.assignmentName.slice(0, 20) + "..."
-                        : a.assignmentName,
-                    boxPlot: a.messagesBoxPlot,
-                  }))}
-                  formatValue={(v) => v.toFixed(1)}
-                  color="#6366f1"
-                  unit=" msgs"
-                />
-                <HorizontalBoxPlot
-                  title="Time per Assignment"
-                  data={filteredAssignmentComparison.map((a) => ({
-                    name:
-                      a.assignmentName.length > 20
-                        ? a.assignmentName.slice(0, 20) + "..."
-                        : a.assignmentName,
-                    boxPlot: a.timeBoxPlot
-                      ? {
-                          ...a.timeBoxPlot,
-                          min: a.timeBoxPlot.min / 1000,
-                          q1: a.timeBoxPlot.q1 / 1000,
-                          median: a.timeBoxPlot.median / 1000,
-                          q3: a.timeBoxPlot.q3 / 1000,
-                          max: a.timeBoxPlot.max / 1000,
-                          mean: a.timeBoxPlot.mean / 1000,
-                        }
-                      : null,
-                  }))}
-                  formatValue={(v) => v.toFixed(0)}
-                  color="#10b981"
-                  unit="s"
-                />
-              </>
-            )}
+            {boxPlotView === "per-assignment" &&
+              filteredAssignmentComparison && (
+                <>
+                  <HorizontalBoxPlot
+                    title="Messages per Assignment"
+                    data={filteredAssignmentComparison.map((a) => ({
+                      name:
+                        a.assignmentName.length > 20
+                          ? a.assignmentName.slice(0, 20) + "..."
+                          : a.assignmentName,
+                      boxPlot: a.messagesBoxPlot,
+                    }))}
+                    formatValue={(v) => v.toFixed(1)}
+                    color="#6366f1"
+                    unit=" msgs"
+                  />
+                  <HorizontalBoxPlot
+                    title="Time per Assignment"
+                    data={filteredAssignmentComparison.map((a) => ({
+                      name:
+                        a.assignmentName.length > 20
+                          ? a.assignmentName.slice(0, 20) + "..."
+                          : a.assignmentName,
+                      boxPlot: a.timeBoxPlot
+                        ? {
+                            ...a.timeBoxPlot,
+                            min: a.timeBoxPlot.min / 1000,
+                            q1: a.timeBoxPlot.q1 / 1000,
+                            median: a.timeBoxPlot.median / 1000,
+                            q3: a.timeBoxPlot.q3 / 1000,
+                            max: a.timeBoxPlot.max / 1000,
+                            mean: a.timeBoxPlot.mean / 1000,
+                          }
+                        : null,
+                    }))}
+                    formatValue={(v) => v.toFixed(0)}
+                    color="#10b981"
+                    unit="s"
+                  />
+                </>
+              )}
 
             {boxPlotView === "all" && classAnalytics && (
               <>
                 <HorizontalBoxPlot
-                  title="Messages (Aggregate)"
+                  title="Messages (All Assignments)"
                   data={[
                     {
                       name: "All Data",
@@ -476,7 +520,7 @@ export function ClassAnalyticsDashboard({
                   unit=" msgs"
                 />
                 <HorizontalBoxPlot
-                  title="Time (Aggregate)"
+                  title="Time (All Assignments)"
                   data={[
                     {
                       name: "All Data",
@@ -485,7 +529,8 @@ export function ClassAnalyticsDashboard({
                             ...classAnalytics.allTimesBoxPlot,
                             min: classAnalytics.allTimesBoxPlot.min / 1000,
                             q1: classAnalytics.allTimesBoxPlot.q1 / 1000,
-                            median: classAnalytics.allTimesBoxPlot.median / 1000,
+                            median:
+                              classAnalytics.allTimesBoxPlot.median / 1000,
                             q3: classAnalytics.allTimesBoxPlot.q3 / 1000,
                             max: classAnalytics.allTimesBoxPlot.max / 1000,
                             mean: classAnalytics.allTimesBoxPlot.mean / 1000,
@@ -511,8 +556,12 @@ export function ClassAnalyticsDashboard({
               onSortChange={(field, direction) => {
                 setQuestionSortField(field);
                 setQuestionSortDirection(direction);
-                Cookies.set("agar_question_sort_field", field, { expires: 365 });
-                Cookies.set("agar_question_sort_dir", direction, { expires: 365 });
+                Cookies.set("agar_question_sort_field", field, {
+                  expires: 365,
+                });
+                Cookies.set("agar_question_sort_dir", direction, {
+                  expires: 365,
+                });
               }}
             />
           )}
@@ -540,7 +589,6 @@ export function ClassAnalyticsDashboard({
           )}
         </div>
       )}
-
     </div>
   );
 }
