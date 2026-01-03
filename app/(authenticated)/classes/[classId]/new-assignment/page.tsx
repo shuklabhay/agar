@@ -808,7 +808,7 @@ export default function NewAssignmentPage() {
       {/* File Preview Dialog */}
       <Dialog open={!!previewFile} onOpenChange={() => setPreviewFile(null)}>
         <DialogContent
-          className="!max-w-none overflow-auto"
+          className="!max-w-none flex flex-col"
           style={{
             width: `${dialogSize.width}vw`,
             height: `${dialogSize.height}vh`,
@@ -854,7 +854,7 @@ export default function NewAssignmentPage() {
             </DialogTitle>
           </DialogHeader>
           {previewFile && (
-            <div className="flex-1 min-h-0 overflow-auto -mt-2">
+            <div className="flex-1 min-h-0 overflow-auto">
               {previewFile.contentType.startsWith("image/") && (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
@@ -866,7 +866,7 @@ export default function NewAssignmentPage() {
               {previewFile.contentType === "application/pdf" && (
                 <iframe
                   src={previewFile.previewUrl}
-                  className="w-full h-full min-h-[50vh] rounded-md"
+                  className="w-full h-full rounded-md"
                   title={previewFile.fileName}
                 />
               )}
@@ -909,10 +909,19 @@ export default function NewAssignmentPage() {
               </Label>
               <div className="mt-1 space-y-1">
                 {assignmentFiles.map((f) => (
-                  <div key={f.id} className="flex items-center gap-2 text-sm">
+                  <button
+                    key={f.id}
+                    type="button"
+                    className="flex items-center gap-2 text-sm w-full text-left hover:bg-muted/50 rounded px-1 py-0.5 -mx-1 transition-colors"
+                    onClick={() => setPreviewFile({
+                      fileName: f.fileName,
+                      contentType: f.contentType,
+                      previewUrl: f.previewUrl,
+                    })}
+                  >
                     {getFileIcon(f.contentType)}
-                    <span className="truncate">{f.fileName}</span>
-                  </div>
+                    <span className="truncate hover:underline">{f.fileName}</span>
+                  </button>
                 ))}
               </div>
             </div>
@@ -923,10 +932,19 @@ export default function NewAssignmentPage() {
               </Label>
               <div className="mt-1 space-y-1">
                 {notesFiles.map((f) => (
-                  <div key={f.id} className="flex items-center gap-2 text-sm">
+                  <button
+                    key={f.id}
+                    type="button"
+                    className="flex items-center gap-2 text-sm w-full text-left hover:bg-muted/50 rounded px-1 py-0.5 -mx-1 transition-colors"
+                    onClick={() => setPreviewFile({
+                      fileName: f.fileName,
+                      contentType: f.contentType,
+                      previewUrl: f.previewUrl,
+                    })}
+                  >
                     {getFileIcon(f.contentType)}
-                    <span className="truncate">{f.fileName}</span>
-                  </div>
+                    <span className="truncate hover:underline">{f.fileName}</span>
+                  </button>
                 ))}
               </div>
             </div>

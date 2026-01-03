@@ -4,7 +4,7 @@ import { GoogleGenAI, Part } from "@google/genai";
 
 const MODELS = {
   extraction: "gemini-2.0-flash-lite",
-  answerGeneration: "gemini-3.0-flash",
+  answerGeneration: "gemini-2.5-flash",
 } as const;
 
 export async function fetchFileAsBase64(

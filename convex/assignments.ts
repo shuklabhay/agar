@@ -341,6 +341,7 @@ export const getAssignment = query({
           storageId: v.id("_storage"),
           fileName: v.string(),
           contentType: v.string(),
+          size: v.optional(v.number()),
           url: v.union(v.string(), v.null()),
         }),
       ),
@@ -349,10 +350,13 @@ export const getAssignment = query({
           storageId: v.id("_storage"),
           fileName: v.string(),
           contentType: v.string(),
+          size: v.optional(v.number()),
           url: v.union(v.string(), v.null()),
         }),
       ),
       additionalInfo: v.optional(v.string()),
+      isDraft: v.optional(v.boolean()),
+      processingStatus: v.optional(v.string()),
     }),
     v.null(),
   ),
@@ -476,6 +480,35 @@ export const deleteAssignment = mutation({
 
     // Delete the assignment
     await ctx.db.delete(args.assignmentId);
+
+    return null;
+  },
+});
+
+export const renameAssignment = mutation({
+  args: {
+    assignmentId: v.id("assignments"),
+    name: v.string(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("Not authenticated");
+    }
+
+    const assignment = await ctx.db.get(args.assignmentId);
+    if (!assignment) {
+      throw new Error("Assignment not found");
+    }
+
+    // Verify the class belongs to the user
+    const classDoc = await ctx.db.get(assignment.classId);
+    if (!classDoc || classDoc.teacherId !== userId) {
+      throw new Error("Access denied");
+    }
+
+    await ctx.db.patch(args.assignmentId, { name: args.name });
 
     return null;
   },

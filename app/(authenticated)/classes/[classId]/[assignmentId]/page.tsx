@@ -72,16 +72,16 @@ export default function AssignmentDetailPage() {
 
   const getFileIcon = (contentType: string) => {
     if (contentType.startsWith("image/")) {
-      return <ImageIcon className="h-5 w-5" />;
+      return <ImageIcon className="h-4 w-4" />;
     }
     if (
       contentType === "application/msword" ||
       contentType ===
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
     ) {
-      return <FileIcon className="h-5 w-5" />;
+      return <FileIcon className="h-4 w-4" />;
     }
-    return <FileText className="h-5 w-5" />;
+    return <FileText className="h-4 w-4" />;
   };
 
   const getFileTypeBadge = (contentType: string) => {
@@ -101,7 +101,7 @@ export default function AssignmentDetailPage() {
     }
   };
 
-  const renderFileGrid = (
+  const renderFileList = (
     files: Array<{
       storageId: Id<"_storage">;
       fileName: string;
@@ -111,77 +111,39 @@ export default function AssignmentDetailPage() {
   ) => {
     if (files.length === 0) {
       return (
-        <Card className="border-dashed">
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <FileText className="h-10 w-10 text-muted-foreground mb-3" />
-            <p className="text-muted-foreground">No files uploaded</p>
-          </CardContent>
-        </Card>
+        <p className="text-sm text-muted-foreground">No files</p>
       );
     }
 
     return (
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="space-y-1.5">
         {files.map((file, index) => (
-          <Card key={index} className="overflow-hidden">
-            <CardContent className="p-0">
-              {/* Preview for images */}
-              {file.contentType.startsWith("image/") && file.url && (
-                <div className="aspect-video bg-muted relative overflow-hidden">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={file.url}
-                    alt={file.fileName}
-                    className="object-cover w-full h-full"
-                  />
-                </div>
-              )}
-
-              {/* PDF preview placeholder */}
-              {file.contentType === "application/pdf" && (
-                <div className="aspect-video bg-muted flex items-center justify-center">
-                  <FileText className="h-16 w-16 text-muted-foreground" />
-                </div>
-              )}
-
-              {/* Word doc preview placeholder */}
-              {(file.contentType === "application/msword" ||
-                file.contentType ===
-                  "application/vnd.openxmlformats-officedocument.wordprocessingml.document") && (
-                <div className="aspect-video bg-muted flex items-center justify-center">
-                  <FileIcon className="h-16 w-16 text-muted-foreground" />
-                </div>
-              )}
-
-              {/* File info */}
-              <div className="flex items-center gap-3 p-3">
-                {getFileIcon(file.contentType)}
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">
-                    {file.fileName}
-                  </p>
-                </div>
-                <Badge variant="secondary" className="text-xs shrink-0">
-                  {getFileTypeBadge(file.contentType)}
-                </Badge>
-                {file.url && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    asChild
-                  >
-                    <a
-                      href={file.url}
-                      download={file.fileName}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      <Download className="h-4 w-4" />
-                    </a>
-                  </Button>
-                )}
+          <Card key={index}>
+            <CardContent className="flex items-center gap-2 p-2">
+              {getFileIcon(file.contentType)}
+              <div className="flex-1 min-w-0">
+                <p className="text-sm truncate">{file.fileName}</p>
               </div>
+              <Badge variant="secondary" className="text-xs">
+                {getFileTypeBadge(file.contentType)}
+              </Badge>
+              {file.url && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6"
+                  asChild
+                >
+                  <a
+                    href={file.url}
+                    download={file.fileName}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <Download className="h-3 w-3" />
+                  </a>
+                </Button>
+              )}
             </CardContent>
           </Card>
         ))}
@@ -267,20 +229,23 @@ export default function AssignmentDetailPage() {
         </CardContent>
       </Card>
 
-      {/* Assignment Section */}
-      <div className="space-y-4">
-        <h2 className="text-xl font-semibold">
-          Assignment ({assignment.assignmentFiles.length})
-        </h2>
-        {renderFileGrid(assignment.assignmentFiles)}
-      </div>
+      {/* Files Section - Two Columns */}
+      <div className="grid gap-6 md:grid-cols-2">
+        {/* Assignment Files */}
+        <div className="space-y-2">
+          <h2 className="text-lg font-semibold">
+            Assignment Files ({assignment.assignmentFiles.length})
+          </h2>
+          {renderFileList(assignment.assignmentFiles)}
+        </div>
 
-      {/* Notes Files Section */}
-      <div className="space-y-4">
-        <h2 className="text-xl font-semibold">
-          Notes / Reference Materials ({assignment.notesFiles.length})
-        </h2>
-        {renderFileGrid(assignment.notesFiles)}
+        {/* Notes Files */}
+        <div className="space-y-2">
+          <h2 className="text-lg font-semibold">
+            Notes Files ({assignment.notesFiles.length})
+          </h2>
+          {renderFileList(assignment.notesFiles)}
+        </div>
       </div>
 
       {/* Additional Information Section */}

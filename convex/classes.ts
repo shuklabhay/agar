@@ -70,3 +70,73 @@ export const createClass = mutation({
     return classId;
   },
 });
+
+export const renameClass = mutation({
+  args: {
+    classId: v.id("classes"),
+    name: v.string(),
+    section: v.optional(v.string()),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("Not authenticated");
+    }
+
+    const classDoc = await ctx.db.get(args.classId);
+    if (!classDoc || classDoc.teacherId !== userId) {
+      throw new Error("Class not found or access denied");
+    }
+
+    await ctx.db.patch(args.classId, { name: args.name, section: args.section });
+    return null;
+  },
+});
+
+export const deleteClass = mutation({
+  args: { classId: v.id("classes") },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("Not authenticated");
+    }
+
+    const classDoc = await ctx.db.get(args.classId);
+    if (!classDoc || classDoc.teacherId !== userId) {
+      throw new Error("Class not found or access denied");
+    }
+
+    // Delete all assignments in this class
+    const assignments = await ctx.db
+      .query("assignments")
+      .withIndex("by_classId", (q) => q.eq("classId", args.classId))
+      .collect();
+
+    for (const assignment of assignments) {
+      // Delete questions for this assignment
+      const questions = await ctx.db
+        .query("questions")
+        .withIndex("by_assignmentId", (q) => q.eq("assignmentId", assignment._id))
+        .collect();
+
+      for (const question of questions) {
+        await ctx.db.delete(question._id);
+      }
+
+      // Delete storage files
+      for (const file of [...assignment.assignmentFiles, ...assignment.notesFiles]) {
+        await ctx.storage.delete(file.storageId);
+      }
+
+      // Delete the assignment
+      await ctx.db.delete(assignment._id);
+    }
+
+    // Delete the class
+    await ctx.db.delete(args.classId);
+
+    return null;
+  },
+});

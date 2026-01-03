@@ -14,6 +14,9 @@ import {
   FileText,
   Trash2,
   Loader2,
+  ArrowUp,
+  ArrowDown,
+  Pencil,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -26,6 +29,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import Link from "next/link";
 import { toast } from "sonner";
 
@@ -35,9 +46,24 @@ export default function ClassDetailPage() {
   const classData = useQuery(api.classes.getClass, { classId });
   const assignments = useQuery(api.assignments.listAssignments, { classId });
   const deleteAssignment = useMutation(api.assignments.deleteAssignment);
+  const renameAssignment = useMutation(api.assignments.renameAssignment);
 
   const [deleteTarget, setDeleteTarget] = useState<{ id: Id<"assignments">; name: string } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [renameTarget, setRenameTarget] = useState<{ id: Id<"assignments">; name: string } | null>(null);
+  const [newName, setNewName] = useState("");
+  const [isRenaming, setIsRenaming] = useState(false);
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+
+  // Sort assignments by name
+  const sortedAssignments = assignments ? [...assignments].sort((a, b) => {
+    const comparison = a.name.localeCompare(b.name);
+    return sortOrder === "asc" ? comparison : -comparison;
+  }) : [];
+
+  const toggleSort = () => {
+    setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+  };
 
   const handleDelete = async () => {
     if (!deleteTarget) return;
@@ -50,6 +76,21 @@ export default function ClassDetailPage() {
       toast.error("Failed to delete assignment");
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  const handleRename = async () => {
+    if (!renameTarget || !newName.trim()) return;
+    setIsRenaming(true);
+    try {
+      await renameAssignment({ assignmentId: renameTarget.id, name: newName.trim() });
+      toast.success("Assignment renamed");
+      setRenameTarget(null);
+      setNewName("");
+    } catch {
+      toast.error("Failed to rename assignment");
+    } finally {
+      setIsRenaming(false);
     }
   };
 
@@ -115,9 +156,22 @@ export default function ClassDetailPage() {
 
       {/* Assignments Section */}
       <div className="space-y-4">
-        <h2 className="text-xl font-semibold">Assignments</h2>
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-semibold">Assignments</h2>
+          {assignments.length > 1 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={toggleSort}
+              className="h-7 text-xs text-muted-foreground"
+            >
+              {sortOrder === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}
+              {sortOrder === "asc" ? "A-Z" : "Z-A"}
+            </Button>
+          )}
+        </div>
 
-        {assignments.length === 0 ? (
+        {sortedAssignments.length === 0 ? (
           <Card className="border-dashed">
             <CardContent className="flex flex-col items-center justify-center py-16">
               <div className="rounded-full bg-muted p-4 mb-4">
@@ -138,7 +192,7 @@ export default function ClassDetailPage() {
           </Card>
         ) : (
           <div className="grid gap-3">
-            {assignments.map((assignment) => (
+            {sortedAssignments.map((assignment) => (
               <div key={assignment._id} className="group relative">
                 <Link
                   href={
@@ -152,7 +206,7 @@ export default function ClassDetailPage() {
                       assignment.isDraft ? "border-dashed border-2" : ""
                     }`}
                   >
-                    <CardContent className="flex items-center gap-3 p-3 pr-12">
+                    <CardContent className="flex items-center gap-3 p-3 pr-20">
                       <div className="rounded-lg bg-muted p-2">
                         <FileText className="h-5 w-5 text-muted-foreground" />
                       </div>
@@ -177,18 +231,33 @@ export default function ClassDetailPage() {
                     </CardContent>
                   </Card>
                 </Link>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="absolute right-2 top-2 h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setDeleteTarget({ id: assignment._id, name: assignment.name });
-                  }}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+                <div className="absolute right-2 top-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setRenameTarget({ id: assignment._id, name: assignment.name });
+                      setNewName(assignment.name);
+                    }}
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setDeleteTarget({ id: assignment._id, name: assignment.name });
+                    }}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
             ))}
           </div>
@@ -224,6 +293,30 @@ export default function ClassDetailPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Rename Dialog */}
+      <Dialog open={!!renameTarget} onOpenChange={(open) => !open && setRenameTarget(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Rename Assignment</DialogTitle>
+          </DialogHeader>
+          <Input
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            placeholder="Assignment name"
+            onKeyDown={(e) => e.key === "Enter" && handleRename()}
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRenameTarget(null)}>
+              Cancel
+            </Button>
+            <Button onClick={handleRename} disabled={isRenaming || !newName.trim()}>
+              {isRenaming ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Rename
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
