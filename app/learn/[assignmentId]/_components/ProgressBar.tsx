@@ -28,39 +28,46 @@ export function ProgressBar({
   onQuestionClick,
 }: ProgressBarProps) {
   const progressMap = new Map(progress.map((p) => [p.questionId, p]));
+  const correctCount = progress.filter((p) => p.status === "correct").length;
 
   return (
-    <div className="flex items-center gap-1 py-1 overflow-x-auto scrollbar-hide">
-      {questions.map((q, i) => {
-        const p = progressMap.get(q._id);
-        const isCorrect = p?.status === "correct";
-        const isIncorrect = p?.status === "incorrect";
-        const isInProgress = p?.status === "in_progress";
-        const isCurrent = i === currentIndex;
+    <div className="flex items-center gap-2">
+      {/* Progress summary */}
+      <div className="text-xs text-muted-foreground shrink-0 min-w-[60px]">
+        {correctCount}/{questions.length} done
+      </div>
 
-        return (
-          <button
-            key={q._id}
-            onClick={() => onQuestionClick(i)}
-            className={cn(
-              "w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-medium transition-all shrink-0",
-              "hover:scale-110 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1",
-              isCurrent && "ring-2 ring-primary ring-offset-1",
-              isCorrect && "bg-green-500 text-white",
-              isIncorrect && "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
-              isInProgress && !isCorrect && !isIncorrect && "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
-              !isCorrect && !isIncorrect && !isInProgress && "bg-muted text-muted-foreground"
-            )}
-            title={`Question ${q.questionNumber}${isCorrect ? " (Correct)" : isIncorrect ? " (Try again)" : ""}`}
-          >
-            {isCorrect ? (
-              <Check className="h-3 w-3" />
-            ) : (
-              q.questionNumber
-            )}
-          </button>
-        );
-      })}
+      {/* Question indicators */}
+      <div className="flex items-center gap-1.5 py-1 overflow-x-auto scrollbar-hide flex-1">
+        {questions.map((q, i) => {
+          const p = progressMap.get(q._id);
+          const isCorrect = p?.status === "correct";
+          const isInProgress = p?.status === "in_progress";
+          const isCurrent = i === currentIndex;
+
+          return (
+            <button
+              key={q._id}
+              onClick={() => onQuestionClick(i)}
+              className={cn(
+                "w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-medium transition-all shrink-0",
+                "hover:opacity-80 focus:outline-none",
+                isCurrent && "ring-2 ring-offset-1 ring-foreground",
+                isCorrect && "bg-green-500 text-white",
+                isInProgress && !isCorrect && "bg-muted-foreground/20 text-foreground",
+                !isCorrect && !isInProgress && "bg-muted text-muted-foreground"
+              )}
+              title={`Question ${q.questionNumber}${isCorrect ? " - Correct" : isInProgress ? " - Started" : ""}`}
+            >
+              {isCorrect ? (
+                <Check className="h-2.5 w-2.5" strokeWidth={3} />
+              ) : (
+                q.questionNumber
+              )}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }
