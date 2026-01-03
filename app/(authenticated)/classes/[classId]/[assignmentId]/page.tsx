@@ -42,10 +42,19 @@ export default function AssignmentDetailPage() {
   const assignment = useQuery(api.assignments.getAssignment, { assignmentId });
   const questions = useQuery(api.questions.listQuestions, { assignmentId });
 
-  const approveAllNotesQuestions = useMutation(api.questions.approveAllNotesQuestions);
+  const approveAllQuestions = useMutation(api.questions.approveAllQuestions);
 
   const [copied, setCopied] = useState(false);
-  const [editingQuestion, setEditingQuestion] = useState<typeof questions extends (infer T)[] | undefined ? T | null : null>(null);
+  const [editingQuestion, setEditingQuestion] = useState<{
+    _id: Id<"questions">;
+    questionNumber: number;
+    questionText: string;
+    questionType: string;
+    answer?: string | string[];
+    snippets?: string[];
+    source?: "notes" | string[];
+    status: "pending" | "processing" | "ready" | "approved";
+  } | null>(null);
   const [isApprovingAll, setIsApprovingAll] = useState(false);
   const [previewFile, setPreviewFile] = useState<{
     fileName: string;
@@ -56,7 +65,7 @@ export default function AssignmentDetailPage() {
   const handleApproveAll = async () => {
     setIsApprovingAll(true);
     try {
-      const result = await approveAllNotesQuestions({ assignmentId });
+      const result = await approveAllQuestions({ assignmentId });
       toast.success(`Approved ${result.approved} questions`);
     } catch (error) {
       toast.error("Failed to approve questions");
@@ -311,8 +320,11 @@ export default function AssignmentDetailPage() {
                   </Badge>
                 )}
                 {(() => {
-                  const readyNotesCount = completedQuestions.filter(
-                    (q) => q.status === "ready" && q.source === "notes"
+                  const readyCount = completedQuestions.filter(
+                    (q) => q.status === "ready"
+                  ).length;
+                  const webSourcedCount = completedQuestions.filter(
+                    (q) => q.source && Array.isArray(q.source)
                   ).length;
                   const approvedCount = completedQuestions.filter(
                     (q) => q.status === "approved"
@@ -320,10 +332,15 @@ export default function AssignmentDetailPage() {
                   if (completedQuestions.length === 0) return null;
                   return (
                     <>
+                      {webSourcedCount > 0 && (
+                        <span className="text-sm text-amber-600 dark:text-amber-400">
+                          {webSourcedCount} manual review recommended
+                        </span>
+                      )}
                       <span className="text-sm text-muted-foreground">
                         {approvedCount}/{completedQuestions.length} approved
                       </span>
-                      {readyNotesCount > 0 && (
+                      {readyCount > 0 && (
                         <Button
                           size="sm"
                           onClick={handleApproveAll}
@@ -334,7 +351,7 @@ export default function AssignmentDetailPage() {
                           ) : (
                             <CheckCheck className="h-4 w-4 mr-1" />
                           )}
-                          Approve All Notes ({readyNotesCount})
+                          Approve All ({readyCount})
                         </Button>
                       )}
                     </>

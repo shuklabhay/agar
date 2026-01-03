@@ -236,8 +236,8 @@ export const approveQuestion = mutation({
   },
 });
 
-// Approve all notes-sourced ready questions for an assignment
-export const approveAllNotesQuestions = mutation({
+// Approve all ready questions for an assignment
+export const approveAllQuestions = mutation({
   args: { assignmentId: v.id("assignments") },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
@@ -258,8 +258,8 @@ export const approveAllNotesQuestions = mutation({
 
     let approved = 0;
     for (const q of questions) {
-      // Only approve ready questions with source="notes"
-      if (q.status === "ready" && q.source === "notes") {
+      // Approve all ready questions
+      if (q.status === "ready") {
         await ctx.db.patch(q._id, { status: "approved" });
         approved++;
       }
