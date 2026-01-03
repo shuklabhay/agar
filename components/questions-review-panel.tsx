@@ -26,7 +26,7 @@ import {
   MessageSquare,
   Trash2,
   ChevronDown,
-  ArrowRight,
+  ChevronsRight,
   Loader2,
   ExternalLink,
   Send,
@@ -395,13 +395,13 @@ export function QuestionsReviewPanel({
                               <AlertTriangle className="h-4 w-4 text-amber-500 inline" />
                             )}
                             {status === "skipped" && (
-                              <ArrowRight className="h-4 w-4 text-slate-400 inline" />
+                              <ChevronsRight className="h-4 w-4 text-slate-400 inline" />
                             )}
                             {status === "processing" && (
                               <Loader2 className="h-4 w-4 animate-spin text-muted-foreground inline" />
                             )}
                             {status === "ready" && (
-                              <ArrowRight className="h-4 w-4 text-muted-foreground inline" />
+                              <ChevronsRight className="h-4 w-4 text-muted-foreground inline" />
                             )}
                           </td>
                         </tr>
