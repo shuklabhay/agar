@@ -140,47 +140,47 @@ export function QuestionReviewCard({ question, onEdit }: QuestionReviewCardProps
             : ""
       } ${isPending ? "opacity-60" : ""}`}
     >
-      <CardContent className="p-3 space-y-2">
-        {/* Header: Question number, text, type, status */}
+      <CardContent className="px-3 py-2 space-y-2">
+        {/* Header: Question number, text, type badge on right */}
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="font-semibold text-sm">Q{question.questionNumber}:</span>
-              <Badge variant="outline" className="text-xs h-5">
-                {typeLabels[question.questionType] || question.questionType}
-              </Badge>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-semibold">Q{question.questionNumber}:</span>
               {isPending && (
-                <Badge variant="secondary" className="text-xs h-5">
+                <Badge variant="secondary" className="text-xs">
                   <Loader2 className="h-3 w-3 animate-spin mr-1" />
                   Processing
                 </Badge>
               )}
               {isApproved && (
-                <Badge className="text-xs h-5 bg-green-600">
+                <Badge className="text-xs bg-green-600">
                   <Check className="h-3 w-3 mr-1" />
                   Approved
                 </Badge>
               )}
               {isWebSource && !isApproved && (
-                <Badge variant="outline" className="text-xs h-5 border-amber-500 text-amber-700 dark:text-amber-400">
+                <Badge variant="outline" className="text-xs border-amber-500 text-amber-700 dark:text-amber-400">
                   Needs Review
                 </Badge>
               )}
             </div>
-            <p className="text-sm">{question.questionText}</p>
+            <p className="mt-1">{question.questionText}</p>
           </div>
+          <Badge variant="outline" className="text-xs shrink-0">
+            {typeLabels[question.questionType] || question.questionType}
+          </Badge>
         </div>
 
         {/* Answer */}
         {!isPending && (
-          <div className="bg-muted/50 rounded px-2 py-1.5">
-            <span className="text-xs text-muted-foreground">Answer: </span>
-            <span className="text-sm font-medium">{formatAnswer(question.answer)}</span>
+          <div className="bg-muted/50 rounded-md px-3 py-2">
+            <div className="text-xs text-muted-foreground mb-0.5">Answer:</div>
+            <div className="font-medium whitespace-pre-wrap">{formatAnswer(question.answer)}</div>
           </div>
         )}
 
         {/* Source & Snippets inline */}
-        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+        <div className="flex items-center gap-4 text-sm text-muted-foreground">
           {question.source && (
             <div className="flex items-center gap-1">
               <span>Source:</span>
@@ -197,7 +197,7 @@ export function QuestionReviewCard({ question, onEdit }: QuestionReviewCardProps
                       className="text-amber-600 hover:underline inline-flex items-center gap-0.5"
                     >
                       {new URL(url).hostname}
-                      <ExternalLink className="h-2.5 w-2.5" />
+                      <ExternalLink className="h-3 w-3" />
                     </a>
                   ))}
                 </div>
@@ -207,12 +207,12 @@ export function QuestionReviewCard({ question, onEdit }: QuestionReviewCardProps
           {question.snippets && question.snippets.length > 0 && (
             <Collapsible open={snippetsOpen} onOpenChange={setSnippetsOpen}>
               <CollapsibleTrigger className="flex items-center gap-1 hover:text-foreground">
-                {snippetsOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                {snippetsOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                 Snippets ({question.snippets.length})
               </CollapsibleTrigger>
-              <CollapsibleContent className="mt-1 space-y-0.5">
+              <CollapsibleContent className="mt-2 space-y-1">
                 {question.snippets.map((snippet, i) => (
-                  <div key={i} className="text-xs bg-muted rounded px-2 py-0.5 italic">"{snippet}"</div>
+                  <div key={i} className="text-sm bg-muted rounded px-2 py-1 italic">"{snippet}"</div>
                 ))}
               </CollapsibleContent>
             </Collapsible>
@@ -221,36 +221,36 @@ export function QuestionReviewCard({ question, onEdit }: QuestionReviewCardProps
 
         {/* Actions */}
         {!isPending && (
-          <div className="flex items-center gap-1.5 pt-1.5 border-t">
+          <div className="flex items-center gap-2">
             {!isApproved && (
-              <Button size="sm" variant="default" onClick={handleApprove} disabled={isApproving} className="h-6 text-xs px-2">
-                {isApproving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
+              <Button size="sm" variant="default" onClick={handleApprove} disabled={isApproving} className="h-7">
+                {isApproving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
                 Approve
               </Button>
             )}
-            <Button size="sm" variant="outline" onClick={() => onEdit(question)} className="h-6 text-xs px-2">
-              <Pencil className="h-3 w-3" />
+            <Button size="sm" variant="outline" onClick={() => onEdit(question)} className="h-7">
+              <Pencil className="h-4 w-4" />
               Edit
             </Button>
             <Popover open={changePopoverOpen} onOpenChange={setChangePopoverOpen}>
               <PopoverTrigger asChild>
-                <Button size="sm" variant="outline" disabled={isRegenerating} className="h-6 text-xs px-2">
-                  {isRegenerating ? <Loader2 className="h-3 w-3 animate-spin" /> : <MessageSquare className="h-3 w-3" />}
+                <Button size="sm" variant="outline" disabled={isRegenerating} className="h-7">
+                  {isRegenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <MessageSquare className="h-4 w-4" />}
                   Request Changes
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-72" align="start">
-                <div className="space-y-2">
+              <PopoverContent className="w-80" align="start">
+                <div className="space-y-3">
+                  <p className="text-sm font-medium">Request Changes</p>
                   <Textarea
                     placeholder="e.g., Include more detail, fix the calculation..."
                     value={changeRequest}
                     onChange={(e) => setChangeRequest(e.target.value)}
-                    rows={2}
-                    className="text-sm"
+                    rows={3}
                   />
-                  <Button size="sm" onClick={handleRequestChanges} disabled={!changeRequest.trim()} className="w-full h-7">
-                    <Send className="h-3 w-3" />
-                    Send
+                  <Button size="sm" onClick={handleRequestChanges} disabled={!changeRequest.trim()} className="w-full">
+                    <Send className="h-4 w-4" />
+                    Send to AI
                   </Button>
                 </div>
               </PopoverContent>
@@ -260,9 +260,9 @@ export function QuestionReviewCard({ question, onEdit }: QuestionReviewCardProps
               variant="ghost"
               onClick={handleRemove}
               disabled={isRemoving}
-              className="h-6 w-6 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+              className="h-7 w-7 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
             >
-              {isRemoving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
+              {isRemoving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
             </Button>
           </div>
         )}

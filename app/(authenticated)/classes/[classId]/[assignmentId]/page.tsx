@@ -8,6 +8,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   ArrowLeft,
   FileText,
   Image as ImageIcon,
@@ -41,6 +47,11 @@ export default function AssignmentDetailPage() {
   const [copied, setCopied] = useState(false);
   const [editingQuestion, setEditingQuestion] = useState<typeof questions extends (infer T)[] | undefined ? T | null : null>(null);
   const [isApprovingAll, setIsApprovingAll] = useState(false);
+  const [previewFile, setPreviewFile] = useState<{
+    fileName: string;
+    contentType: string;
+    url: string;
+  } | null>(null);
 
   const handleApproveAll = async () => {
     setIsApprovingAll(true);
@@ -118,7 +129,15 @@ export default function AssignmentDetailPage() {
     return (
       <div className="space-y-1.5">
         {files.map((file, index) => (
-          <Card key={index}>
+          <Card
+            key={index}
+            className="cursor-pointer hover:bg-muted/50 transition-colors"
+            onClick={() => file.url && setPreviewFile({
+              fileName: file.fileName,
+              contentType: file.contentType,
+              url: file.url,
+            })}
+          >
             <CardContent className="flex items-center gap-2 p-2">
               {getFileIcon(file.contentType)}
               <div className="flex-1 min-w-0">
@@ -133,6 +152,7 @@ export default function AssignmentDetailPage() {
                   size="icon"
                   className="h-6 w-6"
                   asChild
+                  onClick={(e) => e.stopPropagation()}
                 >
                   <a
                     href={file.url}
@@ -266,60 +286,68 @@ export default function AssignmentDetailPage() {
       )}
 
       {/* Questions Review Section */}
-      {questions && questions.length > 0 && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold">
-              Questions ({questions.length})
-            </h2>
-            <div className="flex items-center gap-2">
-              {/* Count ready notes-sourced questions */}
-              {(() => {
-                const readyNotesCount = questions.filter(
-                  (q) => q.status === "ready" && q.source === "notes"
-                ).length;
-                const approvedCount = questions.filter(
-                  (q) => q.status === "approved"
-                ).length;
-                return (
-                  <>
-                    <span className="text-sm text-muted-foreground">
-                      {approvedCount}/{questions.length} approved
-                    </span>
-                    {readyNotesCount > 0 && (
-                      <Button
-                        size="sm"
-                        onClick={handleApproveAll}
-                        disabled={isApprovingAll}
-                      >
-                        {isApprovingAll ? (
-                          <Loader2 className="h-4 w-4 animate-spin mr-1" />
-                        ) : (
-                          <CheckCheck className="h-4 w-4 mr-1" />
-                        )}
-                        Approve All Notes ({readyNotesCount})
-                      </Button>
-                    )}
-                  </>
-                );
-              })()}
+      {(() => {
+        // Only show questions that have answers (ready or approved)
+        const completedQuestions = questions?.filter(
+          (q) => q.status === "ready" || q.status === "approved"
+        ) || [];
+
+        if (completedQuestions.length === 0) return null;
+
+        return (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-semibold">
+                Questions ({completedQuestions.length})
+              </h2>
+              <div className="flex items-center gap-2">
+                {(() => {
+                  const readyNotesCount = completedQuestions.filter(
+                    (q) => q.status === "ready" && q.source === "notes"
+                  ).length;
+                  const approvedCount = completedQuestions.filter(
+                    (q) => q.status === "approved"
+                  ).length;
+                  return (
+                    <>
+                      <span className="text-sm text-muted-foreground">
+                        {approvedCount}/{completedQuestions.length} approved
+                      </span>
+                      {readyNotesCount > 0 && (
+                        <Button
+                          size="sm"
+                          onClick={handleApproveAll}
+                          disabled={isApprovingAll}
+                        >
+                          {isApprovingAll ? (
+                            <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                          ) : (
+                            <CheckCheck className="h-4 w-4 mr-1" />
+                          )}
+                          Approve All Notes ({readyNotesCount})
+                        </Button>
+                      )}
+                    </>
+                  );
+                })()}
+              </div>
+            </div>
+
+            {/* Questions list */}
+            <div className="space-y-3">
+              {completedQuestions
+                .sort((a, b) => a.questionNumber - b.questionNumber)
+                .map((question) => (
+                  <QuestionReviewCard
+                    key={question._id}
+                    question={question}
+                    onEdit={(q) => setEditingQuestion(q)}
+                  />
+                ))}
             </div>
           </div>
-
-          {/* Questions list */}
-          <div className="space-y-3">
-            {questions
-              .sort((a, b) => a.questionNumber - b.questionNumber)
-              .map((question) => (
-                <QuestionReviewCard
-                  key={question._id}
-                  question={question}
-                  onEdit={(q) => setEditingQuestion(q)}
-                />
-              ))}
-          </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Edit Answer Dialog */}
       <EditAnswerDialog
@@ -327,6 +355,51 @@ export default function AssignmentDetailPage() {
         open={editingQuestion !== null}
         onOpenChange={(open) => !open && setEditingQuestion(null)}
       />
+
+      {/* File Preview Dialog */}
+      <Dialog open={!!previewFile} onOpenChange={() => setPreviewFile(null)}>
+        <DialogContent className="!max-w-none flex flex-col" style={{ width: "80vw", height: "85vh" }}>
+          <DialogHeader>
+            <DialogTitle className="truncate pr-8">
+              {previewFile?.fileName}
+            </DialogTitle>
+          </DialogHeader>
+          {previewFile && (
+            <div className="flex-1 min-h-0 overflow-auto">
+              {previewFile.contentType.startsWith("image/") && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={previewFile.url}
+                  alt={previewFile.fileName}
+                  className="w-full h-auto rounded-md"
+                />
+              )}
+              {previewFile.contentType === "application/pdf" && (
+                <iframe
+                  src={previewFile.url}
+                  className="w-full h-full rounded-md"
+                  title={previewFile.fileName}
+                />
+              )}
+              {(previewFile.contentType === "application/msword" ||
+                previewFile.contentType ===
+                  "application/vnd.openxmlformats-officedocument.wordprocessingml.document") && (
+                <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+                  <FileIcon className="h-16 w-16 mb-4" />
+                  <p>Word document preview not available</p>
+                  <a
+                    href={previewFile.url}
+                    download={previewFile.fileName}
+                    className="mt-2 text-primary underline"
+                  >
+                    Download to view
+                  </a>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
