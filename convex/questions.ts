@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { internalMutation, internalQuery, query } from "./_generated/server";
+import { internalMutation, internalQuery, query, mutation } from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { Id } from "./_generated/dataModel";
 
@@ -108,5 +108,86 @@ export const listQuestions = query({
       .query("questions")
       .withIndex("by_assignmentId", (q) => q.eq("assignmentId", args.assignmentId))
       .collect();
+  },
+});
+
+// Get notes file URLs for an assignment
+export const getNotesForAssignment = internalQuery({
+  args: { assignmentId: v.id("assignments") },
+  handler: async (ctx, args) => {
+    const assignment = await ctx.db.get(args.assignmentId);
+    if (!assignment) return [];
+
+    const notesWithUrls = await Promise.all(
+      assignment.notesFiles.map(async (file) => ({
+        ...file,
+        url: await ctx.storage.getUrl(file.storageId),
+      })),
+    );
+
+    return notesWithUrls.filter((f) => f.url).map((f) => f.url!);
+  },
+});
+
+// Get pending questions for an assignment
+export const getPendingQuestions = internalQuery({
+  args: { assignmentId: v.id("assignments") },
+  handler: async (ctx, args) => {
+    const questions = await ctx.db
+      .query("questions")
+      .withIndex("by_assignmentId", (q) => q.eq("assignmentId", args.assignmentId))
+      .filter((q) => q.eq(q.field("status"), "pending"))
+      .collect();
+
+    return questions;
+  },
+});
+
+// Update a question with generated answer
+export const updateQuestionAnswer = internalMutation({
+  args: {
+    questionId: v.id("questions"),
+    answer: v.union(v.string(), v.array(v.string())),
+    snippets: v.array(v.string()),
+    source: v.union(v.literal("notes"), v.array(v.string())),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("processing"),
+      v.literal("ready"),
+      v.literal("approved"),
+    ),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.questionId, {
+      answer: args.answer,
+      snippets: args.snippets,
+      source: args.source,
+      status: args.status,
+    });
+  },
+});
+
+// Mark question as processing
+export const markQuestionProcessing = internalMutation({
+  args: { questionId: v.id("questions") },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.questionId, { status: "processing" });
+  },
+});
+
+// Delete all questions for an assignment (for re-extraction)
+export const deleteQuestionsForAssignment = internalMutation({
+  args: { assignmentId: v.id("assignments") },
+  handler: async (ctx, args) => {
+    const questions = await ctx.db
+      .query("questions")
+      .withIndex("by_assignmentId", (q) => q.eq("assignmentId", args.assignmentId))
+      .collect();
+
+    for (const q of questions) {
+      await ctx.db.delete(q._id);
+    }
+
+    return questions.length;
   },
 });

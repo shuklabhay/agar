@@ -18,6 +18,11 @@ export const extractQuestions = action({
       return { success: false, error: "Assignment not found" };
     }
 
+    // Delete existing questions first (for re-extraction)
+    await ctx.runMutation(internal.questions.deleteQuestionsForAssignment, {
+      assignmentId: args.assignmentId,
+    });
+
     // Update status to extracting
     await ctx.runMutation(internal.questions.updateAssignmentStatus, {
       assignmentId: args.assignmentId,

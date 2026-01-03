@@ -1,6 +1,6 @@
 "use node";
 
-import { GoogleGenerativeAI, Part } from "@google/generative-ai";
+import { GoogleGenAI, Part } from "@google/genai";
 
 // ============================================================================
 // CONFIG
@@ -8,7 +8,7 @@ import { GoogleGenerativeAI, Part } from "@google/generative-ai";
 
 const MODELS = {
   extraction: "gemini-2.5-flash-lite",
-  answerGeneration: "gemini-2.0-flash", // for Phase 2
+  answerGeneration: "gemini-2.0-flash",
 } as const;
 
 // ============================================================================
@@ -25,12 +25,12 @@ export async function fetchFileAsBase64(
   return { data: base64, mimeType: contentType };
 }
 
-function getClient(): GoogleGenerativeAI {
+function getClient(): GoogleGenAI {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     throw new Error("GEMINI_API_KEY not configured");
   }
-  return new GoogleGenerativeAI(apiKey);
+  return new GoogleGenAI({ apiKey });
 }
 
 function cleanJsonResponse(text: string): string {
@@ -79,7 +79,6 @@ export async function extractQuestionsFromFiles(
   additionalInfo?: string,
 ): Promise<ExtractedQuestion[]> {
   const client = getClient();
-  const model = client.getGenerativeModel({ model: MODELS.extraction });
 
   // Prepare file parts
   const fileParts: Part[] = await Promise.all(
@@ -98,35 +97,44 @@ export async function extractQuestionsFromFiles(
     additionalInfo || "None",
   );
 
-  const result = await model.generateContent([prompt, ...fileParts]);
-  const responseText = result.response.text();
+  const response = await client.models.generateContent({
+    model: MODELS.extraction,
+    contents: [{ role: "user", parts: [{ text: prompt }, ...fileParts] }],
+  });
+
+  const responseText = response.text ?? "";
   const cleaned = cleanJsonResponse(responseText);
 
   return JSON.parse(cleaned) as ExtractedQuestion[];
 }
 
 // ============================================================================
-// ANSWER GENERATION (Phase 2 - stub for now)
+// ANSWER GENERATION (with Google Search Grounding)
 // ============================================================================
 
-const ANSWER_PROMPT = `You are generating an answer for a tutoring system.
+const ANSWER_PROMPT = `You are generating answers for a tutoring system. You have access to the teacher's notes AND Google Search.
 
-QUESTION: {questionText}
+QUESTION #{questionNumber}: {questionText}
 QUESTION TYPE: {questionType}
-TEACHER NOTES: {teacherInfo}
+TEACHER SPECIAL INSTRUCTIONS: {teacherInfo}
 
-Using the provided notes, determine:
-1. The correct answer
-2. Relevant snippets from the notes that support/explain the answer
+TASK: Answer the question using the notes. Use Google Search if notes don't cover the topic.
 
-NOTES CONTENT:
-{notesContent}
+ANSWER FORMAT by type:
+- "short_answer": simplified expression (e.g., "3x + 27")
+- "single_number": just the number
+- "multiple_choice": the letter choice
+- "free_response": array of key points
 
-Respond with ONLY valid JSON:
+SNIPPETS: Extract 1-2 very brief snippets (under 15 words each) from notes showing the relevant rule or concept.
+
+SOURCE: Set to "notes" if answered from notes, or array of URLs if web search was used.
+
+Respond with ONLY valid JSON (no markdown):
 {
-  "answer": "the answer (for short_answer: simplified expression, for multiple_choice: the letter)",
-  "snippets": ["relevant snippet 1", "relevant snippet 2"],
-  "source": "notes"
+  "answer": "answer here",
+  "snippets": ["brief snippet"],
+  "source": "notes" OR ["https://source.com"]
 }`;
 
 export type GeneratedAnswer = {
@@ -136,15 +144,46 @@ export type GeneratedAnswer = {
 };
 
 export async function generateAnswerForQuestion(
+  questionNumber: number,
   questionText: string,
   questionType: string,
   teacherInfo: string | undefined,
-  notesFileUrls: string[],
+  notesParts: Part[],
+  client: GoogleGenAI,
 ): Promise<GeneratedAnswer> {
-  const client = getClient();
-  const model = client.getGenerativeModel({ model: MODELS.answerGeneration });
+  const prompt = ANSWER_PROMPT.replace("{questionNumber}", String(questionNumber))
+    .replace("{questionText}", questionText)
+    .replace("{questionType}", questionType)
+    .replace("{teacherInfo}", teacherInfo || "None");
 
-  // Prepare notes files
+  // Enable Google Search grounding for answer generation
+  const response = await client.models.generateContent({
+    model: MODELS.answerGeneration,
+    contents: [{ role: "user", parts: [{ text: prompt }, ...notesParts] }],
+    config: {
+      tools: [{ googleSearch: {} }],
+    },
+  });
+
+  const responseText = response.text ?? "";
+  const cleaned = cleanJsonResponse(responseText);
+
+  return JSON.parse(cleaned) as GeneratedAnswer;
+}
+
+// Batch process questions with shared notes context
+export async function generateAnswersForQuestions(
+  questions: Array<{
+    questionNumber: number;
+    questionText: string;
+    questionType: string;
+    teacherInfo?: string;
+  }>,
+  notesFileUrls: string[],
+): Promise<Map<number, GeneratedAnswer>> {
+  const client = getClient();
+
+  // Prepare notes files once (reuse across questions)
   const notesParts: Part[] = await Promise.all(
     notesFileUrls.map(async (url) => {
       const { data, mimeType } = await fetchFileAsBase64(url);
@@ -152,15 +191,30 @@ export async function generateAnswerForQuestion(
     }),
   );
 
-  const prompt = ANSWER_PROMPT
-    .replace("{questionText}", questionText)
-    .replace("{questionType}", questionType)
-    .replace("{teacherInfo}", teacherInfo || "None")
-    .replace("{notesContent}", "[See attached files]");
+  const results = new Map<number, GeneratedAnswer>();
 
-  const result = await model.generateContent([prompt, ...notesParts]);
-  const responseText = result.response.text();
-  const cleaned = cleanJsonResponse(responseText);
+  // Process questions (could parallelize in batches later)
+  for (const q of questions) {
+    try {
+      const answer = await generateAnswerForQuestion(
+        q.questionNumber,
+        q.questionText,
+        q.questionType,
+        q.teacherInfo,
+        notesParts,
+        client,
+      );
+      results.set(q.questionNumber, answer);
+    } catch (error) {
+      console.error(`Error generating answer for Q${q.questionNumber}:`, error);
+      // Set a fallback - will need manual review
+      results.set(q.questionNumber, {
+        answer: "",
+        snippets: [],
+        source: "notes",
+      });
+    }
+  }
 
-  return JSON.parse(cleaned) as GeneratedAnswer;
+  return results;
 }

@@ -64,7 +64,7 @@ export default defineSchema({
     ),
     snippets: v.optional(v.array(v.string())),
     source: v.optional(
-      v.union(v.literal("notes"), v.array(v.string())), // "notes" or array of URLs
+      v.union(v.literal("notes"), v.array(v.string())),
     ),
     status: v.union(
       v.literal("pending"),
