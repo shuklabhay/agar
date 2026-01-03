@@ -434,6 +434,7 @@ export function ClassAnalyticsDashboard({
                   formatValue={(v) => v.toFixed(1)}
                   color="#6366f1"
                   unit=" msgs"
+                  showOutliers={false}
                 />
                 <HorizontalBoxPlot
                   title="Time per Question"
@@ -454,6 +455,7 @@ export function ClassAnalyticsDashboard({
                   formatValue={(v) => v.toFixed(0)}
                   color="#10b981"
                   unit="s"
+                  showOutliers={false}
                 />
               </>
             )}
@@ -473,6 +475,7 @@ export function ClassAnalyticsDashboard({
                     formatValue={(v) => v.toFixed(1)}
                     color="#6366f1"
                     unit=" msgs"
+                    showOutliers={false}
                   />
                   <HorizontalBoxPlot
                     title="Time per Assignment"
@@ -514,6 +517,7 @@ export function ClassAnalyticsDashboard({
                   formatValue={(v) => v.toFixed(1)}
                   color="#6366f1"
                   unit=" msgs"
+                  showOutliers={false}
                 />
                 <HorizontalBoxPlot
                   title="Time (All Assignments)"
@@ -537,6 +541,7 @@ export function ClassAnalyticsDashboard({
                   formatValue={(v) => v.toFixed(0)}
                   color="#10b981"
                   unit="s"
+                  showOutliers={false}
                 />
               </>
             )}

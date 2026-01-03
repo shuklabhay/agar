@@ -22,7 +22,7 @@ interface HorizontalBoxPlotProps {
   formatValue?: (value: number) => string;
   color?: string;
   unit?: string;
-  showOutliers?: boolean;
+  showOutliers?: boolean; // defaults to false (hides outliers and scales to IQR range)
 }
 
 type ElementType = "min" | "q1" | "median" | "q3" | "max" | "mean" | "lowerOutlier" | "upperOutlier";
@@ -38,7 +38,7 @@ export function HorizontalBoxPlot({
   formatValue = (v) => v.toFixed(1),
   color = "#6366f1",
   unit = "",
-  showOutliers = true,
+  showOutliers = false,
 }: HorizontalBoxPlotProps) {
   const [hoveredElement, setHoveredElement] = useState<HoveredElement>(null);
 
@@ -54,7 +54,22 @@ export function HorizontalBoxPlot({
   }
 
   // Calculate global min/max for scaling
-  const allValues = validData.flatMap((d) => [d.boxPlot!.min, d.boxPlot!.max]);
+  // When showOutliers is false, use whisker endpoints (capped at IQR fences) for scaling
+  const allValues = validData.flatMap((d) => {
+    const bp = d.boxPlot!;
+    if (showOutliers) {
+      return [bp.min, bp.max];
+    } else {
+      // Calculate IQR fences
+      const iqr = bp.q3 - bp.q1;
+      const lowerFence = bp.q1 - 1.5 * iqr;
+      const upperFence = bp.q3 + 1.5 * iqr;
+      // Use fence-limited values for scaling
+      const whiskerMin = Math.max(bp.min, lowerFence);
+      const whiskerMax = Math.min(bp.max, upperFence);
+      return [whiskerMin, whiskerMax];
+    }
+  });
   const globalMin = Math.min(...allValues);
   const globalMax = Math.max(...allValues);
   const range = globalMax - globalMin || 1;
@@ -148,7 +163,6 @@ export function HorizontalBoxPlot({
           const medianPos = getPosition(bp.median);
           const q3Pos = getPosition(bp.q3);
           const maxPos = getPosition(bp.max);
-          const meanPos = bp.mean !== undefined ? getPosition(bp.mean) : null;
           const isRowHovered = hoveredElement?.index === index;
 
           // Calculate IQR for outlier detection
@@ -165,6 +179,10 @@ export function HorizontalBoxPlot({
           const whiskerMax = hasUpperOutlier ? Math.min(bp.max, upperFence) : bp.max;
           const whiskerMinPos = getPosition(Math.max(whiskerMin, bp.q1 - 1.5 * iqr));
           const whiskerMaxPos = getPosition(Math.min(whiskerMax, bp.q3 + 1.5 * iqr));
+
+          // Only show mean if it's within the visible range when outliers are hidden
+          const meanWithinRange = bp.mean !== undefined && (showOutliers || (bp.mean >= lowerFence && bp.mean <= upperFence));
+          const meanPos = meanWithinRange ? getPosition(bp.mean!) : null;
 
           return (
             <div key={index} className="relative h-[60px]">
