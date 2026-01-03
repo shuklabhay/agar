@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams } from "next/navigation";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
@@ -28,6 +28,40 @@ export default function LearnPage() {
 
   // Question navigation
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+
+  // Resizable panels
+  const [leftPanelWidth, setLeftPanelWidth] = useState(50); // percentage
+  const isDragging = useRef(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const handleMouseDown = useCallback(() => {
+    isDragging.current = true;
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+  }, []);
+
+  const handleMouseUp = useCallback(() => {
+    isDragging.current = false;
+    document.body.style.cursor = "";
+    document.body.style.userSelect = "";
+  }, []);
+
+  const handleMouseMove = useCallback((e: MouseEvent) => {
+    if (!isDragging.current || !containerRef.current) return;
+    const containerRect = containerRef.current.getBoundingClientRect();
+    const newWidth = ((e.clientX - containerRect.left) / containerRect.width) * 100;
+    // Clamp between 25% and 75%
+    setLeftPanelWidth(Math.min(75, Math.max(25, newWidth)));
+  }, []);
+
+  useEffect(() => {
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
+    return () => {
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [handleMouseMove, handleMouseUp]);
 
   // Queries
   const assignment = useQuery(api.studentSessions.getAssignmentForStudent, {
@@ -193,9 +227,12 @@ export default function LearnPage() {
       </header>
 
       {/* Main content - split panel */}
-      <main className="flex-1 flex overflow-hidden">
+      <main ref={containerRef} className="flex-1 flex overflow-hidden">
         {/* Left Panel - Question */}
-        <div className="w-1/2 border-r overflow-y-auto bg-background">
+        <div
+          className="overflow-y-auto bg-background"
+          style={{ width: `${leftPanelWidth}%` }}
+        >
           <QuestionPanel
             question={currentQuestion}
             progress={currentProgress}
@@ -213,12 +250,24 @@ export default function LearnPage() {
           />
         </div>
 
+        {/* Draggable Divider */}
+        <div
+          onMouseDown={handleMouseDown}
+          className="w-1 bg-border hover:bg-primary/50 cursor-col-resize transition-colors shrink-0 relative group"
+        >
+          <div className="absolute inset-y-0 -left-1 -right-1 group-hover:bg-primary/10" />
+        </div>
+
         {/* Right Panel - Chat */}
-        <div className="w-1/2 overflow-hidden bg-muted/20">
+        <div
+          className="overflow-hidden bg-muted/20"
+          style={{ width: `${100 - leftPanelWidth}%` }}
+        >
           <ChatPanel
             sessionId={sessionId}
             questionId={currentQuestion?._id}
             question={currentQuestion}
+            questions={questions ?? []}
           />
         </div>
       </main>

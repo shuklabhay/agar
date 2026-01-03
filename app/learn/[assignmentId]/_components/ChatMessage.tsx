@@ -30,10 +30,13 @@ export function ChatMessage({ message }: ChatMessageProps) {
     const { name, args } = message.toolCall;
 
     if (name === "mark_answer_correct") {
+      const questionNumber = args.questionNumber as number | undefined;
       return (
         <div className="flex items-center gap-2 text-green-600 dark:text-green-400 text-sm mt-2 bg-green-50 dark:bg-green-900/20 rounded-lg px-3 py-2">
           <CheckCircle className="h-4 w-4" />
-          <span className="font-medium">Answer marked correct!</span>
+          <span className="font-medium">
+            Question {questionNumber ?? "?"} marked correct!
+          </span>
         </div>
       );
     }

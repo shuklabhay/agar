@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useMutation } from "convex/react";
+import { useMutation, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
@@ -55,10 +55,12 @@ export function QuestionPanel({
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [textAnswer, setTextAnswer] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isCheckingAnswer, setIsCheckingAnswer] = useState(false);
 
   const submitAnswer = useMutation(api.studentProgress.submitDirectAnswer);
   const initProgress = useMutation(api.studentProgress.initializeProgress);
   const markInProgress = useMutation(api.studentProgress.markInProgress);
+  const sendMessageToTutor = useAction(api.chat.sendMessageToTutor);
 
   // Initialize progress when viewing question
   useEffect(() => {
@@ -109,6 +111,23 @@ export function QuestionPanel({
       console.error("Failed to submit answer:", error);
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleCheckAnswer = async () => {
+    if (!sessionId || !question || !textAnswer.trim()) return;
+
+    setIsCheckingAnswer(true);
+    try {
+      await sendMessageToTutor({
+        sessionId,
+        questionId: question._id,
+        message: `Here's my answer to the question:\n\n${textAnswer}\n\nPlease check if this is correct and give me feedback.`,
+      });
+    } catch (error) {
+      console.error("Failed to check answer:", error);
+    } finally {
+      setIsCheckingAnswer(false);
     }
   };
 
@@ -234,16 +253,35 @@ export function QuestionPanel({
         {/* Short Answer / FRQ */}
         {(question.questionType === "short_answer" ||
           question.questionType === "free_response") && (
-          <Textarea
-            placeholder="Type your answer here..."
-            value={textAnswer}
-            onChange={(e) => {
-              handleInteraction();
-              setTextAnswer(e.target.value);
-            }}
-            disabled={isCorrect}
-            rows={question.questionType === "free_response" ? 6 : 3}
-          />
+          <>
+            <Textarea
+              placeholder="Type your answer here..."
+              value={textAnswer}
+              onChange={(e) => {
+                handleInteraction();
+                setTextAnswer(e.target.value);
+              }}
+              disabled={isCorrect}
+              rows={question.questionType === "free_response" ? 6 : 3}
+            />
+            {!isCorrect && (
+              <Button
+                onClick={handleCheckAnswer}
+                disabled={!textAnswer.trim() || isCheckingAnswer}
+                className="w-full"
+                size="lg"
+              >
+                {isCheckingAnswer ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Checking...
+                  </>
+                ) : (
+                  "Submit Answer"
+                )}
+              </Button>
+            )}
+          </>
         )}
       </div>
 

@@ -186,7 +186,10 @@ export const sendMessageToTutor = action({
       toolCall: response.toolCalls?.[0]
         ? {
             name: response.toolCalls[0].name,
-            args: response.toolCalls[0].args,
+            args: {
+              ...response.toolCalls[0].args,
+              questionNumber: question.questionNumber,
+            },
           }
         : undefined,
     });

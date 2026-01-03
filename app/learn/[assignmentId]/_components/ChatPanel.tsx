@@ -20,15 +20,21 @@ interface ChatPanelProps {
   sessionId: Id<"studentSessions"> | null;
   questionId: Id<"questions"> | undefined;
   question: Question | undefined;
+  questions: Question[];
 }
 
-export function ChatPanel({ sessionId, questionId, question }: ChatPanelProps) {
+export function ChatPanel({ sessionId, questionId, question, questions }: ChatPanelProps) {
   const [input, setInput] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Helper to get question number from questionId
+  const getQuestionNumber = (qId: Id<"questions">) => {
+    return questions.find((q) => q._id === qId)?.questionNumber;
+  };
 
   // Get all chat history for the session (persists across questions)
   const chatHistory = useQuery(
@@ -99,6 +105,7 @@ export function ChatPanel({ sessionId, questionId, question }: ChatPanelProps) {
       console.error("Failed to send message:", error);
     } finally {
       setIsSending(false);
+      textareaRef.current?.focus();
     }
   };
 
@@ -121,9 +128,40 @@ export function ChatPanel({ sessionId, questionId, question }: ChatPanelProps) {
     <div className="h-full flex flex-col">
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {chatHistory?.map((msg) => (
-          <ChatMessage key={msg._id} message={msg} />
-        ))}
+        {chatHistory?.map((msg, index) => {
+          const prevMsg = index > 0 ? chatHistory[index - 1] : null;
+          const showDivider = prevMsg && prevMsg.questionId !== msg.questionId;
+          const questionNum = getQuestionNumber(msg.questionId);
+
+          return (
+            <div key={msg._id}>
+              {showDivider && (
+                <div className="flex items-center gap-3 py-2">
+                  <div className="flex-1 h-px bg-border" />
+                  <span className="text-xs text-muted-foreground font-medium px-2">
+                    Question {questionNum}
+                  </span>
+                  <div className="flex-1 h-px bg-border" />
+                </div>
+              )}
+              <ChatMessage message={msg} />
+            </div>
+          );
+        })}
+
+        {/* Show divider for current question if no messages yet or different from last message */}
+        {question && chatHistory && (
+          chatHistory.length === 0 ||
+          chatHistory[chatHistory.length - 1]?.questionId !== questionId
+        ) && (
+          <div className="flex items-center gap-3 py-2">
+            <div className="flex-1 h-px bg-border" />
+            <span className="text-xs text-muted-foreground font-medium px-2">
+              Question {question.questionNumber}
+            </span>
+            <div className="flex-1 h-px bg-border" />
+          </div>
+        )}
 
         {/* Typing indicator */}
         {isSending && (
@@ -197,7 +235,6 @@ export function ChatPanel({ sessionId, questionId, question }: ChatPanelProps) {
             placeholder="Type a message..."
             className="min-h-[40px] max-h-[120px] resize-none"
             rows={1}
-            disabled={isSending}
           />
           <Button
             onClick={handleSend}
