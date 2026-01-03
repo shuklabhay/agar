@@ -690,6 +690,8 @@ export const getAllStudentsInClass = query({
         totalQuestionsCompleted: number;
         totalQuestions: number;
         overallCompletionRate: number;
+        overallAvgMessages: number;
+        totalMessageCount: number;
         lastActiveAt: number;
       }
     >();
@@ -749,6 +751,11 @@ export const getAllStudentsInClass = query({
             existing.totalQuestions > 0
               ? existing.totalQuestionsCompleted / existing.totalQuestions
               : 0;
+          existing.totalMessageCount += messages.length;
+          existing.overallAvgMessages =
+            existing.totalQuestions > 0
+              ? existing.totalMessageCount / existing.totalQuestions
+              : 0;
           existing.lastActiveAt = Math.max(existing.lastActiveAt, session.lastActiveAt);
         } else {
           studentMap.set(session.name, {
@@ -757,6 +764,8 @@ export const getAllStudentsInClass = query({
             totalQuestionsCompleted: questionsCompleted,
             totalQuestions,
             overallCompletionRate: totalQuestions > 0 ? questionsCompleted / totalQuestions : 0,
+            totalMessageCount: messages.length,
+            overallAvgMessages: totalQuestions > 0 ? messages.length / totalQuestions : 0,
             lastActiveAt: session.lastActiveAt,
           });
         }
@@ -769,5 +778,67 @@ export const getAllStudentsInClass = query({
     );
 
     return students;
+  },
+});
+
+// Get per-question details for a specific student session
+export const getStudentQuestionDetails = query({
+  args: { sessionId: v.id("studentSessions") },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) return [];
+
+    // Get session and verify teacher access
+    const session = await ctx.db.get(args.sessionId);
+    if (!session) return [];
+
+    const assignment = await ctx.db.get(session.assignmentId);
+    if (!assignment) return [];
+
+    const classData = await ctx.db.get(assignment.classId);
+    if (!classData || classData.teacherId !== userId) return [];
+
+    // Get questions for this assignment
+    const questions = await ctx.db
+      .query("questions")
+      .withIndex("by_assignmentId", (q) => q.eq("assignmentId", session.assignmentId))
+      .filter((q) => q.eq(q.field("status"), "approved"))
+      .collect();
+
+    // Get progress for this session
+    const progress = await ctx.db
+      .query("studentProgress")
+      .withIndex("by_sessionId", (q) => q.eq("sessionId", args.sessionId))
+      .collect();
+
+    // Get messages for this session grouped by question
+    const messages = await ctx.db
+      .query("chatMessages")
+      .withIndex("by_sessionId", (q) => q.eq("sessionId", args.sessionId))
+      .filter((q) => q.eq(q.field("role"), "student"))
+      .collect();
+
+    const messagesByQuestion = new Map<string, number>();
+    for (const msg of messages) {
+      const count = messagesByQuestion.get(msg.questionId) ?? 0;
+      messagesByQuestion.set(msg.questionId, count + 1);
+    }
+
+    // Build result
+    const result = questions
+      .sort((a, b) => a.questionNumber - b.questionNumber)
+      .map((q) => {
+        const p = progress.find((pr) => pr.questionId === q._id);
+        return {
+          questionId: q._id,
+          questionNumber: q.questionNumber,
+          questionText: q.questionText,
+          status: p?.status ?? "not_started",
+          messageCount: messagesByQuestion.get(q._id) ?? 0,
+          timeSpentMs: p?.timeSpentMs ?? 0,
+        };
+      });
+
+    return result;
   },
 });

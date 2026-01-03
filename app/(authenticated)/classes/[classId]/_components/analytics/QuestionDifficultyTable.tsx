@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import Cookies from "js-cookie";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ArrowUp, ArrowDown } from "lucide-react";
@@ -45,6 +46,9 @@ function formatTime(ms: number): string {
   return `${Math.floor(minutes / 60)}h ${minutes % 60}m`;
 }
 
+const SORT_FIELD_COOKIE = "agar_question_sort_field";
+const SORT_DIR_COOKIE = "agar_question_sort_dir";
+
 export function QuestionDifficultyTable({
   questions,
   struggleQuestionIds = [],
@@ -54,6 +58,14 @@ export function QuestionDifficultyTable({
 }: QuestionDifficultyTableProps) {
   const [internalSortField, setInternalSortField] = useState<QuestionSortField>("questionNumber");
   const [internalSortDirection, setInternalSortDirection] = useState<QuestionSortDirection>("asc");
+
+  // Load from cookies on mount
+  useEffect(() => {
+    const savedField = Cookies.get(SORT_FIELD_COOKIE) as QuestionSortField | undefined;
+    const savedDir = Cookies.get(SORT_DIR_COOKIE) as QuestionSortDirection | undefined;
+    if (savedField) setInternalSortField(savedField);
+    if (savedDir) setInternalSortDirection(savedDir);
+  }, []);
 
   // Use external state if provided, otherwise use internal
   const sortField = externalSortField ?? internalSortField;
@@ -67,6 +79,10 @@ export function QuestionDifficultyTable({
       // Default to desc for most fields, asc for question number
       newDirection = field === "questionNumber" ? "asc" : "desc";
     }
+
+    // Save to cookies
+    Cookies.set(SORT_FIELD_COOKIE, field, { expires: 365 });
+    Cookies.set(SORT_DIR_COOKIE, newDirection, { expires: 365 });
 
     if (onSortChange) {
       onSortChange(field, newDirection);
@@ -144,15 +160,15 @@ export function QuestionDifficultyTable({
   }
 
   return (
-    <Card className="overflow-hidden">
+    <Card className="overflow-hidden !pb-0">
       <CardHeader className="pb-2">
         <CardTitle className="text-sm font-medium">
           Question Analysis ({questions.length} questions)
         </CardTitle>
       </CardHeader>
-      <CardContent className="p-0 pb-0">
-        <div className="overflow-x-auto">
-          <table className="w-full">
+      <CardContent className="!p-0">
+        <div>
+          <table className="w-full border-collapse">
             <thead className="border-b bg-muted/30">
               <tr>
                 <SortHeader field="questionNumber">Q#</SortHeader>

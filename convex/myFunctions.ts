@@ -63,3 +63,53 @@ export const addNumber = mutation({
     return null;
   },
 });
+
+// Get user preferences
+export const getUserPreferences = query({
+  args: {},
+  returns: v.union(
+    v.object({
+      defaultMetric: v.optional(v.union(v.literal("mean"), v.literal("median"))),
+    }),
+    v.null()
+  ),
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) return null;
+
+    const prefs = await ctx.db
+      .query("userPreferences")
+      .withIndex("by_userId", (q) => q.eq("userId", userId))
+      .first();
+
+    return prefs ? { defaultMetric: prefs.defaultMetric } : { defaultMetric: undefined };
+  },
+});
+
+// Update user preferences
+export const updateUserPreferences = mutation({
+  args: {
+    defaultMetric: v.optional(v.union(v.literal("mean"), v.literal("median"))),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Not authenticated");
+
+    const existing = await ctx.db
+      .query("userPreferences")
+      .withIndex("by_userId", (q) => q.eq("userId", userId))
+      .first();
+
+    if (existing) {
+      await ctx.db.patch(existing._id, { defaultMetric: args.defaultMetric });
+    } else {
+      await ctx.db.insert("userPreferences", {
+        userId,
+        defaultMetric: args.defaultMetric,
+      });
+    }
+
+    return null;
+  },
+});

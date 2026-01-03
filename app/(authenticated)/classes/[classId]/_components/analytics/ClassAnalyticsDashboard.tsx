@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useQuery } from "convex/react";
+import Cookies from "js-cookie";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { Card, CardContent } from "@/components/ui/card";
@@ -56,26 +57,17 @@ export function ClassAnalyticsDashboard({
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [questionSortField, setQuestionSortField] = useState<QuestionSortField>("questionNumber");
   const [questionSortDirection, setQuestionSortDirection] = useState<QuestionSortDirection>("asc");
-  const [defaultMetric, setDefaultMetric] = useState<"mean" | "median">("median");
 
-  // Load metric preference from localStorage and listen for changes
+  // Load sort preferences from cookies on mount
   useEffect(() => {
-    const loadPreference = () => {
-      const saved = localStorage.getItem("agar_default_metric");
-      if (saved === "mean" || saved === "median") {
-        setDefaultMetric(saved);
-      }
-    };
-
-    loadPreference();
-
-    const handleChange = (e: CustomEvent<"mean" | "median">) => {
-      setDefaultMetric(e.detail);
-    };
-
-    window.addEventListener("metricPreferenceChanged", handleChange as EventListener);
-    return () => window.removeEventListener("metricPreferenceChanged", handleChange as EventListener);
+    const savedField = Cookies.get("agar_question_sort_field") as QuestionSortField | undefined;
+    const savedDir = Cookies.get("agar_question_sort_dir") as QuestionSortDirection | undefined;
+    if (savedField) setQuestionSortField(savedField);
+    if (savedDir) setQuestionSortDirection(savedDir);
   }, []);
+  // Get user preferences for metric display
+  const userPreferences = useQuery(api.myFunctions.getUserPreferences);
+  const defaultMetric = userPreferences?.defaultMetric ?? "mean";
 
   const publishedAssignments = assignments.filter((a) => !a.isDraft);
 
@@ -519,6 +511,8 @@ export function ClassAnalyticsDashboard({
               onSortChange={(field, direction) => {
                 setQuestionSortField(field);
                 setQuestionSortDirection(direction);
+                Cookies.set("agar_question_sort_field", field, { expires: 365 });
+                Cookies.set("agar_question_sort_dir", direction, { expires: 365 });
               }}
             />
           )}

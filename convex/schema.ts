@@ -143,4 +143,10 @@ export default defineSchema({
     contentType: v.string(),
     uploadedAt: v.number(),
   }).index("by_session_question", ["sessionId", "questionId"]),
+
+  // User preferences
+  userPreferences: defineTable({
+    userId: v.id("users"),
+    defaultMetric: v.optional(v.union(v.literal("mean"), v.literal("median"))),
+  }).index("by_userId", ["userId"]),
 });

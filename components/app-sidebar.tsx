@@ -16,7 +16,7 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { useRouter } from "next/navigation";
-import { useQuery } from "convex/react";
+import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 
 import {
@@ -61,28 +61,23 @@ import {
 export function AppSidebar() {
   const [mounted, setMounted] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [defaultMetric, setDefaultMetric] = useState<"mean" | "median">("median");
   const pathname = usePathname();
   const { signOut } = useAuthActions();
   const router = useRouter();
   const classes = useQuery(api.classes.listClasses);
   const currentUser = useQuery(api.myFunctions.getCurrentUser);
+  const userPreferences = useQuery(api.myFunctions.getUserPreferences);
+  const updatePreferences = useMutation(api.myFunctions.updateUserPreferences);
+
+  const defaultMetric = userPreferences?.defaultMetric ?? "mean";
 
   useEffect(() => {
     setMounted(true);
-    // Load preference from localStorage
-    const saved = localStorage.getItem("agar_default_metric");
-    if (saved === "mean" || saved === "median") {
-      setDefaultMetric(saved);
-    }
   }, []);
 
   const handleMetricChange = useCallback((metric: "mean" | "median") => {
-    setDefaultMetric(metric);
-    localStorage.setItem("agar_default_metric", metric);
-    // Dispatch custom event so other components can react
-    window.dispatchEvent(new CustomEvent("metricPreferenceChanged", { detail: metric }));
-  }, []);
+    updatePreferences({ defaultMetric: metric });
+  }, [updatePreferences]);
 
   const isLoading = classes === undefined;
 
