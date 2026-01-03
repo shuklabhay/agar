@@ -287,20 +287,29 @@ export default function AssignmentDetailPage() {
 
       {/* Questions Review Section */}
       {(() => {
-        // Only show questions that have answers (ready or approved)
-        const completedQuestions = questions?.filter(
+        const allQuestions = questions || [];
+        const isProcessing = assignment.processingStatus === "extracting" ||
+                            assignment.processingStatus === "generating_answers";
+        const completedQuestions = allQuestions.filter(
           (q) => q.status === "ready" || q.status === "approved"
-        ) || [];
+        );
 
-        if (completedQuestions.length === 0) return null;
+        // Show section if processing or has questions
+        if (!isProcessing && allQuestions.length === 0) return null;
 
         return (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-semibold">
-                Questions ({completedQuestions.length})
+                Questions {allQuestions.length > 0 && `(${allQuestions.length})`}
               </h2>
               <div className="flex items-center gap-2">
+                {isProcessing && (
+                  <Badge variant="secondary" className="text-xs">
+                    <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                    {assignment.processingStatus === "extracting" ? "Extracting questions..." : "Generating answers..."}
+                  </Badge>
+                )}
                 {(() => {
                   const readyNotesCount = completedQuestions.filter(
                     (q) => q.status === "ready" && q.source === "notes"
@@ -308,6 +317,7 @@ export default function AssignmentDetailPage() {
                   const approvedCount = completedQuestions.filter(
                     (q) => q.status === "approved"
                   ).length;
+                  if (completedQuestions.length === 0) return null;
                   return (
                     <>
                       <span className="text-sm text-muted-foreground">
@@ -333,18 +343,34 @@ export default function AssignmentDetailPage() {
               </div>
             </div>
 
+            {/* Processing indicator when no questions yet */}
+            {isProcessing && allQuestions.length === 0 && (
+              <Card className="border-dashed">
+                <CardContent className="flex flex-col items-center justify-center py-12">
+                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground mb-4" />
+                  <p className="text-muted-foreground">
+                    {assignment.processingStatus === "extracting"
+                      ? "Extracting questions from assignment files..."
+                      : "Generating answers from notes..."}
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Questions list */}
-            <div className="space-y-3">
-              {completedQuestions
-                .sort((a, b) => a.questionNumber - b.questionNumber)
-                .map((question) => (
-                  <QuestionReviewCard
-                    key={question._id}
-                    question={question}
-                    onEdit={(q) => setEditingQuestion(q)}
-                  />
-                ))}
-            </div>
+            {allQuestions.length > 0 && (
+              <div className="space-y-3">
+                {allQuestions
+                  .sort((a, b) => a.questionNumber - b.questionNumber)
+                  .map((question) => (
+                    <QuestionReviewCard
+                      key={question._id}
+                      question={question}
+                      onEdit={(q) => setEditingQuestion(q)}
+                    />
+                  ))}
+              </div>
+            )}
           </div>
         );
       })()}
