@@ -26,7 +26,7 @@ import {
   MessageSquare,
   Trash2,
   ChevronDown,
-  ChevronsRight,
+  FastForward,
   Loader2,
   ExternalLink,
   Send,
@@ -35,6 +35,7 @@ import {
   AlertCircle,
   Undo2,
 } from "lucide-react";
+import { useResizablePanel } from "@/hooks/use-resizable-panel";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -75,6 +76,13 @@ export function QuestionsReviewPanel({
   const [changeRequest, setChangeRequest] = useState("");
   const [changePopoverOpen, setChangePopoverOpen] = useState(false);
 
+  // Resizable panels
+  const { containerRef, leftPanelWidth, handleMouseDown } = useResizablePanel({
+    defaultSize: 40,
+    minSize: 25,
+    maxSize: 60,
+  });
+
   const approveQuestion = useMutation(api.questions.approveQuestion);
   const unapproveQuestion = useMutation(api.questions.unapproveQuestion);
   const approveAllQuestions = useMutation(api.questions.approveAllQuestions);
@@ -88,8 +96,13 @@ export function QuestionsReviewPanel({
     sortedQuestions.find((q) => q._id === selectedQuestionId) || null;
 
   // Stats
+  const skippedQuestions = sortedQuestions.filter(
+    (q) => q.questionType === "skipped",
+  );
+  const skippedCount = skippedQuestions.length;
+  // Exclude skipped from completed questions count
   const completedQuestions = sortedQuestions.filter(
-    (q) => q.status === "ready" || q.status === "approved",
+    (q) => (q.status === "ready" || q.status === "approved") && q.questionType !== "skipped",
   );
   const readyNotesOnly = completedQuestions.filter(
     (q) => q.status === "ready" && q.source === "notes",
@@ -284,136 +297,159 @@ export function QuestionsReviewPanel({
           )}
           <span className="text-sm text-muted-foreground">
             {approvedCount}/{completedQuestions.length} approved
+            {skippedCount > 0 && ` (${skippedCount} skipped)`}
           </span>
-          {(readyAll.length > 0 || hasUnapprovedWebSources) && (
+          {completedQuestions.length > 0 && (
             <div className="flex">
-              <Button
-                size="sm"
-                onClick={
-                  hasUnapprovedWebSources
-                    ? navigateToFirstWebSourced
-                    : handleApproveNotesOnly
-                }
-                disabled={
-                  !hasUnapprovedWebSources &&
-                  (isApprovingAll || readyNotesOnly.length === 0)
-                }
-                className={cn(
-                  "rounded-r-none",
-                  hasUnapprovedWebSources && "bg-amber-500 hover:bg-amber-600",
-                )}
-              >
-                {isApprovingAll ? (
-                  <Loader2 className="h-4 w-4 animate-spin mr-1" />
-                ) : hasUnapprovedWebSources ? (
-                  <>
-                    <AlertTriangle className="h-4 w-4 mr-1" />
-                    Review Outside Sources ({unapprovedWebSourced.length})
-                  </>
-                ) : (
-                  <>
-                    <CheckCheck className="h-4 w-4 mr-1" />
-                    Approve Ready ({readyNotesOnly.length})
-                  </>
-                )}
-              </Button>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
+              {readyAll.length === 0 && !hasUnapprovedWebSources ? (
+                <Button
+                  size="sm"
+                  disabled
+                  variant="outline"
+                  className="text-green-600 border-green-600/30 bg-green-50 dark:bg-green-950/20"
+                >
+                  <Check className="h-4 w-4 mr-1" />
+                  All Approved!
+                </Button>
+              ) : (
+                <>
                   <Button
                     size="sm"
+                    onClick={
+                      hasUnapprovedWebSources
+                        ? navigateToFirstWebSourced
+                        : handleApproveNotesOnly
+                    }
+                    disabled={
+                      !hasUnapprovedWebSources &&
+                      (isApprovingAll || readyNotesOnly.length === 0)
+                    }
                     className={cn(
-                      "rounded-l-none border-l border-primary-foreground/20 px-2",
-                      hasUnapprovedWebSources &&
-                        "bg-amber-500 hover:bg-amber-600",
+                      "rounded-r-none",
+                      hasUnapprovedWebSources && "bg-amber-500 hover:bg-amber-600",
                     )}
-                    disabled={isApprovingAll}
                   >
-                    <ChevronDown className="h-4 w-4" />
+                    {isApprovingAll ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                    ) : hasUnapprovedWebSources ? (
+                      <>
+                        <AlertTriangle className="h-4 w-4 mr-1" />
+                        Review Outside Sources ({unapprovedWebSourced.length})
+                      </>
+                    ) : (
+                      <>
+                        <CheckCheck className="h-4 w-4 mr-1" />
+                        Approve from Notes ({readyNotesOnly.length})
+                      </>
+                    )}
                   </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="min-w-[180px]">
-                  <DropdownMenuItem
-                    onClick={handleApproveNotesOnly}
-                    disabled={readyNotesOnly.length === 0}
-                    className="gap-2"
-                  >
-                    <CheckCheck className="h-4 w-4" />
-                    <span>Approve Ready ({readyNotesOnly.length})</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={handleApproveAll}
-                    disabled={readyAll.length === 0}
-                    className="gap-2"
-                  >
-                    <CheckCheck className="h-4 w-4" />
-                    <span>Approve All ({readyAll.length})</span>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        size="sm"
+                        className={cn(
+                          "rounded-l-none border-l border-primary-foreground/20 px-1.5",
+                          hasUnapprovedWebSources &&
+                            "bg-amber-500 hover:bg-amber-600",
+                        )}
+                        disabled={isApprovingAll}
+                      >
+                        <ChevronDown className="h-3.5 w-3.5" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="min-w-[220px]">
+                      <DropdownMenuItem
+                        onClick={handleApproveNotesOnly}
+                        disabled={readyNotesOnly.length === 0}
+                        className="gap-2"
+                      >
+                        <CheckCheck className="h-4 w-4" />
+                        <span>Approve from Notes ({readyNotesOnly.length})</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={handleApproveAll}
+                        disabled={readyAll.length === 0}
+                        className="gap-2"
+                      >
+                        <CheckCheck className="h-4 w-4" />
+                        <span>Approve All incl. Web ({readyAll.length})</span>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </>
+              )}
             </div>
           )}
         </div>
       </div>
 
       {/* Split Panel with Card wrapper */}
-      <Card>
-        <CardContent className="p-0">
-          <div className="flex h-[500px]">
-            {/* Left: Question List as Table */}
-            <div className="w-96 shrink-0 border-r overflow-hidden">
+      <Card className="!py-0">
+        <CardContent className="!p-0">
+          <div ref={containerRef} className="flex h-[500px]">
+            {/* Left: Question List */}
+            <div
+              className="overflow-hidden"
+              style={{ width: `${leftPanelWidth}%` }}
+            >
               <ScrollArea className="h-full">
-                <table className="w-full">
-                  <tbody>
-                    {sortedQuestions.map((question) => {
-                      const status = getQuestionStatus(question);
-                      const isSelected = question._id === selectedQuestionId;
-                      return (
-                        <tr
-                          key={question._id}
-                          onClick={() => setSelectedQuestionId(question._id)}
-                          className={cn(
-                            "cursor-pointer border-b last:border-b-0 transition-colors",
-                            isSelected ? "bg-muted" : "hover:bg-muted/50",
-                            status === "processing" && "opacity-60",
+                <div className="divide-y">
+                  {sortedQuestions.map((question) => {
+                    const status = getQuestionStatus(question);
+                    const isSelected = question._id === selectedQuestionId;
+                    return (
+                      <div
+                        key={question._id}
+                        onClick={() => setSelectedQuestionId(question._id)}
+                        className={cn(
+                          "cursor-pointer transition-colors flex items-center justify-between px-3 py-2",
+                          isSelected ? "bg-muted" : "hover:bg-muted/50",
+                          status === "processing" && "opacity-60",
+                        )}
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="font-medium text-sm shrink-0">
+                            Q{question.questionNumber}:
+                          </span>
+                          <span className="text-sm text-muted-foreground truncate">
+                            {question.questionText}
+                          </span>
+                        </div>
+                        <div className="shrink-0 ml-2">
+                          {status === "approved" && (
+                            <Check className="h-4 w-4 text-green-600" />
                           )}
-                        >
-                          <td className="px-3 py-2">
-                            <div className="flex items-center gap-2">
-                              <span className="font-medium text-sm shrink-0">
-                                Q{question.questionNumber}:
-                              </span>
-                              <span className="text-sm text-muted-foreground truncate">
-                                {question.questionText}
-                              </span>
-                            </div>
-                          </td>
-                          <td className="px-3 py-2 w-8 text-right">
-                            {status === "approved" && (
-                              <Check className="h-4 w-4 text-green-600 inline" />
-                            )}
-                            {status === "needs_review" && (
-                              <AlertTriangle className="h-4 w-4 text-amber-500 inline" />
-                            )}
-                            {status === "skipped" && (
-                              <ChevronsRight className="h-4 w-4 text-slate-400 inline" />
-                            )}
-                            {status === "processing" && (
-                              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground inline" />
-                            )}
-                            {status === "ready" && (
-                              <ChevronsRight className="h-4 w-4 text-muted-foreground inline" />
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                          {status === "needs_review" && (
+                            <AlertTriangle className="h-4 w-4 text-amber-500" />
+                          )}
+                          {status === "skipped" && (
+                            <FastForward className="h-4 w-4 text-slate-400" fill="currentColor" strokeWidth={0} />
+                          )}
+                          {status === "processing" && (
+                            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                          )}
+                          {/* No icon for "ready" status */}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </ScrollArea>
             </div>
 
+            {/* Draggable Divider */}
+            <div
+              onMouseDown={handleMouseDown}
+              className="w-1 bg-border hover:bg-primary/50 cursor-col-resize transition-colors shrink-0 relative group"
+            >
+              <div className="absolute inset-y-0 -left-1 -right-1 group-hover:bg-primary/10" />
+            </div>
+
             {/* Right: Question Detail */}
-            <div className="flex-1 overflow-hidden">
+            <div
+              className="overflow-hidden"
+              style={{ width: `${100 - leftPanelWidth}%` }}
+            >
               {selectedQuestion ? (
                 <ScrollArea className="h-full">
                   <div className="p-4 space-y-4">
@@ -424,10 +460,12 @@ export function QuestionsReviewPanel({
                           <span className="font-semibold text-lg">
                             Q{selectedQuestion.questionNumber}
                           </span>
-                          <Badge variant="outline" className="text-xs">
-                            {typeLabels[selectedQuestion.questionType] ||
-                              selectedQuestion.questionType}
-                          </Badge>
+                          {!isSkipped && (
+                            <Badge variant="outline" className="text-xs">
+                              {typeLabels[selectedQuestion.questionType] ||
+                                selectedQuestion.questionType}
+                            </Badge>
+                          )}
                           {isPending && (
                             <Badge variant="secondary" className="text-xs">
                               <Loader2 className="h-3 w-3 animate-spin mr-1" />
@@ -517,8 +555,8 @@ export function QuestionsReviewPanel({
 
                     {/* Source - shown above answer */}
                     {selectedQuestion.source && !isPending && !isSkipped && (
-                      <div className="flex items-center gap-2 text-sm">
-                        <span className="text-muted-foreground">Source:</span>
+                      <div className="flex items-start gap-2 text-sm">
+                        <span className="text-muted-foreground shrink-0">Source:</span>
                         {selectedQuestion.source === "notes" ? (
                           <span className="text-green-600 dark:text-green-400 font-medium">
                             Notes

@@ -21,7 +21,7 @@ interface Question {
   _id: Id<"questions">;
   questionNumber: number;
   questionText: string;
-  questionType: "multiple_choice" | "single_number" | "short_answer" | "free_response";
+  questionType: "multiple_choice" | "single_number" | "short_answer" | "free_response" | "skipped";
   options?: string[];
 }
 

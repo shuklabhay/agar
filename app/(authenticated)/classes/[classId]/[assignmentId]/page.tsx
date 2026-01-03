@@ -200,12 +200,23 @@ export default function AssignmentDetailPage() {
 
       {/* Student Link - outside card */}
       <div className="flex items-center gap-2">
-        <span className="text-sm font-medium text-muted-foreground">Student Link:</span>
+        <span className="text-sm font-medium text-muted-foreground">
+          Student Link:
+        </span>
         <code className="rounded bg-muted px-2 py-1 text-xs font-mono truncate max-w-md">
           {studentLink}
         </code>
-        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleCopyLink}>
-          {copied ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7"
+          onClick={handleCopyLink}
+        >
+          {copied ? (
+            <Check className="h-3.5 w-3.5 text-green-500" />
+          ) : (
+            <Copy className="h-3.5 w-3.5" />
+          )}
         </Button>
         <Button variant="ghost" size="icon" className="h-7 w-7" asChild>
           <a href={studentLink} target="_blank" rel="noopener noreferrer">
@@ -215,28 +226,36 @@ export default function AssignmentDetailPage() {
       </div>
 
       {/* Uploaded Information - Compact Card */}
-      <Card>
-        <CardHeader className="py-3">
+      <Card className="!py-0 !gap-3">
+        <CardHeader className="!pt-4 !pb-0">
           <CardTitle className="text-base">Uploaded Information</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-2 pt-0 pb-3">
+        <CardContent className="space-y-1 !pt-0 !pb-2">
           {/* Assignment Files */}
           <div className="flex items-start gap-2">
-            <span className="text-sm text-muted-foreground shrink-0 w-20">Assignment:</span>
+            <span className="text-sm text-muted-foreground shrink-0 w-20">
+              Assignment:
+            </span>
             {renderFileListCompact(assignment.assignmentFiles)}
           </div>
 
           {/* Notes Files */}
           <div className="flex items-start gap-2">
-            <span className="text-sm text-muted-foreground shrink-0 w-20">Notes:</span>
+            <span className="text-sm text-muted-foreground shrink-0 w-20">
+              Notes:
+            </span>
             {renderFileListCompact(assignment.notesFiles)}
           </div>
 
           {/* Additional Information */}
           {assignment.additionalInfo && (
             <div className="flex items-start gap-2">
-              <span className="text-sm text-muted-foreground shrink-0 w-20">Info:</span>
-              <p className="text-sm whitespace-pre-wrap">{assignment.additionalInfo}</p>
+              <span className="text-sm text-muted-foreground shrink-0 w-20">
+                Info:
+              </span>
+              <p className="text-sm whitespace-pre-wrap">
+                {assignment.additionalInfo}
+              </p>
             </div>
           )}
         </CardContent>

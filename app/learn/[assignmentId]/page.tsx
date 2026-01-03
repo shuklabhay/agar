@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams } from "next/navigation";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
@@ -13,6 +13,7 @@ import { ChatPanel } from "./_components/ChatPanel";
 import { ProgressBar } from "./_components/ProgressBar";
 import { Card, CardContent } from "@/components/ui/card";
 import { BookOpen, Loader2, AlertCircle } from "lucide-react";
+import { useResizablePanel } from "@/hooks/use-resizable-panel";
 
 const COOKIE_PREFIX = "agar_session_";
 
@@ -31,38 +32,11 @@ export default function LearnPage() {
   const lastCorrectQuestionRef = useRef<string | null>(null);
 
   // Resizable panels
-  const [leftPanelWidth, setLeftPanelWidth] = useState(50); // percentage
-  const isDragging = useRef(false);
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  const handleMouseDown = useCallback(() => {
-    isDragging.current = true;
-    document.body.style.cursor = "col-resize";
-    document.body.style.userSelect = "none";
-  }, []);
-
-  const handleMouseUp = useCallback(() => {
-    isDragging.current = false;
-    document.body.style.cursor = "";
-    document.body.style.userSelect = "";
-  }, []);
-
-  const handleMouseMove = useCallback((e: MouseEvent) => {
-    if (!isDragging.current || !containerRef.current) return;
-    const containerRect = containerRef.current.getBoundingClientRect();
-    const newWidth = ((e.clientX - containerRect.left) / containerRect.width) * 100;
-    // Clamp between 25% and 75%
-    setLeftPanelWidth(Math.min(75, Math.max(25, newWidth)));
-  }, []);
-
-  useEffect(() => {
-    document.addEventListener("mousemove", handleMouseMove);
-    document.addEventListener("mouseup", handleMouseUp);
-    return () => {
-      document.removeEventListener("mousemove", handleMouseMove);
-      document.removeEventListener("mouseup", handleMouseUp);
-    };
-  }, [handleMouseMove, handleMouseUp]);
+  const { containerRef, leftPanelWidth, handleMouseDown } = useResizablePanel({
+    defaultSize: 50,
+    minSize: 25,
+    maxSize: 75,
+  });
 
   // Queries
   const assignment = useQuery(api.studentSessions.getAssignmentForStudent, {
