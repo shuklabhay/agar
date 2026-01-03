@@ -683,7 +683,7 @@ export default function NewAssignmentPage() {
     uploadingAssignmentFiles.length > 0 || uploadingNotesFiles.length > 0;
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex items-start gap-4">
         <Button variant="ghost" size="icon" asChild className="mt-1">
@@ -726,20 +726,6 @@ export default function NewAssignmentPage() {
           )}
         </div>
 
-        {/* Total Size Indicator */}
-        {totalUploadedSize > 0 && (
-          <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span>
-              Total: {formatFileSize(totalUploadedSize)} /{" "}
-              {formatFileSize(MAX_TOTAL_SIZE_BYTES)} used
-            </span>
-            <Progress
-              value={(totalUploadedSize / MAX_TOTAL_SIZE_BYTES) * 100}
-              className="h-1.5 w-32"
-            />
-          </div>
-        )}
-
         {/* Additional Information */}
         <div className="space-y-2">
           <Label htmlFor="additionalInfo">Additional Information</Label>
@@ -759,13 +745,26 @@ export default function NewAssignmentPage() {
         </div>
 
         {/* Create Button */}
-        <div className="flex gap-3 pt-4">
-          <Button type="button" variant="outline" asChild className="flex-1">
+        <div className="flex items-center gap-3 pt-4">
+          {/* Total Size Indicator */}
+          {totalUploadedSize > 0 && (
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <span>
+                Total: {formatFileSize(totalUploadedSize)} /{" "}
+                {formatFileSize(MAX_TOTAL_SIZE_BYTES)} used
+              </span>
+              <Progress
+                value={(totalUploadedSize / MAX_TOTAL_SIZE_BYTES) * 100}
+                className="h-1.5 w-32"
+              />
+            </div>
+          )}
+          <div className="flex-1" />
+          <Button type="button" variant="outline" asChild>
             <Link href={`/classes/${classId}`}>Cancel</Link>
           </Button>
           <Button
             type="submit"
-            className="flex-1"
             disabled={isCreating || !name.trim() || isUploading}
           >
             {isCreating ? (

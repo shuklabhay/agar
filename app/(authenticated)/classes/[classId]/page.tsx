@@ -122,7 +122,7 @@ export default function ClassDetailPage() {
                     assignment.isDraft ? "border-dashed border-2" : ""
                   }`}
                 >
-                  <CardContent className="flex items-center gap-4 p-4">
+                  <CardContent className="flex items-center gap-3 p-3">
                     <div className="rounded-lg bg-muted p-2">
                       <FileText className="h-5 w-5 text-muted-foreground" />
                     </div>
