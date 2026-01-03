@@ -67,7 +67,7 @@ export default defineSchema({
         v.array(v.string()), // for free response key points
       ),
     ),
-    snippets: v.optional(v.array(v.string())),
+    keyPoints: v.optional(v.array(v.string())),
     source: v.optional(
       v.union(v.literal("notes"), v.array(v.string())),
     ),

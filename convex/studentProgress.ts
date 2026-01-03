@@ -11,7 +11,7 @@ export const getQuestionsForStudent = query({
       .filter((q) => q.eq(q.field("status"), "approved"))
       .collect();
 
-    // Return without answer/snippets fields (hidden from student)
+    // Return without answer/keyPoints fields (hidden from student)
     return questions
       .filter((q) => q.questionType !== "skipped")
       .map((q) => ({

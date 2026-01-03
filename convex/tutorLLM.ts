@@ -90,7 +90,7 @@ interface TutorInput {
     questionType: string;
     options?: string[];
     answer?: string | string[];
-    snippets?: string[];
+    keyPoints?: string[];
   };
   history: Array<{ role: string; content: string }>;
   studentMessage: string;
@@ -106,7 +106,7 @@ interface TutorResponse {
 export async function callTutorLLM(input: TutorInput): Promise<TutorResponse> {
   const client = getClient();
 
-  // Build question context - only includes snippets on first message for this question
+  // Build question context - only includes keyPoints on first message for this question
   const questionContext = `
 QUESTION: ${input.question.questionText}
 TYPE: ${input.question.questionType}
@@ -114,7 +114,7 @@ ${input.question.options ? `OPTIONS:\n${input.question.options.map((o, i) => `${
 
 [HIDDEN - For guidance only]
 CORRECT ANSWER: ${JSON.stringify(input.question.answer)}
-${input.question.snippets?.length ? `RELEVANT CONCEPTS: ${input.question.snippets.join(" | ")}` : ""}
+${input.question.keyPoints?.length ? `RELEVANT CONCEPTS: ${input.question.keyPoints.join(" | ")}` : ""}
 `;
 
   // Build conversation history
@@ -142,7 +142,7 @@ ${input.question.snippets?.length ? `RELEVANT CONCEPTS: ${input.question.snippet
   // Build messages array
   let messages;
   if (input.isFirstMessageForQuestion) {
-    // First message for this question: include question context with snippets
+    // First message for this question: include question context with keyPoints
     messages = [
       {
         role: "user" as const,

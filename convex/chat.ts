@@ -134,7 +134,7 @@ export const sendMessageToTutor = action({
     // Call the tutor LLM
     const { callTutorLLM } = await import("./tutorLLM");
 
-    // First message for this question gets the full context with snippets
+    // First message for this question gets the full context with keyPoints
     const isFirstMessageForQuestion = history.length === 0;
 
     const response = await callTutorLLM({
@@ -143,8 +143,8 @@ export const sendMessageToTutor = action({
         questionType: question.questionType,
         options: question.options,
         answer: question.answer,
-        // Only include snippets on first message - they'll be in history for subsequent calls
-        snippets: isFirstMessageForQuestion ? question.snippets : undefined,
+        // Only include keyPoints on first message - they'll be in history for subsequent calls
+        keyPoints: isFirstMessageForQuestion ? question.keyPoints : undefined,
       },
       history: history.map((m) => ({
         role: m.role,

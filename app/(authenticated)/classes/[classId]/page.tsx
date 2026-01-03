@@ -17,6 +17,7 @@ import {
   ArrowUp,
   ArrowDown,
   Pencil,
+  Link as LinkIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -206,7 +207,7 @@ export default function ClassDetailPage() {
                       assignment.isDraft ? "border-dashed border-2" : ""
                     }`}
                   >
-                    <CardContent className="flex items-center gap-3 p-3 pr-20">
+                    <CardContent className="flex items-center gap-3 p-3 pr-28">
                       <div className="rounded-lg bg-muted p-2">
                         <FileText className="h-5 w-5 text-muted-foreground" />
                       </div>
@@ -231,11 +232,28 @@ export default function ClassDetailPage() {
                     </CardContent>
                   </Card>
                 </Link>
-                <div className="absolute right-2 top-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                  {!assignment.isDraft && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-muted-foreground hover:text-primary"
+                      title="Copy student link"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const studentLink = `${window.location.origin}/learn/${assignment._id}`;
+                        navigator.clipboard.writeText(studentLink);
+                        toast.success("Student link copied");
+                      }}
+                    >
+                      <LinkIcon className="h-4 w-4" />
+                    </Button>
+                  )}
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                    className="h-8 w-8 text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity"
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
@@ -248,7 +266,7 @@ export default function ClassDetailPage() {
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                    className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-opacity"
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();

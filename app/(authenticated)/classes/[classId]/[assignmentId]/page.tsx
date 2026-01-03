@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import { useQuery, useMutation } from "convex/react";
+import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
@@ -20,17 +20,13 @@ import {
   Download,
   Copy,
   Check,
-  Link as LinkIcon,
   ExternalLink,
   FileIcon,
-  Info,
-  CheckCheck,
-  Loader2,
 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { useState } from "react";
-import { QuestionReviewCard } from "@/components/question-review-card";
+import { QuestionsReviewPanel } from "@/components/questions-review-panel";
 import { EditAnswerDialog } from "@/components/edit-answer-dialog";
 
 export default function AssignmentDetailPage() {
@@ -42,8 +38,6 @@ export default function AssignmentDetailPage() {
   const assignment = useQuery(api.assignments.getAssignment, { assignmentId });
   const questions = useQuery(api.questions.listQuestions, { assignmentId });
 
-  const approveAllQuestions = useMutation(api.questions.approveAllQuestions);
-
   const [copied, setCopied] = useState(false);
   const [editingQuestion, setEditingQuestion] = useState<{
     _id: Id<"questions">;
@@ -51,28 +45,15 @@ export default function AssignmentDetailPage() {
     questionText: string;
     questionType: string;
     answer?: string | string[];
-    snippets?: string[];
+    keyPoints?: string[];
     source?: "notes" | string[];
     status: "pending" | "processing" | "ready" | "approved";
   } | null>(null);
-  const [isApprovingAll, setIsApprovingAll] = useState(false);
   const [previewFile, setPreviewFile] = useState<{
     fileName: string;
     contentType: string;
     url: string;
   } | null>(null);
-
-  const handleApproveAll = async () => {
-    setIsApprovingAll(true);
-    try {
-      const result = await approveAllQuestions({ assignmentId });
-      toast.success(`Approved ${result.approved} questions`);
-    } catch {
-      toast.error("Failed to approve questions");
-    } finally {
-      setIsApprovingAll(false);
-    }
-  };
 
   const studentLink =
     typeof window !== "undefined"
@@ -121,7 +102,7 @@ export default function AssignmentDetailPage() {
     }
   };
 
-  const renderFileList = (
+  const renderFileListCompact = (
     files: Array<{
       storageId: Id<"_storage">;
       fileName: string;
@@ -130,15 +111,15 @@ export default function AssignmentDetailPage() {
     }>,
   ) => {
     if (files.length === 0) {
-      return <p className="text-sm text-muted-foreground">No files</p>;
+      return <span className="text-sm text-muted-foreground">None</span>;
     }
 
     return (
-      <div className="space-y-1.5">
+      <div className="flex flex-wrap gap-1.5">
         {files.map((file, index) => (
-          <Card
+          <button
             key={index}
-            className="cursor-pointer hover:bg-muted/50 transition-colors"
+            className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-muted/50 hover:bg-muted text-sm transition-colors"
             onClick={() =>
               file.url &&
               setPreviewFile({
@@ -148,34 +129,24 @@ export default function AssignmentDetailPage() {
               })
             }
           >
-            <CardContent className="flex items-center gap-2 p-2">
-              {getFileIcon(file.contentType)}
-              <div className="flex-1 min-w-0">
-                <p className="text-sm truncate">{file.fileName}</p>
-              </div>
-              <Badge variant="secondary" className="text-xs">
-                {getFileTypeBadge(file.contentType)}
-              </Badge>
-              {file.url && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-6 w-6"
-                  asChild
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <a
-                    href={file.url}
-                    download={file.fileName}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    <Download className="h-3 w-3" />
-                  </a>
-                </Button>
-              )}
-            </CardContent>
-          </Card>
+            {getFileIcon(file.contentType)}
+            <span className="truncate max-w-[150px]">{file.fileName}</span>
+            <Badge variant="secondary" className="text-[10px] px-1 py-0">
+              {getFileTypeBadge(file.contentType)}
+            </Badge>
+            {file.url && (
+              <a
+                href={file.url}
+                download={file.fileName}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="hover:text-primary"
+              >
+                <Download className="h-3 w-3" />
+              </a>
+            )}
+          </button>
         ))}
       </div>
     );
@@ -227,73 +198,49 @@ export default function AssignmentDetailPage() {
         </div>
       </div>
 
-      {/* Student Link Card */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <LinkIcon className="h-5 w-5" />
-            Student Link
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <p className="text-sm text-muted-foreground">
-            Share this link with students to access the assignment materials.
-          </p>
-          <div className="flex items-center gap-2">
-            <code className="flex-1 rounded-md bg-muted px-3 py-2 text-sm font-mono break-all">
-              {studentLink}
-            </code>
-            <Button variant="outline" size="icon" asChild>
-              <a href={studentLink} target="_blank" rel="noopener noreferrer">
-                <ExternalLink className="h-4 w-4" />
-              </a>
-            </Button>
-            <Button variant="outline" size="icon" onClick={handleCopyLink}>
-              {copied ? (
-                <Check className="h-4 w-4 text-green-500" />
-              ) : (
-                <Copy className="h-4 w-4" />
-              )}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Files Section - Two Columns */}
-      <div className="grid gap-6 md:grid-cols-2">
-        {/* Assignment Files */}
-        <div className="space-y-2">
-          <h2 className="text-lg font-semibold">
-            Assignment Files ({assignment.assignmentFiles.length})
-          </h2>
-          {renderFileList(assignment.assignmentFiles)}
-        </div>
-
-        {/* Notes Files */}
-        <div className="space-y-2">
-          <h2 className="text-lg font-semibold">
-            Notes Files ({assignment.notesFiles.length})
-          </h2>
-          {renderFileList(assignment.notesFiles)}
-        </div>
+      {/* Student Link - outside card */}
+      <div className="flex items-center gap-2">
+        <span className="text-sm font-medium text-muted-foreground">Student Link:</span>
+        <code className="rounded bg-muted px-2 py-1 text-xs font-mono truncate max-w-md">
+          {studentLink}
+        </code>
+        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleCopyLink}>
+          {copied ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}
+        </Button>
+        <Button variant="ghost" size="icon" className="h-7 w-7" asChild>
+          <a href={studentLink} target="_blank" rel="noopener noreferrer">
+            <ExternalLink className="h-3.5 w-3.5" />
+          </a>
+        </Button>
       </div>
 
-      {/* Additional Information Section */}
-      {assignment.additionalInfo && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Info className="h-5 w-5" />
-              Additional Information
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm whitespace-pre-wrap">
-              {assignment.additionalInfo}
-            </p>
-          </CardContent>
-        </Card>
-      )}
+      {/* Uploaded Information - Compact Card */}
+      <Card>
+        <CardHeader className="py-3">
+          <CardTitle className="text-base">Uploaded Information</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2 pt-0 pb-3">
+          {/* Assignment Files */}
+          <div className="flex items-start gap-2">
+            <span className="text-sm text-muted-foreground shrink-0 w-20">Assignment:</span>
+            {renderFileListCompact(assignment.assignmentFiles)}
+          </div>
+
+          {/* Notes Files */}
+          <div className="flex items-start gap-2">
+            <span className="text-sm text-muted-foreground shrink-0 w-20">Notes:</span>
+            {renderFileListCompact(assignment.notesFiles)}
+          </div>
+
+          {/* Additional Information */}
+          {assignment.additionalInfo && (
+            <div className="flex items-start gap-2">
+              <span className="text-sm text-muted-foreground shrink-0 w-20">Info:</span>
+              <p className="text-sm whitespace-pre-wrap">{assignment.additionalInfo}</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Questions Review Section */}
       {(() => {
@@ -301,99 +248,18 @@ export default function AssignmentDetailPage() {
         const isProcessing =
           assignment.processingStatus === "extracting" ||
           assignment.processingStatus === "generating_answers";
-        const completedQuestions = allQuestions.filter(
-          (q) => q.status === "ready" || q.status === "approved",
-        );
 
         // Show section if processing or has questions
         if (!isProcessing && allQuestions.length === 0) return null;
 
         return (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-semibold">
-                Questions{" "}
-                {allQuestions.length > 0 && `(${allQuestions.length})`}
-              </h2>
-              <div className="flex items-center gap-2">
-                {isProcessing && (
-                  <Badge variant="secondary" className="text-xs">
-                    <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                    {assignment.processingStatus === "extracting"
-                      ? "Extracting questions..."
-                      : "Generating answers..."}
-                  </Badge>
-                )}
-                {(() => {
-                  const readyCount = completedQuestions.filter(
-                    (q) => q.status === "ready",
-                  ).length;
-                  const webSourcedCount = completedQuestions.filter(
-                    (q) => q.source && Array.isArray(q.source),
-                  ).length;
-                  const approvedCount = completedQuestions.filter(
-                    (q) => q.status === "approved",
-                  ).length;
-                  if (completedQuestions.length === 0) return null;
-                  return (
-                    <>
-                      {webSourcedCount > 0 && (
-                        <span className="text-sm text-amber-600 dark:text-amber-400">
-                          {webSourcedCount} manual review recommended
-                        </span>
-                      )}
-                      <span className="text-sm text-muted-foreground">
-                        {approvedCount}/{completedQuestions.length} approved
-                      </span>
-                      {readyCount > 0 && (
-                        <Button
-                          size="sm"
-                          onClick={handleApproveAll}
-                          disabled={isApprovingAll}
-                        >
-                          {isApprovingAll ? (
-                            <Loader2 className="h-4 w-4 animate-spin mr-1" />
-                          ) : (
-                            <CheckCheck className="h-4 w-4 mr-1" />
-                          )}
-                          Approve All ({readyCount})
-                        </Button>
-                      )}
-                    </>
-                  );
-                })()}
-              </div>
-            </div>
-
-            {/* Processing indicator when no questions yet */}
-            {isProcessing && allQuestions.length === 0 && (
-              <Card className="border-dashed">
-                <CardContent className="flex flex-col items-center justify-center py-12">
-                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground mb-4" />
-                  <p className="text-muted-foreground">
-                    {assignment.processingStatus === "extracting"
-                      ? "Extracting questions from assignment files..."
-                      : "Generating answers from notes..."}
-                  </p>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Questions list */}
-            {allQuestions.length > 0 && (
-              <div className="space-y-3">
-                {allQuestions
-                  .sort((a, b) => a.questionNumber - b.questionNumber)
-                  .map((question) => (
-                    <QuestionReviewCard
-                      key={question._id}
-                      question={question}
-                      onEdit={(q) => setEditingQuestion(q)}
-                    />
-                  ))}
-              </div>
-            )}
-          </div>
+          <QuestionsReviewPanel
+            questions={allQuestions}
+            assignmentId={assignmentId}
+            isProcessing={isProcessing}
+            processingStatus={assignment.processingStatus}
+            onEdit={(q) => setEditingQuestion(q)}
+          />
         );
       })()}
 

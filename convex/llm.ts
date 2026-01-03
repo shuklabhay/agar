@@ -106,20 +106,20 @@ ANSWER FORMAT by type:
 - "multiple_choice": the letter choice
 - "free_response": array of key points
 
-SNIPPETS: Extract 1-2 very brief snippets (under 15 words each) from notes showing the relevant rule or concept.
+KEY_POINTS: Extract 1-2 very brief key points (under 15 words each) from notes showing the relevant rule or concept.
 
 SOURCE: Set to "notes" if answered from notes, or array of URLs if web search was used.
 
 Respond with ONLY valid JSON (no markdown):
 {
   "answer": "answer here",
-  "snippets": ["brief snippet"],
+  "key_points": ["brief key point"],
   "source": "notes" OR ["https://source.com"]
 }`;
 
 export type GeneratedAnswer = {
   answer: string | string[];
-  snippets: string[];
+  keyPoints: string[];
   source: "notes" | string[];
 };
 
@@ -150,7 +150,13 @@ export async function generateAnswerForQuestion(
   const responseText = response.text ?? "";
   const cleaned = cleanJsonResponse(responseText);
 
-  return JSON.parse(cleaned) as GeneratedAnswer;
+  const parsed = JSON.parse(cleaned);
+  // Transform snake_case from LLM to camelCase
+  return {
+    answer: parsed.answer,
+    keyPoints: parsed.key_points || [],
+    source: parsed.source,
+  } as GeneratedAnswer;
 }
 
 // Batch process questions with shared notes context
@@ -192,7 +198,7 @@ export async function generateAnswersForQuestions(
       // Set a fallback - will need manual review
       results.set(q.questionNumber, {
         answer: "",
-        snippets: [],
+        keyPoints: [],
         source: "notes",
       });
     }

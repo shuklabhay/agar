@@ -148,7 +148,7 @@ export const updateQuestionAnswer = internalMutation({
   args: {
     questionId: v.id("questions"),
     answer: v.union(v.string(), v.array(v.string())),
-    snippets: v.array(v.string()),
+    keyPoints: v.array(v.string()),
     source: v.union(v.literal("notes"), v.array(v.string())),
     status: v.union(
       v.literal("pending"),
@@ -160,7 +160,7 @@ export const updateQuestionAnswer = internalMutation({
   handler: async (ctx, args) => {
     await ctx.db.patch(args.questionId, {
       answer: args.answer,
-      snippets: args.snippets,
+      keyPoints: args.keyPoints,
       source: args.source,
       status: args.status,
     });
@@ -218,9 +218,34 @@ export const approveQuestion = mutation({
   },
 });
 
+// Unapprove a single question (set back to ready)
+export const unapproveQuestion = mutation({
+  args: { questionId: v.id("questions") },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Not authenticated");
+
+    const question = await ctx.db.get(args.questionId);
+    if (!question) throw new Error("Question not found");
+
+    const assignment = await ctx.db.get(question.assignmentId);
+    if (!assignment) throw new Error("Assignment not found");
+
+    const classDoc = await ctx.db.get(assignment.classId);
+    if (!classDoc || classDoc.teacherId !== userId) {
+      throw new Error("Not authorized");
+    }
+
+    await ctx.db.patch(args.questionId, { status: "ready" });
+  },
+});
+
 // Approve all ready questions for an assignment
 export const approveAllQuestions = mutation({
-  args: { assignmentId: v.id("assignments") },
+  args: {
+    assignmentId: v.id("assignments"),
+    notesOnly: v.optional(v.boolean()),
+  },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) throw new Error("Not authenticated");
@@ -240,8 +265,12 @@ export const approveAllQuestions = mutation({
 
     let approved = 0;
     for (const q of questions) {
-      // Approve all ready questions
+      // Approve ready questions
       if (q.status === "ready") {
+        // If notesOnly is true, only approve questions with source === "notes"
+        if (args.notesOnly && q.source !== "notes") {
+          continue;
+        }
         await ctx.db.patch(q._id, { status: "approved" });
         approved++;
       }
@@ -256,7 +285,7 @@ export const editQuestionAnswer = mutation({
   args: {
     questionId: v.id("questions"),
     answer: v.union(v.string(), v.array(v.string())),
-    snippets: v.optional(v.array(v.string())),
+    keyPoints: v.optional(v.array(v.string())),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
@@ -273,11 +302,11 @@ export const editQuestionAnswer = mutation({
       throw new Error("Not authorized");
     }
 
-    const update: { answer: string | string[]; snippets?: string[] } = {
+    const update: { answer: string | string[]; keyPoints?: string[] } = {
       answer: args.answer,
     };
-    if (args.snippets !== undefined) {
-      update.snippets = args.snippets;
+    if (args.keyPoints !== undefined) {
+      update.keyPoints = args.keyPoints;
     }
 
     await ctx.db.patch(args.questionId, update);

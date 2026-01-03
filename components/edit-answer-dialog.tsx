@@ -23,7 +23,7 @@ type Question = {
   questionText: string;
   questionType: string;
   answer?: string | string[];
-  snippets?: string[];
+  keyPoints?: string[];
 };
 
 interface EditAnswerDialogProps {
@@ -38,7 +38,7 @@ export function EditAnswerDialog({
   onOpenChange,
 }: EditAnswerDialogProps) {
   const [answer, setAnswer] = useState("");
-  const [snippets, setSnippets] = useState("");
+  const [keyPoints, setKeyPoints] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
   const editQuestionAnswer = useMutation(api.questions.editQuestionAnswer);
@@ -52,8 +52,8 @@ export function EditAnswerDialog({
       } else {
         setAnswer(question.answer || "");
       }
-      // Convert snippets to newline-separated string
-      setSnippets(question.snippets?.join("\n") || "");
+      // Convert keyPoints to newline-separated string
+      setKeyPoints(question.keyPoints?.join("\n") || "");
     }
   }, [question]);
 
@@ -74,8 +74,8 @@ export function EditAnswerDialog({
         parsedAnswer = answer.trim();
       }
 
-      // Parse snippets
-      const parsedSnippets = snippets
+      // Parse keyPoints
+      const parsedKeyPoints = keyPoints
         .split("\n")
         .map((s) => s.trim())
         .filter((s) => s.length > 0);
@@ -83,7 +83,7 @@ export function EditAnswerDialog({
       await editQuestionAnswer({
         questionId: question._id,
         answer: parsedAnswer,
-        snippets: parsedSnippets.length > 0 ? parsedSnippets : undefined,
+        keyPoints: parsedKeyPoints.length > 0 ? parsedKeyPoints : undefined,
       });
 
       toast.success("Answer updated");
@@ -137,19 +137,19 @@ export function EditAnswerDialog({
             />
           </div>
 
-          {/* Snippets */}
+          {/* Key Points */}
           <div>
-            <Label htmlFor="snippets">
-              Snippets
+            <Label htmlFor="keyPoints">
+              Key Points
               <span className="text-xs text-muted-foreground ml-1">
                 (one per line, optional)
               </span>
             </Label>
             <Textarea
-              id="snippets"
-              value={snippets}
-              onChange={(e) => setSnippets(e.target.value)}
-              placeholder="Brief snippets from notes that support the answer"
+              id="keyPoints"
+              value={keyPoints}
+              onChange={(e) => setKeyPoints(e.target.value)}
+              placeholder="Supporting excerpts from notes that justify the answer"
               rows={3}
               className="mt-1"
             />

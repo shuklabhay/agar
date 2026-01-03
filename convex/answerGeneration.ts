@@ -55,7 +55,7 @@ export const generateAnswers = action({
           await ctx.runMutation(internal.questions.updateQuestionAnswer, {
             questionId: q._id,
             answer: answer.answer,
-            snippets: answer.snippets,
+            keyPoints: answer.keyPoints,
             source: answer.source,
             status: "ready",
           });
@@ -152,7 +152,7 @@ export const regenerateAnswer = action({
       await ctx.runMutation(internal.questions.updateQuestionAnswer, {
         questionId: args.questionId,
         answer: answer.answer,
-        snippets: answer.snippets,
+        keyPoints: answer.keyPoints,
         source: answer.source,
         status: "ready",
       });
@@ -165,7 +165,7 @@ export const regenerateAnswer = action({
       await ctx.runMutation(internal.questions.updateQuestionAnswer, {
         questionId: args.questionId,
         answer: question.answer || "",
-        snippets: question.snippets || [],
+        keyPoints: question.keyPoints || [],
         source: question.source || "notes",
         status: "ready",
       });
