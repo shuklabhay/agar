@@ -2,17 +2,22 @@ import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
 
-export const listClasses = query({
-  args: {},
-  returns: v.array(
+const classSchema = v.object({
+  _id: v.id("classes"),
+  _creationTime: v.number(),
+  name: v.string(),
+  section: v.optional(v.string()),
+  teacherId: v.id("users"),
+  preferences: v.optional(
     v.object({
-      _id: v.id("classes"),
-      _creationTime: v.number(),
-      name: v.string(),
-      section: v.optional(v.string()),
-      teacherId: v.id("users"),
+      defaultMetric: v.optional(v.union(v.literal("mean"), v.literal("median"))),
     })
   ),
+});
+
+export const listClasses = query({
+  args: {},
+  returns: v.array(classSchema),
   handler: async (ctx) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) {
@@ -28,16 +33,7 @@ export const listClasses = query({
 
 export const getClass = query({
   args: { classId: v.id("classes") },
-  returns: v.union(
-    v.object({
-      _id: v.id("classes"),
-      _creationTime: v.number(),
-      name: v.string(),
-      section: v.optional(v.string()),
-      teacherId: v.id("users"),
-    }),
-    v.null()
-  ),
+  returns: v.union(classSchema, v.null()),
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) {
@@ -137,6 +133,30 @@ export const deleteClass = mutation({
     // Delete the class
     await ctx.db.delete(args.classId);
 
+    return null;
+  },
+});
+
+export const updatePreferences = mutation({
+  args: {
+    classId: v.id("classes"),
+    preferences: v.object({
+      defaultMetric: v.optional(v.union(v.literal("mean"), v.literal("median"))),
+    }),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("Not authenticated");
+    }
+
+    const classDoc = await ctx.db.get(args.classId);
+    if (!classDoc || classDoc.teacherId !== userId) {
+      throw new Error("Class not found or access denied");
+    }
+
+    await ctx.db.patch(args.classId, { preferences: args.preferences });
     return null;
   },
 });

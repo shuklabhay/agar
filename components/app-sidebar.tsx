@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Settings,
   LogOut,
@@ -10,6 +10,7 @@ import {
   BookOpen,
   Plus,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
@@ -60,6 +61,7 @@ import {
 export function AppSidebar() {
   const [mounted, setMounted] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [defaultMetric, setDefaultMetric] = useState<"mean" | "median">("median");
   const pathname = usePathname();
   const { signOut } = useAuthActions();
   const router = useRouter();
@@ -68,6 +70,18 @@ export function AppSidebar() {
 
   useEffect(() => {
     setMounted(true);
+    // Load preference from localStorage
+    const saved = localStorage.getItem("agar_default_metric");
+    if (saved === "mean" || saved === "median") {
+      setDefaultMetric(saved);
+    }
+  }, []);
+
+  const handleMetricChange = useCallback((metric: "mean" | "median") => {
+    setDefaultMetric(metric);
+    localStorage.setItem("agar_default_metric", metric);
+    // Dispatch custom event so other components can react
+    window.dispatchEvent(new CustomEvent("metricPreferenceChanged", { detail: metric }));
   }, []);
 
   const isLoading = classes === undefined;
@@ -187,9 +201,43 @@ export function AppSidebar() {
                     <DialogHeader>
                       <DialogTitle>Settings</DialogTitle>
                       <DialogDescription>
-                        No actions right now.
+                        Configure your preferences
                       </DialogDescription>
                     </DialogHeader>
+                    <div className="space-y-4 py-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium">Default Metric</p>
+                          <p className="text-xs text-muted-foreground">
+                            Display mean or median in analytics
+                          </p>
+                        </div>
+                        <div className="flex rounded-lg bg-muted p-1">
+                          <button
+                            onClick={() => handleMetricChange("median")}
+                            className={cn(
+                              "px-3 py-1.5 text-sm font-medium rounded-md transition-colors",
+                              defaultMetric === "median"
+                                ? "bg-background text-foreground shadow-sm"
+                                : "text-muted-foreground hover:text-foreground"
+                            )}
+                          >
+                            Median
+                          </button>
+                          <button
+                            onClick={() => handleMetricChange("mean")}
+                            className={cn(
+                              "px-3 py-1.5 text-sm font-medium rounded-md transition-colors",
+                              defaultMetric === "mean"
+                                ? "bg-background text-foreground shadow-sm"
+                                : "text-muted-foreground hover:text-foreground"
+                            )}
+                          >
+                            Mean
+                          </button>
+                        </div>
+                      </div>
+                    </div>
                   </DialogContent>
                 </Dialog>
               </SidebarMenuItem>

@@ -44,13 +44,13 @@ export function ChatPanel({ sessionId, questionId, question, questions }: ChatPa
 
   const sendMessage = useAction(api.chat.sendMessageToTutor);
 
-  // Scroll to bottom on new messages with slight delay for smoother feel
+  // Scroll to bottom on new messages or question change (for divider visibility)
   useEffect(() => {
     const timer = setTimeout(() => {
       messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }, 150);
     return () => clearTimeout(timer);
-  }, [chatHistory]);
+  }, [chatHistory, questionId]);
 
   // Auto-resize textarea
   useEffect(() => {

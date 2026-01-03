@@ -28,6 +28,7 @@ export default function LearnPage() {
 
   // Question navigation
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const lastCorrectQuestionRef = useRef<string | null>(null);
 
   // Resizable panels
   const [leftPanelWidth, setLeftPanelWidth] = useState(50); // percentage
@@ -131,6 +132,38 @@ export default function LearnPage() {
       updateLastQuestionIndex({ sessionId, questionIndex: currentQuestionIndex });
     }
   }, [sessionId, currentQuestionIndex, updateLastQuestionIndex]);
+
+  // Auto-advance to next unanswered question when current question is answered correctly
+  useEffect(() => {
+    if (!questions || !progress) return;
+
+    const currentQuestion = questions[currentQuestionIndex];
+    if (!currentQuestion) return;
+
+    const currentProgress = progress.find((p) => p.questionId === currentQuestion._id);
+
+    // Check if this question just became correct
+    if (currentProgress?.status === "correct" && lastCorrectQuestionRef.current !== currentQuestion._id) {
+      lastCorrectQuestionRef.current = currentQuestion._id;
+
+      // Find next unanswered question (starting from current, then wrapping)
+      const totalQuestions = questions.length;
+      for (let offset = 1; offset < totalQuestions; offset++) {
+        const nextIndex = (currentQuestionIndex + offset) % totalQuestions;
+        const nextQuestion = questions[nextIndex];
+        const nextProgress = progress.find((p) => p.questionId === nextQuestion._id);
+
+        if (!nextProgress || nextProgress.status !== "correct") {
+          // Found an unanswered question - advance after a short delay
+          setTimeout(() => {
+            setCurrentQuestionIndex(nextIndex);
+          }, 1500);
+          return;
+        }
+      }
+      // All questions answered - stay on current
+    }
+  }, [questions, progress, currentQuestionIndex]);
 
   // Record time spent when switching questions or leaving page
   useEffect(() => {

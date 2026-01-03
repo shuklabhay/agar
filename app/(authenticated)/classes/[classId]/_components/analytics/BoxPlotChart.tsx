@@ -119,14 +119,14 @@ export function HorizontalBoxPlot({
       <h3 className="text-sm font-medium mb-4">{title}</h3>
       <div className="flex gap-3">
         {/* Labels column */}
-        <div className="w-20 shrink-0 flex flex-col">
+        <div className="w-28 shrink-0 flex flex-col">
           {validData.map((item, index) => (
             <div
               key={index}
-              className="h-10 flex items-center text-sm text-muted-foreground truncate"
+              className="h-10 flex items-center text-xs text-muted-foreground leading-tight pr-2"
               title={item.name}
             >
-              {item.name}
+              <span className="line-clamp-2 break-words">{item.name}</span>
             </div>
           ))}
         </div>
@@ -326,7 +326,7 @@ export function HorizontalBoxPlot({
       </div>
 
       {/* Scale labels */}
-      <div className="flex items-center mt-2 ml-[calc(5rem+0.75rem)]">
+      <div className="flex items-center mt-2 ml-[calc(7rem+0.75rem)]">
         <span className="text-xs text-muted-foreground">{formatValue(scaleMin)}{unit}</span>
         <div className="flex-1" />
         <span className="text-xs text-muted-foreground">{formatValue(scaleMax)}{unit}</span>

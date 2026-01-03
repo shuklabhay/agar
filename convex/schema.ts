@@ -11,6 +11,11 @@ export default defineSchema({
     name: v.string(),
     section: v.optional(v.string()),
     teacherId: v.id("users"),
+    preferences: v.optional(
+      v.object({
+        defaultMetric: v.optional(v.union(v.literal("mean"), v.literal("median"))),
+      })
+    ),
   }).index("by_teacherId", ["teacherId"]),
   assignments: defineTable({
     name: v.string(),

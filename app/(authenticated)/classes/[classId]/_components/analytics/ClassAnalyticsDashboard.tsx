@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
@@ -20,6 +20,7 @@ import { MetricCard } from "./MetricCard";
 import { HorizontalBoxPlot } from "./BoxPlotChart";
 import { StudentPerformanceTable } from "./StudentPerformanceTable";
 import { QuestionDifficultyTable, QuestionSortField, QuestionSortDirection } from "./QuestionDifficultyTable";
+import { AllStudentsTable } from "./AllStudentsTable";
 
 interface Assignment {
   _id: Id<"assignments">;
@@ -55,6 +56,26 @@ export function ClassAnalyticsDashboard({
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [questionSortField, setQuestionSortField] = useState<QuestionSortField>("questionNumber");
   const [questionSortDirection, setQuestionSortDirection] = useState<QuestionSortDirection>("asc");
+  const [defaultMetric, setDefaultMetric] = useState<"mean" | "median">("median");
+
+  // Load metric preference from localStorage and listen for changes
+  useEffect(() => {
+    const loadPreference = () => {
+      const saved = localStorage.getItem("agar_default_metric");
+      if (saved === "mean" || saved === "median") {
+        setDefaultMetric(saved);
+      }
+    };
+
+    loadPreference();
+
+    const handleChange = (e: CustomEvent<"mean" | "median">) => {
+      setDefaultMetric(e.detail);
+    };
+
+    window.addEventListener("metricPreferenceChanged", handleChange as EventListener);
+    return () => window.removeEventListener("metricPreferenceChanged", handleChange as EventListener);
+  }, []);
 
   const publishedAssignments = assignments.filter((a) => !a.isDraft);
 
@@ -88,6 +109,7 @@ export function ClassAnalyticsDashboard({
       ? { assignmentId: singleSelectedId as Id<"assignments"> }
       : "skip"
   );
+  const allStudents = useQuery(api.analytics.getAllStudentsInClass, { classId });
 
   // Toggle assignment selection
   const toggleAssignment = (id: string) => {
@@ -294,21 +316,29 @@ export function ClassAnalyticsDashboard({
               icon={<CheckCircle className="h-4 w-4" />}
             />
             <MetricCard
-              title="Avg Messages"
+              title={defaultMetric === "mean" ? "Avg Messages" : "Median Messages"}
               value={
                 isSingleSelected
-                  ? assignmentAnalytics?.messagesBoxPlot?.mean.toFixed(1) ?? "—"
-                  : classAnalytics.avgMessagesPerQuestion.toFixed(1)
+                  ? (defaultMetric === "mean"
+                      ? assignmentAnalytics?.messagesBoxPlot?.mean.toFixed(1)
+                      : assignmentAnalytics?.messagesBoxPlot?.median.toFixed(1)) ?? "—"
+                  : defaultMetric === "mean"
+                    ? classAnalytics.avgMessagesPerQuestion.toFixed(1)
+                    : (classAnalytics.allMessagesBoxPlot?.median.toFixed(1) ?? "—")
               }
               subtitle="per question"
               icon={<MessageSquare className="h-4 w-4" />}
             />
             <MetricCard
-              title="Avg Time"
+              title={defaultMetric === "mean" ? "Avg Time" : "Median Time"}
               value={formatTime(
                 isSingleSelected
-                  ? assignmentAnalytics?.timeBoxPlot?.mean ?? 0
-                  : classAnalytics.avgTimePerQuestionMs
+                  ? (defaultMetric === "mean"
+                      ? assignmentAnalytics?.timeBoxPlot?.mean
+                      : assignmentAnalytics?.timeBoxPlot?.median) ?? 0
+                  : defaultMetric === "mean"
+                    ? classAnalytics.avgTimePerQuestionMs
+                    : (classAnalytics.allTimesBoxPlot?.median ?? 0)
               )}
               subtitle="per question"
               icon={<Clock className="h-4 w-4" />}
@@ -498,14 +528,12 @@ export function ClassAnalyticsDashboard({
       {/* Students Tab */}
       {activeTab === "students" && !isLoading && (
         <div>
-          {!isSingleSelected ? (
-            <Card>
-              <CardContent className="py-8 text-center text-muted-foreground">
-                <p>Select a single assignment to view student performance</p>
-              </CardContent>
-            </Card>
-          ) : studentPerformance ? (
+          {isSingleSelected && studentPerformance ? (
+            // Show per-assignment view when a single assignment is selected
             <StudentPerformanceTable students={studentPerformance} />
+          ) : allStudents ? (
+            // Show all students across all assignments
+            <AllStudentsTable students={allStudents} />
           ) : (
             <Card>
               <CardContent className="py-8">

@@ -652,3 +652,122 @@ export const getQuestionBoxPlots = query({
     return questionBoxPlots;
   },
 });
+
+// Get all students across all assignments for a class
+export const getAllStudentsInClass = query({
+  args: { classId: v.id("classes") },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) return [];
+
+    const classData = await ctx.db.get(args.classId);
+    if (!classData || classData.teacherId !== userId) return [];
+
+    // Get all assignments for this class
+    const assignments = await ctx.db
+      .query("assignments")
+      .withIndex("by_classId", (q) => q.eq("classId", args.classId))
+      .collect();
+
+    const publishedAssignments = assignments.filter((a) => !a.isDraft);
+
+    // Build a map of student name -> assignment performances
+    const studentMap = new Map<
+      string,
+      {
+        name: string;
+        assignments: Array<{
+          assignmentId: Id<"assignments">;
+          assignmentName: string;
+          sessionId: Id<"studentSessions">;
+          questionsCompleted: number;
+          totalQuestions: number;
+          completionRate: number;
+          avgMessages: number;
+          totalTimeMs: number;
+          lastActiveAt: number;
+        }>;
+        totalQuestionsCompleted: number;
+        totalQuestions: number;
+        overallCompletionRate: number;
+        lastActiveAt: number;
+      }
+    >();
+
+    for (const assignment of publishedAssignments) {
+      // Get questions count
+      const questions = await ctx.db
+        .query("questions")
+        .withIndex("by_assignmentId", (q) => q.eq("assignmentId", assignment._id))
+        .filter((q) => q.eq(q.field("status"), "approved"))
+        .collect();
+      const totalQuestions = questions.length;
+      if (totalQuestions === 0) continue;
+
+      // Get all sessions for this assignment
+      const sessions = await ctx.db
+        .query("studentSessions")
+        .withIndex("by_assignmentId", (q) => q.eq("assignmentId", assignment._id))
+        .collect();
+
+      for (const session of sessions) {
+        // Get progress
+        const progress = await ctx.db
+          .query("studentProgress")
+          .withIndex("by_sessionId", (q) => q.eq("sessionId", session._id))
+          .collect();
+
+        // Get messages
+        const messages = await ctx.db
+          .query("chatMessages")
+          .withIndex("by_sessionId", (q) => q.eq("sessionId", session._id))
+          .filter((q) => q.eq(q.field("role"), "student"))
+          .collect();
+
+        const questionsCompleted = progress.filter((p) => p.status === "correct").length;
+        const totalTimeMs = progress.reduce((sum, p) => sum + (p.timeSpentMs ?? 0), 0);
+        const avgMessages = progress.length > 0 ? messages.length / progress.length : 0;
+
+        const assignmentPerf = {
+          assignmentId: assignment._id,
+          assignmentName: assignment.name,
+          sessionId: session._id,
+          questionsCompleted,
+          totalQuestions,
+          completionRate: totalQuestions > 0 ? questionsCompleted / totalQuestions : 0,
+          avgMessages,
+          totalTimeMs,
+          lastActiveAt: session.lastActiveAt,
+        };
+
+        const existing = studentMap.get(session.name);
+        if (existing) {
+          existing.assignments.push(assignmentPerf);
+          existing.totalQuestionsCompleted += questionsCompleted;
+          existing.totalQuestions += totalQuestions;
+          existing.overallCompletionRate =
+            existing.totalQuestions > 0
+              ? existing.totalQuestionsCompleted / existing.totalQuestions
+              : 0;
+          existing.lastActiveAt = Math.max(existing.lastActiveAt, session.lastActiveAt);
+        } else {
+          studentMap.set(session.name, {
+            name: session.name,
+            assignments: [assignmentPerf],
+            totalQuestionsCompleted: questionsCompleted,
+            totalQuestions,
+            overallCompletionRate: totalQuestions > 0 ? questionsCompleted / totalQuestions : 0,
+            lastActiveAt: session.lastActiveAt,
+          });
+        }
+      }
+    }
+
+    // Convert to array and sort by last active
+    const students = Array.from(studentMap.values()).sort(
+      (a, b) => b.lastActiveAt - a.lastActiveAt
+    );
+
+    return students;
+  },
+});
