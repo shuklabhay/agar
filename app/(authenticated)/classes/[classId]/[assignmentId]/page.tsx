@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import { useQuery } from "convex/react";
+import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
@@ -18,10 +18,14 @@ import {
   ExternalLink,
   FileIcon,
   Info,
+  CheckCheck,
+  Loader2,
 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { useState } from "react";
+import { QuestionReviewCard } from "@/components/question-review-card";
+import { EditAnswerDialog } from "@/components/edit-answer-dialog";
 
 export default function AssignmentDetailPage() {
   const params = useParams();
@@ -30,8 +34,25 @@ export default function AssignmentDetailPage() {
 
   const classData = useQuery(api.classes.getClass, { classId });
   const assignment = useQuery(api.assignments.getAssignment, { assignmentId });
+  const questions = useQuery(api.questions.listQuestions, { assignmentId });
+
+  const approveAllNotesQuestions = useMutation(api.questions.approveAllNotesQuestions);
 
   const [copied, setCopied] = useState(false);
+  const [editingQuestion, setEditingQuestion] = useState<typeof questions extends (infer T)[] | undefined ? T | null : null>(null);
+  const [isApprovingAll, setIsApprovingAll] = useState(false);
+
+  const handleApproveAll = async () => {
+    setIsApprovingAll(true);
+    try {
+      const result = await approveAllNotesQuestions({ assignmentId });
+      toast.success(`Approved ${result.approved} questions`);
+    } catch (error) {
+      toast.error("Failed to approve questions");
+    } finally {
+      setIsApprovingAll(false);
+    }
+  };
 
   const studentLink =
     typeof window !== "undefined"
@@ -278,6 +299,69 @@ export default function AssignmentDetailPage() {
           </CardContent>
         </Card>
       )}
+
+      {/* Questions Review Section */}
+      {questions && questions.length > 0 && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-semibold">
+              Questions ({questions.length})
+            </h2>
+            <div className="flex items-center gap-2">
+              {/* Count ready notes-sourced questions */}
+              {(() => {
+                const readyNotesCount = questions.filter(
+                  (q) => q.status === "ready" && q.source === "notes"
+                ).length;
+                const approvedCount = questions.filter(
+                  (q) => q.status === "approved"
+                ).length;
+                return (
+                  <>
+                    <span className="text-sm text-muted-foreground">
+                      {approvedCount}/{questions.length} approved
+                    </span>
+                    {readyNotesCount > 0 && (
+                      <Button
+                        size="sm"
+                        onClick={handleApproveAll}
+                        disabled={isApprovingAll}
+                      >
+                        {isApprovingAll ? (
+                          <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                        ) : (
+                          <CheckCheck className="h-4 w-4 mr-1" />
+                        )}
+                        Approve All Notes ({readyNotesCount})
+                      </Button>
+                    )}
+                  </>
+                );
+              })()}
+            </div>
+          </div>
+
+          {/* Questions list */}
+          <div className="space-y-3">
+            {questions
+              .sort((a, b) => a.questionNumber - b.questionNumber)
+              .map((question) => (
+                <QuestionReviewCard
+                  key={question._id}
+                  question={question}
+                  onEdit={(q) => setEditingQuestion(q)}
+                />
+              ))}
+          </div>
+        </div>
+      )}
+
+      {/* Edit Answer Dialog */}
+      <EditAnswerDialog
+        question={editingQuestion}
+        open={editingQuestion !== null}
+        onOpenChange={(open) => !open && setEditingQuestion(null)}
+      />
     </div>
   );
 }

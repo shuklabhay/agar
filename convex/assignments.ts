@@ -438,3 +438,45 @@ export const listAssignments = query({
     }));
   },
 });
+
+export const deleteAssignment = mutation({
+  args: { assignmentId: v.id("assignments") },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("Not authenticated");
+    }
+
+    const assignment = await ctx.db.get(args.assignmentId);
+    if (!assignment) {
+      throw new Error("Assignment not found");
+    }
+
+    // Verify the class belongs to the user
+    const classDoc = await ctx.db.get(assignment.classId);
+    if (!classDoc || classDoc.teacherId !== userId) {
+      throw new Error("Access denied");
+    }
+
+    // Delete all questions for this assignment
+    const questions = await ctx.db
+      .query("questions")
+      .withIndex("by_assignmentId", (q) => q.eq("assignmentId", args.assignmentId))
+      .collect();
+
+    for (const question of questions) {
+      await ctx.db.delete(question._id);
+    }
+
+    // Delete all storage files
+    for (const file of [...assignment.assignmentFiles, ...assignment.notesFiles]) {
+      await ctx.storage.delete(file.storageId);
+    }
+
+    // Delete the assignment
+    await ctx.db.delete(args.assignmentId);
+
+    return null;
+  },
+});

@@ -1,26 +1,57 @@
 "use client";
 
+import { useState } from "react";
 import { useParams } from "next/navigation";
-import { useQuery } from "convex/react";
+import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
   BookOpen,
   ArrowLeft,
   Plus,
   FileText,
-  ChevronRight,
+  Trash2,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import Link from "next/link";
+import { toast } from "sonner";
 
 export default function ClassDetailPage() {
   const params = useParams();
   const classId = params.classId as Id<"classes">;
   const classData = useQuery(api.classes.getClass, { classId });
   const assignments = useQuery(api.assignments.listAssignments, { classId });
+  const deleteAssignment = useMutation(api.assignments.deleteAssignment);
+
+  const [deleteTarget, setDeleteTarget] = useState<{ id: Id<"assignments">; name: string } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setIsDeleting(true);
+    try {
+      await deleteAssignment({ assignmentId: deleteTarget.id });
+      toast.success(`"${deleteTarget.name}" deleted`);
+      setDeleteTarget(null);
+    } catch {
+      toast.error("Failed to delete assignment");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   if (classData === undefined || assignments === undefined) {
     return (
@@ -108,50 +139,91 @@ export default function ClassDetailPage() {
         ) : (
           <div className="grid gap-3">
             {assignments.map((assignment) => (
-              <Link
-                key={assignment._id}
-                href={
-                  assignment.isDraft
-                    ? `/classes/${classId}/new-assignment`
-                    : `/classes/${classId}/${assignment._id}`
-                }
-                className="group"
-              >
-                <Card
-                  className={`transition-all hover:shadow-md hover:border-primary/50 group-hover:bg-muted/30 ${
-                    assignment.isDraft ? "border-dashed border-2" : ""
-                  }`}
+              <div key={assignment._id} className="group relative">
+                <Link
+                  href={
+                    assignment.isDraft
+                      ? `/classes/${classId}/new-assignment`
+                      : `/classes/${classId}/${assignment._id}`
+                  }
                 >
-                  <CardContent className="flex items-center gap-3 p-3">
-                    <div className="rounded-lg bg-muted p-2">
-                      <FileText className="h-5 w-5 text-muted-foreground" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-semibold group-hover:text-primary transition-colors truncate">
-                          {assignment.name}
-                        </h3>
-                        {assignment.isDraft && (
-                          <Badge variant="outline" className="text-xs">
-                            Draft
-                          </Badge>
-                        )}
+                  <Card
+                    className={`transition-all hover:shadow-md hover:border-primary/50 group-hover:bg-muted/30 ${
+                      assignment.isDraft ? "border-dashed border-2" : ""
+                    }`}
+                  >
+                    <CardContent className="flex items-center gap-3 p-3 pr-12">
+                      <div className="rounded-lg bg-muted p-2">
+                        <FileText className="h-5 w-5 text-muted-foreground" />
                       </div>
-                      <p className="text-sm text-muted-foreground">
-                        {assignment.assignmentFilesCount} assignment file
-                        {assignment.assignmentFilesCount !== 1 ? "s" : ""},{" "}
-                        {assignment.notesFilesCount} note
-                        {assignment.notesFilesCount !== 1 ? "s" : ""}
-                      </p>
-                    </div>
-                    <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
-                  </CardContent>
-                </Card>
-              </Link>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-semibold group-hover:text-primary transition-colors truncate">
+                            {assignment.name}
+                          </h3>
+                          {assignment.isDraft && (
+                            <Badge variant="outline" className="text-xs">
+                              Draft
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          {assignment.assignmentFilesCount} assignment file
+                          {assignment.assignmentFilesCount !== 1 ? "s" : ""},{" "}
+                          {assignment.notesFilesCount} note
+                          {assignment.notesFilesCount !== 1 ? "s" : ""}
+                        </p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </Link>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-2 top-2 h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setDeleteTarget({ id: assignment._id, name: assignment.name });
+                  }}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
             ))}
           </div>
         )}
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Assignment</AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <span className="block">Are you sure you want to delete &quot;{deleteTarget?.name}&quot;?</span>
+              <span className="block">This will permanently delete all files, questions, and answers. This action cannot be undone.</span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Deleting...
+                </>
+              ) : (
+                "Delete"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

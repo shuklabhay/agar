@@ -2,7 +2,7 @@
 
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation, useQuery, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
@@ -77,8 +77,10 @@ export default function NewAssignmentPage() {
   const deleteFile = useMutation(api.assignments.deleteFile);
   const createAssignment = useMutation(api.assignments.createAssignment);
   const saveDraft = useMutation(api.assignments.saveDraft);
+  const processAssignment = useAction(api.processAssignment.processAssignment);
 
   const [name, setName] = useState("");
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [additionalInfo, setAdditionalInfo] = useState("");
   const [assignmentFiles, setAssignmentFiles] = useState<UploadedFile[]>([]);
   const [notesFiles, setNotesFiles] = useState<UploadedFile[]>([]);
@@ -443,19 +445,32 @@ export default function NewAssignmentPage() {
     [handleFileUpload],
   );
 
-  const handleCreateAssignment = async (e: React.FormEvent) => {
+  const handleShowConfirmation = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) {
       toast.error("Please enter an assignment name");
       return;
     }
+    if (assignmentFiles.length === 0) {
+      toast.error("Please upload at least one assignment file");
+      return;
+    }
+    if (notesFiles.length === 0) {
+      toast.error("Please upload at least one notes file");
+      return;
+    }
+    setShowConfirmDialog(true);
+  };
 
+  const handleCreateAssignment = async () => {
     // Cancel any pending draft save
     if (saveDraftTimeoutRef.current) {
       clearTimeout(saveDraftTimeoutRef.current);
     }
 
     setIsCreating(true);
+    setShowConfirmDialog(false);
+
     try {
       const assignmentId = await createAssignment({
         classId,
@@ -475,7 +490,18 @@ export default function NewAssignmentPage() {
         additionalInfo: additionalInfo.trim() || undefined,
         draftId: draftId || undefined,
       });
-      toast.success("Assignment created successfully");
+
+      toast.success("Assignment created! Processing questions...");
+
+      // Trigger processing in the background (don't await)
+      processAssignment({ assignmentId }).then((result) => {
+        if (result.success) {
+          toast.success(`Processed ${result.questionsExtracted} questions with ${result.answersGenerated} answers`);
+        } else {
+          toast.error(`Processing failed: ${result.error}`);
+        }
+      });
+
       router.push(`/classes/${classId}/${assignmentId}`);
     } catch {
       toast.error("Failed to create assignment");
@@ -699,7 +725,7 @@ export default function NewAssignmentPage() {
         </div>
       </div>
 
-      <form onSubmit={handleCreateAssignment} className="space-y-6">
+      <form onSubmit={handleShowConfirmation} className="space-y-6">
         {/* Assignment Name */}
         <div className="space-y-2">
           <Label htmlFor="name">Assignment Name</Label>
@@ -861,6 +887,81 @@ export default function NewAssignmentPage() {
               )}
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Confirmation Dialog */}
+      <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Confirm Assignment Creation</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div>
+              <Label className="text-xs text-muted-foreground">Assignment Name</Label>
+              <p className="font-medium">{name}</p>
+            </div>
+
+            <div>
+              <Label className="text-xs text-muted-foreground">
+                Assignment Files ({assignmentFiles.length})
+              </Label>
+              <div className="mt-1 space-y-1">
+                {assignmentFiles.map((f) => (
+                  <div key={f.id} className="flex items-center gap-2 text-sm">
+                    {getFileIcon(f.contentType)}
+                    <span className="truncate">{f.fileName}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <Label className="text-xs text-muted-foreground">
+                Notes Files ({notesFiles.length})
+              </Label>
+              <div className="mt-1 space-y-1">
+                {notesFiles.map((f) => (
+                  <div key={f.id} className="flex items-center gap-2 text-sm">
+                    {getFileIcon(f.contentType)}
+                    <span className="truncate">{f.fileName}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {additionalInfo && (
+              <div>
+                <Label className="text-xs text-muted-foreground">Additional Info</Label>
+                <p className="text-sm whitespace-pre-wrap bg-muted/50 rounded p-2 mt-1">
+                  {additionalInfo}
+                </p>
+              </div>
+            )}
+
+            <div className="bg-blue-50 dark:bg-blue-950/30 rounded-lg p-3 text-sm">
+              <p className="text-blue-800 dark:text-blue-200">
+                After creating, the system will automatically extract questions and generate answers using AI. This may take a few minutes.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 mt-4">
+            <Button variant="outline" onClick={() => setShowConfirmDialog(false)}>
+              Go Back
+            </Button>
+            <Button onClick={handleCreateAssignment} disabled={isCreating}>
+              {isCreating ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Creating...
+                </>
+              ) : (
+                "Create Assignment"
+              )}
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

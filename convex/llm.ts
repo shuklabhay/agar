@@ -2,18 +2,10 @@
 
 import { GoogleGenAI, Part } from "@google/genai";
 
-// ============================================================================
-// CONFIG
-// ============================================================================
-
 const MODELS = {
-  extraction: "gemini-2.5-flash-lite",
-  answerGeneration: "gemini-2.0-flash",
+  extraction: "gemini-2.0-flash-lite",
+  answerGeneration: "gemini-3.0-flash",
 } as const;
-
-// ============================================================================
-// HELPERS
-// ============================================================================
 
 export async function fetchFileAsBase64(
   url: string,
@@ -39,10 +31,6 @@ function cleanJsonResponse(text: string): string {
     .replace(/```\n?/g, "")
     .trim();
 }
-
-// ============================================================================
-// QUESTION EXTRACTION
-// ============================================================================
 
 const EXTRACTION_PROMPT = `You are extracting questions from an assignment document for a tutoring system.
 
@@ -108,10 +96,6 @@ export async function extractQuestionsFromFiles(
   return JSON.parse(cleaned) as ExtractedQuestion[];
 }
 
-// ============================================================================
-// ANSWER GENERATION (with Google Search Grounding)
-// ============================================================================
-
 const ANSWER_PROMPT = `You are generating answers for a tutoring system. You have access to the teacher's notes AND Google Search.
 
 QUESTION #{questionNumber}: {questionText}
@@ -151,7 +135,10 @@ export async function generateAnswerForQuestion(
   notesParts: Part[],
   client: GoogleGenAI,
 ): Promise<GeneratedAnswer> {
-  const prompt = ANSWER_PROMPT.replace("{questionNumber}", String(questionNumber))
+  const prompt = ANSWER_PROMPT.replace(
+    "{questionNumber}",
+    String(questionNumber),
+  )
     .replace("{questionText}", questionText)
     .replace("{questionType}", questionType)
     .replace("{teacherInfo}", teacherInfo || "None");

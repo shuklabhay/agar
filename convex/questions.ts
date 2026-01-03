@@ -191,3 +191,143 @@ export const deleteQuestionsForAssignment = internalMutation({
     return questions.length;
   },
 });
+
+// ============================================================================
+// PUBLIC MUTATIONS FOR TEACHER REVIEW
+// ============================================================================
+
+// Helper to verify question ownership
+async function verifyQuestionOwnership(
+  ctx: { db: { get: (id: Id<"questions"> | Id<"assignments"> | Id<"classes">) => Promise<unknown> } },
+  questionId: Id<"questions">,
+  userId: Id<"users">,
+): Promise<boolean> {
+  const question = await ctx.db.get(questionId);
+  if (!question) return false;
+
+  const assignment = await ctx.db.get((question as { assignmentId: Id<"assignments"> }).assignmentId);
+  if (!assignment) return false;
+
+  const classDoc = await ctx.db.get((assignment as { classId: Id<"classes"> }).classId);
+  if (!classDoc) return false;
+
+  return (classDoc as { teacherId: Id<"users"> }).teacherId === userId;
+}
+
+// Approve a single question
+export const approveQuestion = mutation({
+  args: { questionId: v.id("questions") },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Not authenticated");
+
+    const question = await ctx.db.get(args.questionId);
+    if (!question) throw new Error("Question not found");
+
+    const assignment = await ctx.db.get(question.assignmentId);
+    if (!assignment) throw new Error("Assignment not found");
+
+    const classDoc = await ctx.db.get(assignment.classId);
+    if (!classDoc || classDoc.teacherId !== userId) {
+      throw new Error("Not authorized");
+    }
+
+    await ctx.db.patch(args.questionId, { status: "approved" });
+  },
+});
+
+// Approve all notes-sourced ready questions for an assignment
+export const approveAllNotesQuestions = mutation({
+  args: { assignmentId: v.id("assignments") },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Not authenticated");
+
+    const assignment = await ctx.db.get(args.assignmentId);
+    if (!assignment) throw new Error("Assignment not found");
+
+    const classDoc = await ctx.db.get(assignment.classId);
+    if (!classDoc || classDoc.teacherId !== userId) {
+      throw new Error("Not authorized");
+    }
+
+    const questions = await ctx.db
+      .query("questions")
+      .withIndex("by_assignmentId", (q) => q.eq("assignmentId", args.assignmentId))
+      .collect();
+
+    let approved = 0;
+    for (const q of questions) {
+      // Only approve ready questions with source="notes"
+      if (q.status === "ready" && q.source === "notes") {
+        await ctx.db.patch(q._id, { status: "approved" });
+        approved++;
+      }
+    }
+
+    return { approved };
+  },
+});
+
+// Edit a question's answer (teacher override)
+export const editQuestionAnswer = mutation({
+  args: {
+    questionId: v.id("questions"),
+    answer: v.union(v.string(), v.array(v.string())),
+    snippets: v.optional(v.array(v.string())),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Not authenticated");
+
+    const question = await ctx.db.get(args.questionId);
+    if (!question) throw new Error("Question not found");
+
+    const assignment = await ctx.db.get(question.assignmentId);
+    if (!assignment) throw new Error("Assignment not found");
+
+    const classDoc = await ctx.db.get(assignment.classId);
+    if (!classDoc || classDoc.teacherId !== userId) {
+      throw new Error("Not authorized");
+    }
+
+    const update: { answer: string | string[]; snippets?: string[] } = {
+      answer: args.answer,
+    };
+    if (args.snippets !== undefined) {
+      update.snippets = args.snippets;
+    }
+
+    await ctx.db.patch(args.questionId, update);
+  },
+});
+
+// Remove/delete a question
+export const removeQuestion = mutation({
+  args: { questionId: v.id("questions") },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Not authenticated");
+
+    const question = await ctx.db.get(args.questionId);
+    if (!question) throw new Error("Question not found");
+
+    const assignment = await ctx.db.get(question.assignmentId);
+    if (!assignment) throw new Error("Assignment not found");
+
+    const classDoc = await ctx.db.get(assignment.classId);
+    if (!classDoc || classDoc.teacherId !== userId) {
+      throw new Error("Not authorized");
+    }
+
+    await ctx.db.delete(args.questionId);
+  },
+});
+
+// Get a single question by ID (for regeneration)
+export const getQuestion = internalQuery({
+  args: { questionId: v.id("questions") },
+  handler: async (ctx, args) => {
+    return await ctx.db.get(args.questionId);
+  },
+});
