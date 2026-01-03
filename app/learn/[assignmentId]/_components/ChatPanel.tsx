@@ -6,7 +6,7 @@ import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Send, Bot, Loader2, Paperclip, X, FileText, Image as ImageIcon } from "lucide-react";
+import { Send, Loader2, Paperclip, X, FileText, Image as ImageIcon } from "lucide-react";
 import { ChatMessage } from "./ChatMessage";
 
 interface Question {
@@ -44,9 +44,12 @@ export function ChatPanel({ sessionId, questionId, question, questions }: ChatPa
 
   const sendMessage = useAction(api.chat.sendMessageToTutor);
 
-  // Scroll to bottom on new messages
+  // Scroll to bottom on new messages with slight delay for smoother feel
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    const timer = setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, 150);
+    return () => clearTimeout(timer);
   }, [chatHistory]);
 
   // Auto-resize textarea
@@ -130,8 +133,16 @@ export function ChatPanel({ sessionId, questionId, question, questions }: ChatPa
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {chatHistory?.map((msg, index) => {
           const prevMsg = index > 0 ? chatHistory[index - 1] : null;
+          const nextMsg = index < chatHistory.length - 1 ? chatHistory[index + 1] : null;
           const showDivider = prevMsg && prevMsg.questionId !== msg.questionId;
           const questionNum = getQuestionNumber(msg.questionId);
+
+          // Show Rio only on the last tutor message
+          const isLastTutorMessage = msg.role === "tutor" &&
+            !chatHistory.slice(index + 1).some(m => m.role === "tutor");
+
+          // Check if this is the last message from this sender (next message is different role or doesn't exist)
+          const isLastFromSender = !nextMsg || nextMsg.role !== msg.role;
 
           return (
             <div key={msg._id}>
@@ -144,7 +155,12 @@ export function ChatPanel({ sessionId, questionId, question, questions }: ChatPa
                   <div className="flex-1 h-px bg-border" />
                 </div>
               )}
-              <ChatMessage message={msg} />
+              <ChatMessage
+                message={msg}
+                showRio={isLastTutorMessage}
+                isLastFromSender={isLastFromSender}
+                isSending={isSending}
+              />
             </div>
           );
         })}
@@ -163,21 +179,6 @@ export function ChatPanel({ sessionId, questionId, question, questions }: ChatPa
           </div>
         )}
 
-        {/* Typing indicator */}
-        {isSending && (
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
-              <Bot className="h-4 w-4 text-muted-foreground" />
-            </div>
-            <div className="bg-muted rounded-2xl rounded-bl-sm px-4 py-2.5">
-              <div className="flex items-center gap-1">
-                <span className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
-                <span className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
-                <span className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
-              </div>
-            </div>
-          </div>
-        )}
 
         <div ref={messagesEndRef} />
       </div>

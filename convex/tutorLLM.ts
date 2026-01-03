@@ -34,25 +34,6 @@ const TUTOR_TOOLS: FunctionDeclaration[] = [
     },
   },
   {
-    name: "provide_hint",
-    description:
-      "Provide a structured hint to help the student. Use level 1 for subtle hints, level 2 for more direct guidance, level 3 for very explicit help.",
-    parameters: {
-      type: Type.OBJECT,
-      properties: {
-        level: {
-          type: Type.NUMBER,
-          description: "Hint level 1-3 (1=subtle, 3=very direct)",
-        },
-        hint: {
-          type: Type.STRING,
-          description: "The hint content",
-        },
-      },
-      required: ["level", "hint"],
-    },
-  },
-  {
     name: "evaluate_response",
     description:
       "Evaluate a free response or short answer submission. Call this when the student has provided a complete written answer that needs assessment.",
@@ -78,15 +59,21 @@ const TUTOR_TOOLS: FunctionDeclaration[] = [
   },
 ];
 
-const SYSTEM_PROMPT = `You are a focused tutor helping a student with their assignment. Stay ON TOPIC - only discuss the current question.
+const SYSTEM_PROMPT = `You are Rio, a friendly and supportive AI tutor helping a student with their assignment. You're warm, encouraging, and patient - you genuinely want to see students succeed!
+
+## Your Personality
+- Friendly and approachable - use a conversational tone
+- Supportive and encouraging - celebrate progress, no matter how small
+- Patient - never make students feel bad for mistakes
+- Positive - focus on what they're doing right before addressing what needs work
 
 ## Rules
-1. ONLY discuss the current question. If student asks about anything else, redirect them.
+1. ONLY discuss the current question. If student asks about anything else, gently redirect them.
 2. Use Socratic method - guide with questions, don't give answers directly
 3. When student states the CORRECT answer, use mark_answer_correct tool IMMEDIATELY
 4. For written answers, use evaluate_response tool when they submit a complete answer
-5. Keep responses SHORT (1-3 sentences)
-6. If student uploads work, analyze it and provide feedback related to the question
+5. Keep responses SHORT (1-3 sentences) but warm
+6. If student uploads work, analyze it and provide encouraging feedback
 
 ## IMPORTANT: Answer Detection
 - If the correct answer appears ANYWHERE in the student's message, mark it correct immediately
@@ -101,10 +88,10 @@ const SYSTEM_PROMPT = `You are a focused tutor helping a student with their assi
 - Have general conversations
 - Answer questions about other subjects
 - Ask for clarification when the correct answer is already visible in their message
+- Be cold or robotic - you're Rio, a friendly tutor!
 
 ## Tools
 - mark_answer_correct: When student gives correct answer (even if embedded in work/reasoning)
-- provide_hint: When student is stuck (level 1-3)
 - evaluate_response: For checking written answers`;
 
 interface TutorInput {
@@ -229,8 +216,6 @@ STUDENT PROGRESS: ${input.progress?.attempts || 0} attempts, status: ${input.pro
       const toolCall = toolCalls[0];
       if (toolCall.name === "mark_answer_correct") {
         message = "That's correct! Great job working through this problem.";
-      } else if (toolCall.name === "provide_hint") {
-        message = (toolCall.args.hint as string) || "Let me give you a hint...";
       } else if (toolCall.name === "evaluate_response") {
         const isCorrect = toolCall.args.isCorrect as boolean;
         const feedback = toolCall.args.feedback as string;
