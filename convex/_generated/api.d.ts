@@ -12,7 +12,10 @@ import type * as assignments from "../assignments.js";
 import type * as auth from "../auth.js";
 import type * as classes from "../classes.js";
 import type * as http from "../http.js";
+import type * as llm from "../llm.js";
 import type * as myFunctions from "../myFunctions.js";
+import type * as questionExtraction from "../questionExtraction.js";
+import type * as questions from "../questions.js";
 
 import type {
   ApiFromModules,
@@ -25,7 +28,10 @@ declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   classes: typeof classes;
   http: typeof http;
+  llm: typeof llm;
   myFunctions: typeof myFunctions;
+  questionExtraction: typeof questionExtraction;
+  questions: typeof questions;
 }>;
 
 /**
