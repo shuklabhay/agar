@@ -51,7 +51,13 @@ export const initializeProgress = mutation({
       )
       .first();
 
-    if (existing) return existing._id;
+    if (existing) {
+      // If returning to this question, start tracking time again
+      if (!existing.lastViewedAt) {
+        await ctx.db.patch(existing._id, { lastViewedAt: Date.now() });
+      }
+      return existing._id;
+    }
 
     // Create new progress entry
     return await ctx.db.insert("studentProgress", {
@@ -59,7 +65,56 @@ export const initializeProgress = mutation({
       questionId: args.questionId,
       status: "not_started",
       attempts: 0,
+      timeSpentMs: 0,
+      lastViewedAt: Date.now(),
     });
+  },
+});
+
+// PUBLIC: Record time spent when leaving a question
+export const recordTimeSpent = mutation({
+  args: {
+    sessionId: v.id("studentSessions"),
+    questionId: v.id("questions"),
+  },
+  handler: async (ctx, args) => {
+    const progress = await ctx.db
+      .query("studentProgress")
+      .withIndex("by_sessionId_questionId", (q) =>
+        q.eq("sessionId", args.sessionId).eq("questionId", args.questionId)
+      )
+      .first();
+
+    if (!progress || !progress.lastViewedAt) return;
+
+    const now = Date.now();
+    const timeOnThisView = now - progress.lastViewedAt;
+    const totalTime = (progress.timeSpentMs ?? 0) + timeOnThisView;
+
+    await ctx.db.patch(progress._id, {
+      timeSpentMs: totalTime,
+      lastViewedAt: undefined, // Clear until they view again
+    });
+  },
+});
+
+// PUBLIC: Restart time tracking (when returning to the page/tab)
+export const restartTimeTracking = mutation({
+  args: {
+    sessionId: v.id("studentSessions"),
+    questionId: v.id("questions"),
+  },
+  handler: async (ctx, args) => {
+    const progress = await ctx.db
+      .query("studentProgress")
+      .withIndex("by_sessionId_questionId", (q) =>
+        q.eq("sessionId", args.sessionId).eq("questionId", args.questionId)
+      )
+      .first();
+
+    if (progress && !progress.lastViewedAt) {
+      await ctx.db.patch(progress._id, { lastViewedAt: Date.now() });
+    }
   },
 });
 

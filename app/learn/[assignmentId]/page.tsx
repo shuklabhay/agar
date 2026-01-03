@@ -87,6 +87,8 @@ export default function LearnPage() {
   const startSession = useMutation(api.studentSessions.startSession);
   const resumeSession = useMutation(api.studentSessions.resumeSession);
   const updateLastQuestionIndex = useMutation(api.studentSessions.updateLastQuestionIndex);
+  const recordTimeSpent = useMutation(api.studentProgress.recordTimeSpent);
+  const restartTimeTracking = useMutation(api.studentProgress.restartTimeTracking);
 
   // Check for existing session cookie on mount
   useEffect(() => {
@@ -98,6 +100,9 @@ export default function LearnPage() {
 
   // Track if we've restored the question index
   const hasRestoredIndex = useRef(false);
+
+  // Track previous question for time recording
+  const previousQuestionId = useRef<Id<"questions"> | null>(null);
 
   // Sync session from query result
   useEffect(() => {
@@ -126,6 +131,54 @@ export default function LearnPage() {
       updateLastQuestionIndex({ sessionId, questionIndex: currentQuestionIndex });
     }
   }, [sessionId, currentQuestionIndex, updateLastQuestionIndex]);
+
+  // Record time spent when switching questions or leaving page
+  useEffect(() => {
+    const currentQId = questions?.[currentQuestionIndex]?._id;
+
+    // Record time for previous question when switching
+    if (sessionId && previousQuestionId.current && previousQuestionId.current !== currentQId) {
+      recordTimeSpent({ sessionId, questionId: previousQuestionId.current });
+    }
+
+    // Update ref to current question
+    previousQuestionId.current = currentQId ?? null;
+  }, [sessionId, currentQuestionIndex, questions, recordTimeSpent]);
+
+  // Record time when leaving the page or switching tabs
+  useEffect(() => {
+    const recordCurrentTime = () => {
+      if (sessionId && previousQuestionId.current) {
+        const payload = JSON.stringify({
+          sessionId,
+          questionId: previousQuestionId.current,
+        });
+        // Convex HTTP endpoint URL
+        const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL?.replace(".cloud", ".site");
+        if (convexUrl) {
+          navigator.sendBeacon(`${convexUrl}/record-time`, payload);
+        }
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden") {
+        // Tab hidden - record time spent
+        recordCurrentTime();
+      } else if (document.visibilityState === "visible" && sessionId && previousQuestionId.current) {
+        // Tab visible again - restart time tracking
+        restartTimeTracking({ sessionId, questionId: previousQuestionId.current });
+      }
+    };
+
+    window.addEventListener("beforeunload", recordCurrentTime);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener("beforeunload", recordCurrentTime);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [sessionId, restartTimeTracking]);
 
   // Handle starting a new session
   const handleStartNew = async (name: string) => {

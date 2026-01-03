@@ -23,11 +23,13 @@ const TUTOR_TOOLS: FunctionDeclaration[] = [
       properties: {
         reasoning: {
           type: Type.STRING,
-          description: "Brief explanation of why the answer is being marked correct",
+          description:
+            "Brief explanation of why the answer is being marked correct",
         },
         detectedAnswer: {
           type: Type.STRING,
-          description: "The answer the student provided (letter for MCQ, number for numerical)",
+          description:
+            "The answer the student provided (letter for MCQ, number for numerical)",
         },
       },
       required: ["reasoning", "detectedAnswer"],
@@ -88,7 +90,7 @@ const SYSTEM_PROMPT = `You are Rio, a friendly and supportive AI tutor helping a
 - Have general conversations
 - Answer questions about other subjects
 - Ask for clarification when the correct answer is already visible in their message
-- Be cold or robotic - you're Rio, a friendly tutor!
+- Be cold or robotic - you're Rio, a friendly tutor, but not overly so. Make sure you maintain a balance!
 
 ## Tools
 - mark_answer_correct: When student gives correct answer (even if embedded in work/reasoning)
@@ -139,7 +141,8 @@ STUDENT PROGRESS: ${input.progress?.attempts || 0} attempts, status: ${input.pro
   const fullContext = `${SYSTEM_PROMPT}\n\n${questionContext}`;
 
   // Build file parts if files are provided
-  const fileParts: Array<{ inlineData: { data: string; mimeType: string } }> = [];
+  const fileParts: Array<{ inlineData: { data: string; mimeType: string } }> =
+    [];
   if (input.files && input.files.length > 0) {
     for (const file of input.files) {
       // Extract base64 data from data URL
@@ -168,10 +171,15 @@ STUDENT PROGRESS: ${input.progress?.attempts || 0} attempts, status: ${input.pro
   } else {
     // Prepend context to the first message in history
     const historyWithContext = [...conversationHistory];
-    if (historyWithContext.length > 0 && historyWithContext[0].role === "user") {
+    if (
+      historyWithContext.length > 0 &&
+      historyWithContext[0].role === "user"
+    ) {
       historyWithContext[0] = {
         ...historyWithContext[0],
-        parts: [{ text: `${fullContext}\n\n${historyWithContext[0].parts[0].text}` }],
+        parts: [
+          { text: `${fullContext}\n\n${historyWithContext[0].parts[0].text}` },
+        ],
       };
     }
     messages = [
@@ -197,7 +205,8 @@ STUDENT PROGRESS: ${input.progress?.attempts || 0} attempts, status: ${input.pro
     const parts = candidate?.content?.parts || [];
 
     let message = "";
-    const toolCalls: Array<{ name: string; args: Record<string, unknown> }> = [];
+    const toolCalls: Array<{ name: string; args: Record<string, unknown> }> =
+      [];
 
     for (const part of parts) {
       if (part.text) {
@@ -219,14 +228,14 @@ STUDENT PROGRESS: ${input.progress?.attempts || 0} attempts, status: ${input.pro
       } else if (toolCall.name === "evaluate_response") {
         const isCorrect = toolCall.args.isCorrect as boolean;
         const feedback = toolCall.args.feedback as string;
-        message = isCorrect
-          ? `Excellent! ${feedback}`
-          : `${feedback}`;
+        message = isCorrect ? `Excellent! ${feedback}` : `${feedback}`;
       }
     }
 
     return {
-      message: message || "I'm here to help! What would you like to know about this question?",
+      message:
+        message ||
+        "I'm here to help! What would you like to know about this question?",
       toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
     };
   } catch (error) {

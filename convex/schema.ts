@@ -100,6 +100,9 @@ export default defineSchema({
     submittedText: v.optional(v.string()),
     attempts: v.number(),
     completedAt: v.optional(v.number()),
+    // Time tracking
+    timeSpentMs: v.optional(v.number()), // Cumulative time spent on question
+    lastViewedAt: v.optional(v.number()), // When current viewing session started
   })
     .index("by_sessionId", ["sessionId"])
     .index("by_sessionId_questionId", ["sessionId", "questionId"]),
