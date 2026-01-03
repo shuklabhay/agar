@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Cookies from "js-cookie";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -49,6 +49,43 @@ function formatTime(ms: number): string {
 const SORT_FIELD_COOKIE = "agar_question_sort_field";
 const SORT_DIR_COOKIE = "agar_question_sort_dir";
 
+// Extracted outside component to avoid recreating on each render
+function SortHeader({
+  field,
+  children,
+  className,
+  sortField,
+  sortDirection,
+  onSort,
+}: {
+  field: QuestionSortField;
+  children: React.ReactNode;
+  className?: string;
+  sortField: QuestionSortField;
+  sortDirection: QuestionSortDirection;
+  onSort: (field: QuestionSortField) => void;
+}) {
+  return (
+    <th
+      className={cn(
+        "px-3 py-2 text-left text-xs font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors select-none",
+        className
+      )}
+      onClick={() => onSort(field)}
+    >
+      <div className="flex items-center gap-1">
+        {children}
+        {sortField === field &&
+          (sortDirection === "asc" ? (
+            <ArrowUp className="h-3 w-3" />
+          ) : (
+            <ArrowDown className="h-3 w-3" />
+          ))}
+      </div>
+    </th>
+  );
+}
+
 export function QuestionDifficultyTable({
   questions,
   struggleQuestionIds = [],
@@ -56,16 +93,15 @@ export function QuestionDifficultyTable({
   sortDirection: externalSortDirection,
   onSortChange,
 }: QuestionDifficultyTableProps) {
-  const [internalSortField, setInternalSortField] = useState<QuestionSortField>("questionNumber");
-  const [internalSortDirection, setInternalSortDirection] = useState<QuestionSortDirection>("asc");
-
-  // Load from cookies on mount
-  useEffect(() => {
-    const savedField = Cookies.get(SORT_FIELD_COOKIE) as QuestionSortField | undefined;
-    const savedDir = Cookies.get(SORT_DIR_COOKIE) as QuestionSortDirection | undefined;
-    if (savedField) setInternalSortField(savedField);
-    if (savedDir) setInternalSortDirection(savedDir);
-  }, []);
+  // Load from cookies via lazy initialization
+  const [internalSortField, setInternalSortField] = useState<QuestionSortField>(() => {
+    if (typeof window === "undefined") return "questionNumber";
+    return (Cookies.get(SORT_FIELD_COOKIE) as QuestionSortField) || "questionNumber";
+  });
+  const [internalSortDirection, setInternalSortDirection] = useState<QuestionSortDirection>(() => {
+    if (typeof window === "undefined") return "asc";
+    return (Cookies.get(SORT_DIR_COOKIE) as QuestionSortDirection) || "asc";
+  });
 
   // Use external state if provided, otherwise use internal
   const sortField = externalSortField ?? internalSortField;
@@ -114,34 +150,6 @@ export function QuestionDifficultyTable({
     return sortDirection === "asc" ? comparison : -comparison;
   });
 
-  const SortHeader = ({
-    field,
-    children,
-    className,
-  }: {
-    field: QuestionSortField;
-    children: React.ReactNode;
-    className?: string;
-  }) => (
-    <th
-      className={cn(
-        "px-3 py-2 text-left text-xs font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors select-none",
-        className
-      )}
-      onClick={() => handleSort(field)}
-    >
-      <div className="flex items-center gap-1">
-        {children}
-        {sortField === field &&
-          (sortDirection === "asc" ? (
-            <ArrowUp className="h-3 w-3" />
-          ) : (
-            <ArrowDown className="h-3 w-3" />
-          ))}
-      </div>
-    </th>
-  );
-
   if (questions.length === 0) {
     return (
       <Card>
@@ -171,20 +179,20 @@ export function QuestionDifficultyTable({
           <table className="w-full border-collapse">
             <thead className="border-b bg-muted/30">
               <tr>
-                <SortHeader field="questionNumber">Q#</SortHeader>
+                <SortHeader field="questionNumber" sortField={sortField} sortDirection={sortDirection} onSort={handleSort}>Q#</SortHeader>
                 <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground">
                   Question
                 </th>
-                <SortHeader field="successRate" className="text-center">
+                <SortHeader field="successRate" className="text-center" sortField={sortField} sortDirection={sortDirection} onSort={handleSort}>
                   Success Rate
                 </SortHeader>
-                <SortHeader field="avgMessages" className="text-center">
+                <SortHeader field="avgMessages" className="text-center" sortField={sortField} sortDirection={sortDirection} onSort={handleSort}>
                   Avg Messages
                 </SortHeader>
-                <SortHeader field="avgTimeMs" className="text-center">
+                <SortHeader field="avgTimeMs" className="text-center" sortField={sortField} sortDirection={sortDirection} onSort={handleSort}>
                   Avg Time
                 </SortHeader>
-                <SortHeader field="struggleScore" className="text-center">
+                <SortHeader field="struggleScore" className="text-center" sortField={sortField} sortDirection={sortDirection} onSort={handleSort}>
                   Difficulty
                 </SortHeader>
               </tr>

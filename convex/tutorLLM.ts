@@ -61,7 +61,8 @@ const TUTOR_TOOLS: FunctionDeclaration[] = [
   },
 ];
 
-const SYSTEM_PROMPT = `You are Rio, a helpful tutor. Be friendly and encouraging, but concise.
+// System instruction - sent once via config, not in messages
+const SYSTEM_INSTRUCTION = `You are Rio, a helpful tutor. Be friendly and encouraging, but concise.
 
 ## Core Rules
 1. Stay on topic - only discuss the current question
@@ -94,7 +95,7 @@ interface TutorInput {
   history: Array<{ role: string; content: string }>;
   studentMessage: string;
   files?: Array<{ name: string; type: string; data: string }>;
-  progress: { status: string; attempts: number } | null;
+  isFirstMessageForQuestion: boolean;
 }
 
 interface TutorResponse {
@@ -105,7 +106,7 @@ interface TutorResponse {
 export async function callTutorLLM(input: TutorInput): Promise<TutorResponse> {
   const client = getClient();
 
-  // Build context for the tutor
+  // Build question context - only includes snippets on first message for this question
   const questionContext = `
 QUESTION: ${input.question.questionText}
 TYPE: ${input.question.questionType}
@@ -113,19 +114,14 @@ ${input.question.options ? `OPTIONS:\n${input.question.options.map((o, i) => `${
 
 [HIDDEN - For guidance only]
 CORRECT ANSWER: ${JSON.stringify(input.question.answer)}
-RELEVANT CONCEPTS: ${input.question.snippets?.join(" | ") || "None provided"}
-
-STUDENT PROGRESS: ${input.progress?.attempts || 0} attempts, status: ${input.progress?.status || "not_started"}
+${input.question.snippets?.length ? `RELEVANT CONCEPTS: ${input.question.snippets.join(" | ")}` : ""}
 `;
 
   // Build conversation history
   const conversationHistory = input.history.map((m) => ({
-    role: m.role === "student" ? "user" : "model",
+    role: m.role === "student" ? ("user" as const) : ("model" as const),
     parts: [{ text: m.content }],
   }));
-
-  // Build full context prompt
-  const fullContext = `${SYSTEM_PROMPT}\n\n${questionContext}`;
 
   // Build file parts if files are provided
   const fileParts: Array<{ inlineData: { data: string; mimeType: string } }> =
@@ -143,34 +139,23 @@ STUDENT PROGRESS: ${input.progress?.attempts || 0} attempts, status: ${input.pro
     }
   }
 
-  // For first message, include context. For continued conversations, prepend context to first user message
+  // Build messages array
   let messages;
-  if (conversationHistory.length === 0) {
+  if (input.isFirstMessageForQuestion) {
+    // First message for this question: include question context with snippets
     messages = [
       {
         role: "user" as const,
         parts: [
-          { text: `${fullContext}\n\nStudent says: ${input.studentMessage}` },
+          { text: `${questionContext}\n\nStudent says: ${input.studentMessage}` },
           ...fileParts,
         ],
       },
     ];
   } else {
-    // Prepend context to the first message in history
-    const historyWithContext = [...conversationHistory];
-    if (
-      historyWithContext.length > 0 &&
-      historyWithContext[0].role === "user"
-    ) {
-      historyWithContext[0] = {
-        ...historyWithContext[0],
-        parts: [
-          { text: `${fullContext}\n\n${historyWithContext[0].parts[0].text}` },
-        ],
-      };
-    }
+    // Subsequent messages: history already contains the context from first message
     messages = [
-      ...historyWithContext,
+      ...conversationHistory,
       {
         role: "user" as const,
         parts: [{ text: input.studentMessage }, ...fileParts],
@@ -183,6 +168,7 @@ STUDENT PROGRESS: ${input.progress?.attempts || 0} attempts, status: ${input.pro
       model: TUTOR_MODEL,
       contents: messages,
       config: {
+        systemInstruction: SYSTEM_INSTRUCTION,
         tools: [{ functionDeclarations: TUTOR_TOOLS }],
       },
     });

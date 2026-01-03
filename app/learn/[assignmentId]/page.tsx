@@ -277,7 +277,7 @@ export default function LearnPage() {
             </div>
             <h1 className="text-xl font-semibold mb-2">Assignment Not Available</h1>
             <p className="text-muted-foreground text-center">
-              This assignment doesn't exist or isn't ready for students yet.
+              This assignment doesn&apos;t exist or isn&apos;t ready for students yet.
               Please check with your teacher.
             </p>
           </CardContent>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import {
   Settings,
   LogOut,
@@ -53,14 +53,14 @@ import {
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
 
 export function AppSidebar() {
-  const [mounted, setMounted] = useState(false);
+  // Use lazy initialization for mounted state (client-side only)
+  const [mounted] = useState(() => typeof window !== "undefined");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const pathname = usePathname();
   const { signOut } = useAuthActions();
@@ -71,10 +71,6 @@ export function AppSidebar() {
   const updatePreferences = useMutation(api.myFunctions.updateUserPreferences);
 
   const defaultMetric = userPreferences?.defaultMetric ?? "mean";
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   const handleMetricChange = useCallback((metric: "mean" | "median") => {
     updatePreferences({ defaultMetric: metric });
@@ -210,9 +206,6 @@ export function AppSidebar() {
                   <DialogContent className="sm:max-w-[425px]">
                     <DialogHeader>
                       <DialogTitle>Settings</DialogTitle>
-                      <DialogDescription>
-                        Configure your preferences
-                      </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 py-4">
                       <div className="flex items-center justify-between">
@@ -224,17 +217,6 @@ export function AppSidebar() {
                         </div>
                         <div className="flex rounded-lg bg-muted p-1">
                           <button
-                            onClick={() => handleMetricChange("median")}
-                            className={cn(
-                              "px-3 py-1.5 text-sm font-medium rounded-md transition-colors",
-                              defaultMetric === "median"
-                                ? "bg-background text-foreground shadow-sm"
-                                : "text-muted-foreground hover:text-foreground"
-                            )}
-                          >
-                            Median
-                          </button>
-                          <button
                             onClick={() => handleMetricChange("mean")}
                             className={cn(
                               "px-3 py-1.5 text-sm font-medium rounded-md transition-colors",
@@ -244,6 +226,17 @@ export function AppSidebar() {
                             )}
                           >
                             Mean
+                          </button>
+                          <button
+                            onClick={() => handleMetricChange("median")}
+                            className={cn(
+                              "px-3 py-1.5 text-sm font-medium rounded-md transition-colors",
+                              defaultMetric === "median"
+                                ? "bg-background text-foreground shadow-sm"
+                                : "text-muted-foreground hover:text-foreground"
+                            )}
+                          >
+                            Median
                           </button>
                         </div>
                       </div>

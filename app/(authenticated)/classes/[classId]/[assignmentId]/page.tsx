@@ -67,7 +67,7 @@ export default function AssignmentDetailPage() {
     try {
       const result = await approveAllQuestions({ assignmentId });
       toast.success(`Approved ${result.approved} questions`);
-    } catch (error) {
+    } catch {
       toast.error("Failed to approve questions");
     } finally {
       setIsApprovingAll(false);

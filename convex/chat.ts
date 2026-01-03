@@ -1,7 +1,6 @@
 import { v } from "convex/values";
 import { query, action, internalMutation, internalQuery } from "./_generated/server";
 import { internal, api } from "./_generated/api";
-import { Id } from "./_generated/dataModel";
 
 // PUBLIC: Get chat history for a question
 export const getChatHistory = query({
@@ -135,13 +134,17 @@ export const sendMessageToTutor = action({
     // Call the tutor LLM
     const { callTutorLLM } = await import("./tutorLLM");
 
+    // First message for this question gets the full context with snippets
+    const isFirstMessageForQuestion = history.length === 0;
+
     const response = await callTutorLLM({
       question: {
         questionText: question.questionText,
         questionType: question.questionType,
         options: question.options,
         answer: question.answer,
-        snippets: question.snippets,
+        // Only include snippets on first message - they'll be in history for subsequent calls
+        snippets: isFirstMessageForQuestion ? question.snippets : undefined,
       },
       history: history.map((m) => ({
         role: m.role,
@@ -149,12 +152,7 @@ export const sendMessageToTutor = action({
       })),
       studentMessage: args.message,
       files: args.files,
-      progress: progress
-        ? {
-            status: progress.status,
-            attempts: progress.attempts,
-          }
-        : null,
+      isFirstMessageForQuestion,
     });
 
     // Handle tool calls (mark correct, etc.)
@@ -192,11 +190,6 @@ export const sendMessageToTutor = action({
             },
           }
         : undefined,
-    });
-
-    // Update session activity
-    const session = await ctx.runQuery(api.studentSessions.getSession, {
-      sessionToken: "", // We don't have the token here, skip this
     });
 
     return {

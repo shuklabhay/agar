@@ -58,6 +58,43 @@ function formatRelativeTime(timestamp: number): string {
   return new Date(timestamp).toLocaleDateString();
 }
 
+// Extracted outside component to avoid recreating on each render
+function StudentSortHeader({
+  field,
+  children,
+  className,
+  sortField,
+  sortDirection,
+  onSort,
+}: {
+  field: SortField;
+  children: React.ReactNode;
+  className?: string;
+  sortField: SortField;
+  sortDirection: SortDirection;
+  onSort: (field: SortField) => void;
+}) {
+  return (
+    <th
+      className={cn(
+        "px-3 py-2 text-left text-xs font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors select-none",
+        className
+      )}
+      onClick={() => onSort(field)}
+    >
+      <div className="flex items-center gap-1">
+        {children}
+        {sortField === field &&
+          (sortDirection === "asc" ? (
+            <ArrowUp className="h-3 w-3" />
+          ) : (
+            <ArrowDown className="h-3 w-3" />
+          ))}
+      </div>
+    </th>
+  );
+}
+
 export function StudentPerformanceTable({
   students,
 }: StudentPerformanceTableProps) {
@@ -95,34 +132,6 @@ export function StudentPerformanceTable({
     return sortDirection === "asc" ? comparison : -comparison;
   });
 
-  const SortHeader = ({
-    field,
-    children,
-    className,
-  }: {
-    field: SortField;
-    children: React.ReactNode;
-    className?: string;
-  }) => (
-    <th
-      className={cn(
-        "px-3 py-2 text-left text-xs font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors select-none",
-        className
-      )}
-      onClick={() => handleSort(field)}
-    >
-      <div className="flex items-center gap-1">
-        {children}
-        {sortField === field &&
-          (sortDirection === "asc" ? (
-            <ArrowUp className="h-3 w-3" />
-          ) : (
-            <ArrowDown className="h-3 w-3" />
-          ))}
-      </div>
-    </th>
-  );
-
   if (students.length === 0) {
     return (
       <Card>
@@ -154,22 +163,22 @@ export function StudentPerformanceTable({
           <table className="w-full">
             <thead className="border-b bg-muted/30">
               <tr>
-                <SortHeader field="name">Name</SortHeader>
-                <SortHeader field="completionRate" className="text-center">
+                <StudentSortHeader field="name" sortField={sortField} sortDirection={sortDirection} onSort={handleSort}>Name</StudentSortHeader>
+                <StudentSortHeader field="completionRate" className="text-center" sortField={sortField} sortDirection={sortDirection} onSort={handleSort}>
                   Completed
-                </SortHeader>
-                <SortHeader field="avgMessages" className="text-center">
+                </StudentSortHeader>
+                <StudentSortHeader field="avgMessages" className="text-center" sortField={sortField} sortDirection={sortDirection} onSort={handleSort}>
                   Avg Messages
-                </SortHeader>
-                <SortHeader field="totalTimeMs" className="text-center">
+                </StudentSortHeader>
+                <StudentSortHeader field="totalTimeMs" className="text-center" sortField={sortField} sortDirection={sortDirection} onSort={handleSort}>
                   Time Spent
-                </SortHeader>
+                </StudentSortHeader>
                 <th className="px-3 py-2 text-center text-xs font-medium text-muted-foreground">
                   Understanding
                 </th>
-                <SortHeader field="lastActiveAt" className="text-right">
+                <StudentSortHeader field="lastActiveAt" className="text-right" sortField={sortField} sortDirection={sortDirection} onSort={handleSort}>
                   Last Active
-                </SortHeader>
+                </StudentSortHeader>
               </tr>
             </thead>
             <tbody className="divide-y">

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
@@ -14,19 +14,16 @@ export default function AnalyticsPage() {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   const classes = useQuery(api.classes.listClasses);
+
+  // Auto-select first class if none selected (derived state)
+  const effectiveClassId = selectedClassId ?? (classes && classes.length > 0 ? classes[0]._id : null);
+
   const assignments = useQuery(
     api.assignments.listAssignments,
-    selectedClassId ? { classId: selectedClassId } : "skip"
+    effectiveClassId ? { classId: effectiveClassId } : "skip"
   );
 
-  // Auto-select first class if none selected
-  useEffect(() => {
-    if (!selectedClassId && classes && classes.length > 0) {
-      setSelectedClassId(classes[0]._id);
-    }
-  }, [classes, selectedClassId]);
-
-  const selectedClass = classes?.find((c) => c._id === selectedClassId);
+  const selectedClass = classes?.find((c) => c._id === effectiveClassId);
 
   if (classes === undefined) {
     return (
@@ -99,7 +96,7 @@ export default function AnalyticsPage() {
               />
               <div className="absolute top-full right-0 mt-1 w-64 bg-background border rounded-md shadow-lg z-20 py-1 max-h-64 overflow-y-auto">
                 {classes.map((classItem) => {
-                  const isSelected = classItem._id === selectedClassId;
+                  const isSelected = classItem._id === effectiveClassId;
                   return (
                     <button
                       key={classItem._id}
@@ -140,15 +137,15 @@ export default function AnalyticsPage() {
       </div>
 
       {/* Analytics Dashboard */}
-      {selectedClassId && assignments !== undefined && (
+      {effectiveClassId && assignments !== undefined && (
         <ClassAnalyticsDashboard
-          classId={selectedClassId}
+          classId={effectiveClassId}
           assignments={assignments}
         />
       )}
 
       {/* Loading state for assignments */}
-      {selectedClassId && assignments === undefined && (
+      {effectiveClassId && assignments === undefined && (
         <Card>
           <CardContent className="py-12">
             <div className="flex items-center justify-center gap-2 text-muted-foreground">

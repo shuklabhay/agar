@@ -5,7 +5,7 @@ import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ChevronDown, ChevronRight, Users, X } from "lucide-react";
+import { ChevronDown, ChevronRight, Users } from "lucide-react";
 import {
   Dialog,
   DialogContent,

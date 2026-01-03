@@ -196,24 +196,6 @@ export const deleteQuestionsForAssignment = internalMutation({
 // PUBLIC MUTATIONS FOR TEACHER REVIEW
 // ============================================================================
 
-// Helper to verify question ownership
-async function verifyQuestionOwnership(
-  ctx: { db: { get: (id: Id<"questions"> | Id<"assignments"> | Id<"classes">) => Promise<unknown> } },
-  questionId: Id<"questions">,
-  userId: Id<"users">,
-): Promise<boolean> {
-  const question = await ctx.db.get(questionId);
-  if (!question) return false;
-
-  const assignment = await ctx.db.get((question as { assignmentId: Id<"assignments"> }).assignmentId);
-  if (!assignment) return false;
-
-  const classDoc = await ctx.db.get((assignment as { classId: Id<"classes"> }).classId);
-  if (!classDoc) return false;
-
-  return (classDoc as { teacherId: Id<"users"> }).teacherId === userId;
-}
-
 // Approve a single question
 export const approveQuestion = mutation({
   args: { questionId: v.id("questions") },

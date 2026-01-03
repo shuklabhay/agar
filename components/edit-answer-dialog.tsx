@@ -88,7 +88,7 @@ export function EditAnswerDialog({
 
       toast.success("Answer updated");
       onOpenChange(false);
-    } catch (error) {
+    } catch {
       toast.error("Failed to update answer");
     } finally {
       setIsSaving(false);

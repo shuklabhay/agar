@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 
 type RioMood = "idle" | "happy" | "thinking" | "correct" | "incorrect";
@@ -12,18 +12,10 @@ interface RioEyesProps {
 }
 
 export function RioEyes({ mood = "idle", size = "md", shaking = false }: RioEyesProps) {
-  const [lookDirection, setLookDirection] = useState({ x: 0, y: 0 });
+  const [idleLookDirection, setIdleLookDirection] = useState({ x: 0, y: 0 });
   const [isBlinking, setIsBlinking] = useState(false);
-  const [isShaking, setIsShaking] = useState(false);
 
-  // Trigger shake animation
-  useEffect(() => {
-    if (shaking) {
-      setIsShaking(true);
-      const timer = setTimeout(() => setIsShaking(false), 500);
-      return () => clearTimeout(timer);
-    }
-  }, [shaking]);
+  // Use shaking prop directly for CSS animation (no state needed)
 
   // Idle animation - random looking around
   useEffect(() => {
@@ -31,7 +23,7 @@ export function RioEyes({ mood = "idle", size = "md", shaking = false }: RioEyes
 
     const lookInterval = setInterval(() => {
       // Random look direction
-      setLookDirection({
+      setIdleLookDirection({
         x: (Math.random() - 0.5) * 2,
         y: (Math.random() - 0.5) * 1.5,
       });
@@ -48,19 +40,13 @@ export function RioEyes({ mood = "idle", size = "md", shaking = false }: RioEyes
     };
   }, [mood]);
 
-  // Reset look direction for non-idle moods
-  useEffect(() => {
-    if (mood === "correct") {
-      // Happy curved eyes (look up)
-      setLookDirection({ x: 0, y: -0.5 });
-    } else if (mood === "incorrect") {
-      // Sympathetic (look down slightly)
-      setLookDirection({ x: 0, y: 0.5 });
-    } else if (mood === "thinking") {
-      // Look up and to the side
-      setLookDirection({ x: 1, y: -0.5 });
-    }
-  }, [mood]);
+  // Derive look direction from mood (non-idle moods have fixed directions)
+  const lookDirection = useMemo(() => {
+    if (mood === "correct") return { x: 0, y: -0.5 };
+    if (mood === "incorrect") return { x: 0, y: 0.5 };
+    if (mood === "thinking") return { x: 1, y: -0.5 };
+    return idleLookDirection;
+  }, [mood, idleLookDirection]);
 
   const containerSize = size === "sm" ? "w-6 h-6" : "w-7 h-7";
 
@@ -69,9 +55,9 @@ export function RioEyes({ mood = "idle", size = "md", shaking = false }: RioEyes
       className={cn(
         "rounded-full bg-violet-100 dark:bg-violet-900/30 flex items-center justify-center shrink-0",
         containerSize,
-        isShaking && "animate-head-shake"
+        shaking && "animate-head-shake"
       )}
-      style={isShaking ? {
+      style={shaking ? {
         animation: "headShake 0.5s ease-in-out"
       } : undefined}
     >

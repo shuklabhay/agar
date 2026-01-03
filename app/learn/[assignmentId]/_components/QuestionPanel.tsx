@@ -67,6 +67,7 @@ export function QuestionPanel({
     if (sessionId && question) {
       initProgress({ sessionId, questionId: question._id });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId, question?._id, initProgress]);
 
   // Sync selected option with progress

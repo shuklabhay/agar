@@ -22,6 +22,7 @@ interface HorizontalBoxPlotProps {
   formatValue?: (value: number) => string;
   color?: string;
   unit?: string;
+  showOutliers?: boolean;
 }
 
 type ElementType = "min" | "q1" | "median" | "q3" | "max" | "mean" | "lowerOutlier" | "upperOutlier";
@@ -37,6 +38,7 @@ export function HorizontalBoxPlot({
   formatValue = (v) => v.toFixed(1),
   color = "#6366f1",
   unit = "",
+  showOutliers = true,
 }: HorizontalBoxPlotProps) {
   const [hoveredElement, setHoveredElement] = useState<HoveredElement>(null);
 
@@ -221,7 +223,7 @@ export function HorizontalBoxPlot({
               />
 
               {/* Lower outlier dot */}
-              {hasLowerOutlier && (
+              {showOutliers && hasLowerOutlier && (
                 <>
                   {/* Visual */}
                   <div
@@ -247,7 +249,7 @@ export function HorizontalBoxPlot({
               )}
 
               {/* Upper outlier dot */}
-              {hasUpperOutlier && (
+              {showOutliers && hasUpperOutlier && (
                 <>
                   {/* Visual */}
                   <div
@@ -409,13 +411,15 @@ export function HorizontalBoxPlot({
           />
           <span>Mean</span>
         </div>
-        <div className="flex items-center gap-1.5">
-          <div
-            className="w-2 h-2 rounded-full"
-            style={{ backgroundColor: color }}
-          />
-          <span>Outlier</span>
-        </div>
+        {showOutliers && (
+          <div className="flex items-center gap-1.5">
+            <div
+              className="w-2 h-2 rounded-full"
+              style={{ backgroundColor: color }}
+            />
+            <span>Outlier</span>
+          </div>
+        )}
       </div>
     </div>
   );

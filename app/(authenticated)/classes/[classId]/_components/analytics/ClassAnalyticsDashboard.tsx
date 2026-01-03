@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useQuery } from "convex/react";
 import Cookies from "js-cookie";
 import { api } from "@/convex/_generated/api";
@@ -61,22 +61,17 @@ export function ClassAnalyticsDashboard({
   const [activeTab, setActiveTab] = useState<Tab>("overview");
   const [boxPlotView, setBoxPlotView] = useState<BoxPlotView>("per-assignment");
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  // Load sort preferences from cookies via lazy initialization
   const [questionSortField, setQuestionSortField] =
-    useState<QuestionSortField>("questionNumber");
+    useState<QuestionSortField>(() => {
+      if (typeof window === "undefined") return "questionNumber";
+      return (Cookies.get("agar_question_sort_field") as QuestionSortField) || "questionNumber";
+    });
   const [questionSortDirection, setQuestionSortDirection] =
-    useState<QuestionSortDirection>("asc");
-
-  // Load sort preferences from cookies on mount
-  useEffect(() => {
-    const savedField = Cookies.get("agar_question_sort_field") as
-      | QuestionSortField
-      | undefined;
-    const savedDir = Cookies.get("agar_question_sort_dir") as
-      | QuestionSortDirection
-      | undefined;
-    if (savedField) setQuestionSortField(savedField);
-    if (savedDir) setQuestionSortDirection(savedDir);
-  }, []);
+    useState<QuestionSortDirection>(() => {
+      if (typeof window === "undefined") return "asc";
+      return (Cookies.get("agar_question_sort_dir") as QuestionSortDirection) || "asc";
+    });
   // Get user preferences for metric display
   const userPreferences = useQuery(api.myFunctions.getUserPreferences);
   const defaultMetric = userPreferences?.defaultMetric ?? "mean";
@@ -501,6 +496,7 @@ export function ClassAnalyticsDashboard({
                     formatValue={(v) => v.toFixed(0)}
                     color="#10b981"
                     unit="s"
+                    showOutliers={false}
                   />
                 </>
               )}

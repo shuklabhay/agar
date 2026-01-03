@@ -68,7 +68,7 @@ export function QuestionReviewCard({ question, onEdit }: QuestionReviewCardProps
     try {
       await approveQuestion({ questionId: question._id });
       toast.success("Question approved");
-    } catch (error) {
+    } catch {
       toast.error("Failed to approve question");
     } finally {
       setIsApproving(false);
@@ -93,7 +93,7 @@ export function QuestionReviewCard({ question, onEdit }: QuestionReviewCardProps
       } else {
         toast.error(result.error || "Failed to update answer");
       }
-    } catch (error) {
+    } catch {
       toast.error("Failed to request changes");
     } finally {
       setIsRegenerating(false);
@@ -105,7 +105,7 @@ export function QuestionReviewCard({ question, onEdit }: QuestionReviewCardProps
     try {
       await removeQuestion({ questionId: question._id });
       toast.success("Question removed");
-    } catch (error) {
+    } catch {
       toast.error("Failed to remove question");
     } finally {
       setIsRemoving(false);
@@ -212,7 +212,7 @@ export function QuestionReviewCard({ question, onEdit }: QuestionReviewCardProps
               </CollapsibleTrigger>
               <CollapsibleContent className="mt-2 space-y-1">
                 {question.snippets.map((snippet, i) => (
-                  <div key={i} className="text-sm bg-muted rounded px-2 py-1 italic">"{snippet}"</div>
+                  <div key={i} className="text-sm bg-muted rounded px-2 py-1 italic">&ldquo;{snippet}&rdquo;</div>
                 ))}
               </CollapsibleContent>
             </Collapsible>

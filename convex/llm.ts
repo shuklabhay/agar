@@ -32,9 +32,7 @@ function cleanJsonResponse(text: string): string {
     .trim();
 }
 
-const EXTRACTION_PROMPT = `You are extracting questions from an assignment document for a tutoring system.
-
-TASK: Extract ALL questions from this assignment document.
+const EXTRACTION_PROMPT = `Extract ALL questions from this assignment document.
 
 For each question, provide:
 1. questionNumber: The question number as shown in the document
@@ -96,9 +94,7 @@ export async function extractQuestionsFromFiles(
   return JSON.parse(cleaned) as ExtractedQuestion[];
 }
 
-const ANSWER_PROMPT = `You are generating answers for a tutoring system. You have access to the teacher's notes AND Google Search.
-
-QUESTION #{questionNumber}: {questionText}
+const ANSWER_PROMPT = `QUESTION #{questionNumber}: {questionText}
 QUESTION TYPE: {questionType}
 TEACHER SPECIAL INSTRUCTIONS: {teacherInfo}
 
@@ -143,7 +139,6 @@ export async function generateAnswerForQuestion(
     .replace("{questionType}", questionType)
     .replace("{teacherInfo}", teacherInfo || "None");
 
-  // Enable Google Search grounding for answer generation
   const response = await client.models.generateContent({
     model: MODELS.answerGeneration,
     contents: [{ role: "user", parts: [{ text: prompt }, ...notesParts] }],
