@@ -81,6 +81,7 @@ export default defineSchema({
     assignmentId: v.id("assignments"),
     startedAt: v.number(),
     lastActiveAt: v.number(),
+    lastQuestionIndex: v.optional(v.number()),
   })
     .index("by_sessionToken", ["sessionToken"])
     .index("by_assignmentId", ["assignmentId"]),

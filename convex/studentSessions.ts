@@ -127,3 +127,20 @@ export const updateSessionActivity = mutation({
     });
   },
 });
+
+// PUBLIC: Update last question index (for resuming where student left off)
+export const updateLastQuestionIndex = mutation({
+  args: {
+    sessionId: v.id("studentSessions"),
+    questionIndex: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const session = await ctx.db.get(args.sessionId);
+    if (!session) return;
+
+    await ctx.db.patch(args.sessionId, {
+      lastQuestionIndex: args.questionIndex,
+      lastActiveAt: Date.now(),
+    });
+  },
+});

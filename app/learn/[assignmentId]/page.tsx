@@ -86,6 +86,7 @@ export default function LearnPage() {
   // Mutations
   const startSession = useMutation(api.studentSessions.startSession);
   const resumeSession = useMutation(api.studentSessions.resumeSession);
+  const updateLastQuestionIndex = useMutation(api.studentSessions.updateLastQuestionIndex);
 
   // Check for existing session cookie on mount
   useEffect(() => {
@@ -95,18 +96,36 @@ export default function LearnPage() {
     }
   }, [assignmentId]);
 
+  // Track if we've restored the question index
+  const hasRestoredIndex = useRef(false);
+
   // Sync session from query result
   useEffect(() => {
     if (session) {
       setSessionId(session._id);
       setShowWelcome(false);
+      // Restore last question index if available and not already restored
+      if (!hasRestoredIndex.current) {
+        if (session.lastQuestionIndex !== undefined) {
+          setCurrentQuestionIndex(session.lastQuestionIndex);
+        }
+        hasRestoredIndex.current = true;
+      }
     } else if (sessionToken && session === null) {
       // Token is invalid, clear it
       Cookies.remove(`${COOKIE_PREFIX}${assignmentId}`);
       setSessionToken(null);
       setShowWelcome(true);
+      hasRestoredIndex.current = false;
     }
   }, [session, sessionToken, assignmentId]);
+
+  // Save question index when it changes
+  useEffect(() => {
+    if (sessionId && hasRestoredIndex.current) {
+      updateLastQuestionIndex({ sessionId, questionIndex: currentQuestionIndex });
+    }
+  }, [sessionId, currentQuestionIndex, updateLastQuestionIndex]);
 
   // Handle starting a new session
   const handleStartNew = async (name: string) => {
