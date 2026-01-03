@@ -95,7 +95,7 @@ export default function ClassesPage() {
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="section">
-                    Section{" "}
+                    Section
                     <span className="text-muted-foreground">(optional)</span>
                   </Label>
                   <Input
