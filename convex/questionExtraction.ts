@@ -58,9 +58,10 @@ export const extractQuestions = action({
         questionType: validTypes.includes(q.questionType as typeof validTypes[number])
           ? (q.questionType as typeof validTypes[number])
           : ("short_answer" as const),
-        answerOptionsMCQ: q.answerOptionsMCQ,
-        additionalInstructionsForAnswer: q.additionalInstructionsForAnswer,
-        additionalInstructionsForWork: q.additionalInstructionsForWork,
+        // Filter out null values - Convex v.optional only accepts string or undefined
+        ...(q.answerOptionsMCQ ? { answerOptionsMCQ: q.answerOptionsMCQ } : {}),
+        ...(q.additionalInstructionsForAnswer ? { additionalInstructionsForAnswer: q.additionalInstructionsForAnswer } : {}),
+        ...(q.additionalInstructionsForWork ? { additionalInstructionsForWork: q.additionalInstructionsForWork } : {}),
         status: "pending" as const,
       }));
 
