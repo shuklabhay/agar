@@ -513,3 +513,45 @@ export const renameAssignment = mutation({
     return null;
   },
 });
+
+export const createEmptyDraft = mutation({
+  args: {
+    classId: v.id("classes"),
+  },
+  returns: v.id("assignments"),
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("Not authenticated");
+    }
+
+    // Verify the class belongs to the user
+    const classDoc = await ctx.db.get(args.classId);
+    if (!classDoc || classDoc.teacherId !== userId) {
+      throw new Error("Class not found or access denied");
+    }
+
+    // Check if there's already a draft for this class
+    const existingDrafts = await ctx.db
+      .query("assignments")
+      .withIndex("by_classId", (q) => q.eq("classId", args.classId))
+      .filter((q) => q.eq(q.field("isDraft"), true))
+      .collect();
+
+    // Return existing draft if one exists
+    if (existingDrafts.length > 0) {
+      return existingDrafts[0]._id;
+    }
+
+    // Create new empty draft
+    const draftId = await ctx.db.insert("assignments", {
+      name: "Untitled Assignment",
+      classId: args.classId,
+      assignmentFiles: [],
+      notesFiles: [],
+      isDraft: true,
+    });
+
+    return draftId;
+  },
+});

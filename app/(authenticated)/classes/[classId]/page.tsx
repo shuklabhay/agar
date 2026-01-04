@@ -61,6 +61,7 @@ export default function ClassDetailPage() {
   const assignments = useQuery(api.assignments.listAssignments, { classId });
   const deleteAssignment = useMutation(api.assignments.deleteAssignment);
   const renameAssignment = useMutation(api.assignments.renameAssignment);
+  const createEmptyDraft = useMutation(api.assignments.createEmptyDraft);
 
   const [deleteTarget, setDeleteTarget] = useState<{ id: Id<"assignments">; name: string } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -71,6 +72,7 @@ export default function ClassDetailPage() {
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   const [droppedFiles, setDroppedFiles] = useState<File[]>([]);
   const [showCategoryDialog, setShowCategoryDialog] = useState(false);
+  const [isCreatingAssignment, setIsCreatingAssignment] = useState(false);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -91,14 +93,35 @@ export default function ClassDetailPage() {
     }
   }, []);
 
-  const handleCategorySelect = (category: "assignment" | "notes") => {
-    window.__pendingDroppedFiles = {
-      files: droppedFiles,
-      category,
-    };
+  const handleCategorySelect = async (category: "assignment" | "notes") => {
     setShowCategoryDialog(false);
-    setDroppedFiles([]);
-    router.push(`/classes/${classId}/new-assignment`);
+    setIsCreatingAssignment(true);
+    try {
+      const draftId = await createEmptyDraft({ classId });
+      window.__pendingDroppedFiles = {
+        files: droppedFiles,
+        category,
+      };
+      setDroppedFiles([]);
+      router.push(`/classes/${classId}/${draftId}`);
+    } catch {
+      toast.error("Failed to create assignment");
+      setDroppedFiles([]);
+    } finally {
+      setIsCreatingAssignment(false);
+    }
+  };
+
+  const handleCreateAssignment = async () => {
+    setIsCreatingAssignment(true);
+    try {
+      const draftId = await createEmptyDraft({ classId });
+      router.push(`/classes/${classId}/${draftId}`);
+    } catch {
+      toast.error("Failed to create assignment");
+    } finally {
+      setIsCreatingAssignment(false);
+    }
   };
 
   // Sort assignments by name
@@ -192,11 +215,13 @@ export default function ClassDetailPage() {
             )}
           </div>
         </div>
-        <Button asChild>
-          <Link href={`/classes/${classId}/new-assignment`}>
+        <Button onClick={handleCreateAssignment} disabled={isCreatingAssignment}>
+          {isCreatingAssignment ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
             <Plus className="h-4 w-4" />
-            Create Assignment
-          </Link>
+          )}
+          Create Assignment
         </Button>
       </div>
 
@@ -217,56 +242,52 @@ export default function ClassDetailPage() {
           )}
         </div>
 
-        {sortedAssignments.length === 0 ? (
-          <Card
-            className={`border-dashed transition-colors ${
-              isDraggingOver
-                ? "border-primary border-2 bg-primary/5"
-                : "border-muted-foreground/25"
-            }`}
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            onDrop={handleDrop}
-          >
-            <CardContent className="flex flex-col items-center justify-center py-16">
-              <div className={`rounded-full p-4 mb-4 transition-colors ${
-                isDraggingOver ? "bg-primary/10" : "bg-muted"
-              }`}>
-                {isDraggingOver ? (
-                  <Upload className="h-8 w-8 text-primary" />
-                ) : (
-                  <FileText className="h-8 w-8 text-muted-foreground" />
-                )}
+        <div
+          className={`relative rounded-lg border-2 border-dashed transition-colors ${
+            isDraggingOver
+              ? "border-primary bg-primary/5"
+              : "border-transparent"
+          }`}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+        >
+          {isDraggingOver ? (
+            /* Dropzone content when dragging */
+            <div className="flex flex-col items-center justify-center py-16">
+              <div className="rounded-full p-4 mb-4 bg-primary/10">
+                <Upload className="h-8 w-8 text-primary" />
               </div>
-              <h3 className="text-lg font-semibold mb-1">
-                {isDraggingOver ? "Drop files here" : "No assignments yet"}
-              </h3>
-              <p className="text-muted-foreground text-center max-w-sm mb-4">
-                {isDraggingOver
-                  ? "Release to upload files and create a new assignment"
-                  : "Create your first assignment to start sharing materials with students."}
+              <h3 className="text-lg font-semibold mb-1">Drop files here</h3>
+              <p className="text-muted-foreground text-center max-w-sm">
+                Release to upload files and create a new assignment
               </p>
-              {!isDraggingOver && (
-                <Button asChild>
-                  <Link href={`/classes/${classId}/new-assignment`}>
+            </div>
+          ) : sortedAssignments.length === 0 ? (
+            <Card className="border-dashed border-muted-foreground/25">
+              <CardContent className="flex flex-col items-center justify-center py-16">
+                <div className="rounded-full p-4 mb-4 bg-muted">
+                  <FileText className="h-8 w-8 text-muted-foreground" />
+                </div>
+                <h3 className="text-lg font-semibold mb-1">No assignments yet</h3>
+                <p className="text-muted-foreground text-center max-w-sm mb-4">
+                  Create your first assignment to start sharing materials with students.
+                </p>
+                <Button onClick={handleCreateAssignment} disabled={isCreatingAssignment}>
+                  {isCreatingAssignment ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
                     <Plus className="h-4 w-4" />
-                    Create Your First Assignment
-                  </Link>
+                  )}
+                  Create Your First Assignment
                 </Button>
-              )}
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="grid gap-3">
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid gap-3">
             {sortedAssignments.map((assignment) => (
               <div key={assignment._id} className="group relative">
-                <Link
-                  href={
-                    assignment.isDraft
-                      ? `/classes/${classId}/new-assignment`
-                      : `/classes/${classId}/${assignment._id}`
-                  }
-                >
+                <Link href={`/classes/${classId}/${assignment._id}`}>
                   <Card
                     className={`transition-all hover:shadow-md hover:border-primary/50 group-hover:bg-muted/30 ${
                       assignment.isDraft ? "border-dashed border-2" : ""
@@ -344,7 +365,8 @@ export default function ClassDetailPage() {
               </div>
             ))}
           </div>
-        )}
+          )}
+        </div>
       </div>
 
       {/* Delete Confirmation Dialog */}
