@@ -4,6 +4,16 @@ import { authTables } from "@convex-dev/auth/server";
 
 export default defineSchema({
   ...authTables,
+
+  // ============================================================================
+  // TEMPORARY: Email whitelist for beta access
+  // TODO: Remove this table and all whitelist checks when ready for public launch
+  // ============================================================================
+  userWhitelist: defineTable({
+    userId: v.id("users"),
+    whitelisted: v.boolean(), // Default false - manually set to true in dashboard
+  }).index("by_userId", ["userId"]),
+
   numbers: defineTable({
     value: v.number(),
   }),

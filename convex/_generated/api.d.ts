@@ -23,6 +23,7 @@ import type * as questions from "../questions.js";
 import type * as studentProgress from "../studentProgress.js";
 import type * as studentSessions from "../studentSessions.js";
 import type * as tutorLLM from "../tutorLLM.js";
+import type * as users from "../users.js";
 
 import type {
   ApiFromModules,
@@ -46,6 +47,7 @@ declare const fullApi: ApiFromModules<{
   studentProgress: typeof studentProgress;
   studentSessions: typeof studentSessions;
   tutorLLM: typeof tutorLLM;
+  users: typeof users;
 }>;
 
 /**
