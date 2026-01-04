@@ -1,4 +1,6 @@
-import { Id } from "@/convex/_generated/dataModel";
+// Generic Id type that matches Convex's Id structure
+// This avoids importing from generated files which may not exist during convex deploy
+type Id<TableName extends string> = string & { __tableName: TableName };
 
 export type QuestionType =
   | "multiple_choice"
