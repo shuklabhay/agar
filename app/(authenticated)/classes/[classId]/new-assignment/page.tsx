@@ -497,7 +497,9 @@ export default function NewAssignmentPage() {
       // Trigger processing in the background (don't await)
       processAssignment({ assignmentId }).then((result) => {
         if (result.success) {
-          toast.success(`Processed ${result.questionsExtracted} questions with ${result.answersGenerated} answers`);
+          toast.success(
+            `Processed ${result.questionsExtracted} questions with ${result.answersGenerated} answers`,
+          );
         } else {
           toast.error(`Processing failed: ${result.error}`);
         }
@@ -758,7 +760,7 @@ export default function NewAssignmentPage() {
           <Label htmlFor="additionalInfo">Additional Information</Label>
           <textarea
             id="additionalInfo"
-            placeholder="e.g., Skip questions 3 and 7 | Reword Q5 to be harder | Q2 has an error: change 15 to 25 | Only accept Bernoulli's equation for #5 | Accept simplified form only for Q8"
+            placeholder="e.g., Skip questions 3 and 7, Reword Q5 to be harder"
             value={additionalInfo}
             onChange={(e) => {
               setAdditionalInfo(e.target.value);
@@ -900,7 +902,9 @@ export default function NewAssignmentPage() {
 
           <div className="space-y-4">
             <div>
-              <Label className="text-xs text-muted-foreground">Assignment Name</Label>
+              <Label className="text-xs text-muted-foreground">
+                Assignment Name
+              </Label>
               <p className="font-medium">{name}</p>
             </div>
 
@@ -917,7 +921,9 @@ export default function NewAssignmentPage() {
                     onClick={() => setPreviewFile(f)}
                   >
                     {getFileIcon(f.contentType)}
-                    <span className="truncate hover:underline">{f.fileName}</span>
+                    <span className="truncate hover:underline">
+                      {f.fileName}
+                    </span>
                   </button>
                 ))}
               </div>
@@ -936,7 +942,9 @@ export default function NewAssignmentPage() {
                     onClick={() => setPreviewFile(f)}
                   >
                     {getFileIcon(f.contentType)}
-                    <span className="truncate hover:underline">{f.fileName}</span>
+                    <span className="truncate hover:underline">
+                      {f.fileName}
+                    </span>
                   </button>
                 ))}
               </div>
@@ -944,7 +952,9 @@ export default function NewAssignmentPage() {
 
             {additionalInfo && (
               <div>
-                <Label className="text-xs text-muted-foreground">Additional Info</Label>
+                <Label className="text-xs text-muted-foreground">
+                  Additional Info
+                </Label>
                 <p className="text-sm whitespace-pre-wrap bg-muted/50 rounded p-2 mt-1">
                   {additionalInfo}
                 </p>
@@ -953,13 +963,17 @@ export default function NewAssignmentPage() {
 
             <div className="bg-blue-50 dark:bg-blue-950/30 rounded-lg p-3 text-sm">
               <p className="text-blue-800 dark:text-blue-200">
-                After creating, the system will automatically extract questions and generate answers using AI. This may take a few minutes.
+                After creating, the system will automatically extract questions
+                and generate answers using AI. This may take a few minutes.
               </p>
             </div>
           </div>
 
           <div className="flex justify-end gap-2 mt-4">
-            <Button variant="outline" onClick={() => setShowConfirmDialog(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setShowConfirmDialog(false)}
+            >
               Go Back
             </Button>
             <Button onClick={handleCreateAssignment} disabled={isCreating}>
