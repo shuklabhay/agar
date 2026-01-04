@@ -288,7 +288,7 @@ export default function ClassDetailPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Assignment</AlertDialogTitle>
             <AlertDialogDescription className="space-y-2">
-              <span className="block">Are you sure you want to delete &quot;{deleteTarget?.name}&quot;?</span>
+              <span className="block">Are you sure you want to delete &quot;<strong>{deleteTarget?.name}</strong>&quot;?</span>
               <span className="block">This will permanently delete all files, questions, and answers. This action cannot be undone.</span>
             </AlertDialogDescription>
           </AlertDialogHeader>
