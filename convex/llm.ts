@@ -1,11 +1,64 @@
 "use node";
 
-import { GoogleGenAI, Part } from "@google/genai";
+import { GoogleGenAI, Part, Schema, Type } from "@google/genai";
 
 const MODELS = {
   extraction: "gemini-2.5-flash-lite",
   answerGeneration: "gemini-2.5-flash",
 } as const;
+
+const QUESTION_TYPES = [
+  "multiple_choice",
+  "single_value",
+  "short_answer",
+  "free_response",
+  "skipped",
+] as const;
+
+const EXTRACTION_RESPONSE_SCHEMA: Schema = {
+  type: Type.ARRAY,
+  items: {
+    type: Type.OBJECT,
+    properties: {
+      questionNumber: { type: Type.INTEGER },
+      questionText: { type: Type.STRING },
+      questionType: {
+        type: Type.STRING,
+        enum: QUESTION_TYPES as unknown as string[],
+      },
+      answerOptionsMCQ: {
+        type: Type.ARRAY,
+        items: { type: Type.STRING },
+      },
+      additionalInstructionsForAnswer: { type: Type.STRING },
+      additionalInstructionsForWork: { type: Type.STRING },
+    },
+    required: ["questionNumber", "questionText", "questionType"],
+  },
+};
+
+const ANSWER_RESPONSE_SCHEMA: Schema = {
+  type: Type.OBJECT,
+  properties: {
+    answer: {
+      anyOf: [
+        { type: Type.STRING },
+        { type: Type.ARRAY, items: { type: Type.STRING } },
+      ],
+    },
+    key_points: {
+      type: Type.ARRAY,
+      items: { type: Type.STRING },
+    },
+    source: {
+      anyOf: [
+        { type: Type.STRING },
+        { type: Type.ARRAY, items: { type: Type.STRING } },
+      ],
+    },
+  },
+  required: ["answer", "key_points", "source"],
+};
 
 export async function fetchFileAsBase64(
   url: string,
@@ -117,12 +170,23 @@ function cleanJsonResponse(text: string): string {
   return cleaned;
 }
 
+function parseJsonWithCleaning<T>(text: string, context: string): T {
+  const cleaned = cleanJsonResponse(text);
+  try {
+    return JSON.parse(cleaned) as T;
+  } catch (error) {
+    console.warn(`${context} JSON parse failed after cleaning:`, error);
+    throw error;
+  }
+}
+
 const EXTRACTION_PROMPT = `Extract ALL questions from this assignment document.
 
 OUTPUT FIELDS:
 - questionNumber: as shown in document
 - questionText: FULL question with instruction (e.g., "Solve for x: 3x + 5 = 20", not just "3x + 5 = 20"). If no instruction given, add one (Solve/Simplify/Factor/etc). If it references a passage/figure, include that reference.
-- questionType: "multiple_choice" | "single_number" | "short_answer" | "free_response" | "skipped"
+- Preserve visible formatting cues that matter to the student (blanks like "____", placeholders like "[ ]", line breaks in passage references). If a blank appears in the prompt, keep it in questionText.
+- questionType: "multiple_choice" | "single_value" | "short_answer" | "free_response" | "skipped"
 - answerOptionsMCQ: array of choices (MCQ only)
 - additionalInstructionsForAnswer: answer format requirements (e.g., "must be decimal")
 - additionalInstructionsForWork: method requirements (e.g., "use quadratic formula")
@@ -171,11 +235,17 @@ export async function extractQuestionsFromFiles(
     const response = await client.models.generateContent({
       model: MODELS.extraction,
       contents: [{ role: "user", parts: [{ text: prompt }, ...fileParts] }],
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: EXTRACTION_RESPONSE_SCHEMA,
+      },
     });
 
     const responseText = response.text ?? "";
-    const cleaned = cleanJsonResponse(responseText);
-    return JSON.parse(cleaned) as ExtractedQuestion[];
+    return parseJsonWithCleaning<ExtractedQuestion[]>(
+      responseText,
+      "Question extraction",
+    );
   }, "Question extraction");
 }
 
@@ -189,7 +259,7 @@ Answer using the notes provided. Use Google Search if notes don't cover the topi
 
 ANSWER FORMAT:
 - short_answer: expression (e.g., "3x + 27")
-- single_number: just the number
+- single_value: single value (number, word, or phrase as required)
 - multiple_choice: ONE letter only (A/B/C/D)
 - free_response: array of key points
 
@@ -249,12 +319,17 @@ export async function generateAnswerForQuestion(
         contents: [{ role: "user", parts: [{ text: prompt }, ...notesParts] }],
         config: {
           tools: [{ googleSearch: {} }],
+          responseSchema: ANSWER_RESPONSE_SCHEMA,
         },
       });
 
       const responseText = response.text ?? "";
-      const cleaned = cleanJsonResponse(responseText);
-      const parsed = JSON.parse(cleaned);
+      const parsed = parseJsonWithCleaning<{
+        answer?: string | string[];
+        key_points?: string[];
+        keyPoints?: string[];
+        source?: string | string[];
+      }>(responseText, `Answer for Q${questionNumber}`);
       return {
         answer: parsed.answer ?? "",
         keyPoints: parsed.key_points || parsed.keyPoints || [],
@@ -263,7 +338,7 @@ export async function generateAnswerForQuestion(
     }, `Answer generation for Q${questionNumber}`);
   } catch (error) {
     console.warn(`Q${questionNumber} failed after retries, using fallback extraction`);
-    return extractAnswerFromText("", questionType, answerOptionsMCQ);
+    return extractAnswerFromText("", questionType);
   }
 }
 
@@ -271,63 +346,18 @@ export async function generateAnswerForQuestion(
 function extractAnswerFromText(
   text: string,
   questionType: string,
-  answerOptionsMCQ?: string[],
 ): GeneratedAnswer {
-  let answer: string | string[] = "";
-
-  if (questionType === "multiple_choice") {
-    // Look for letter answer (A, B, C, D)
-    const letterMatch = text.match(/\b([A-D])\b/);
-    if (letterMatch) {
-      answer = letterMatch[1];
-    } else if (answerOptionsMCQ && answerOptionsMCQ.length > 0) {
-      // Try to match option text
-      for (let i = 0; i < answerOptionsMCQ.length; i++) {
-        if (
-          text
-            .toLowerCase()
-            .includes(answerOptionsMCQ[i].toLowerCase().substring(0, 20))
-        ) {
-          answer = String.fromCharCode(65 + i);
-          break;
-        }
-      }
-    }
-  } else if (questionType === "single_number") {
-    // Extract number
-    const numMatch = text.match(/-?\d+\.?\d*/);
-    answer = numMatch ? numMatch[0] : "";
-  } else if (questionType === "free_response") {
-    // Split into key points
-    answer = text
-      .split(/\n|\./)
-      .filter((s) => s.trim().length > 10)
-      .slice(0, 5);
-  } else {
-    // Short answer - take first sentence or meaningful chunk
-    const sentences = text.split(/[.!?]/).filter((s) => s.trim().length > 0);
-    answer = sentences[0]?.trim() || text.substring(0, 100);
-  }
+  const trimmed = text.trim();
+  const answer =
+    questionType === "free_response"
+      ? (trimmed ? trimmed.split(/\n+/).slice(0, 5) : [])
+      : trimmed || "";
 
   console.warn(
     `Fallback extraction for ${questionType}: "${typeof answer === "string" ? answer.substring(0, 50) : answer[0]?.substring(0, 50)}..."`,
   );
 
-  // Try to extract a useful key point from the text
-  const keyPoints: string[] = [];
-  // Look for explanation patterns
-  const explanationMatch = text.match(/because[^.]*\.|means[^.]*\.|refers to[^.]*\.|indicates[^.]*\./i);
-  if (explanationMatch) {
-    keyPoints.push(explanationMatch[0].trim().substring(0, 80));
-  } else {
-    // Take a relevant sentence that's not too long
-    const sentences = text.split(/[.!?]/).filter(s => s.trim().length > 20 && s.trim().length < 100);
-    if (sentences.length > 0) {
-      keyPoints.push(sentences[0].trim());
-    } else {
-      keyPoints.push("Answer extracted automatically - please verify");
-    }
-  }
+  const keyPoints = ["Answer requires manual review"];
 
   return {
     answer,

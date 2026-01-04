@@ -136,7 +136,7 @@ export function QuestionPanel({
   const isIncorrect = progress?.status === "incorrect";
   const canSubmitDirectly =
     question.questionType === "multiple_choice" ||
-    question.questionType === "single_number";
+    question.questionType === "single_value";
 
   return (
     <div className="h-full flex flex-col">
@@ -203,11 +203,11 @@ export function QuestionPanel({
               </div>
             )}
 
-          {/* Number Input */}
-          {question.questionType === "single_number" && (
+          {/* Single value input */}
+          {question.questionType === "single_value" && (
             <Input
               type="text"
-              placeholder="Enter your numerical answer..."
+              placeholder="Enter your answer..."
               value={textAnswer}
               onChange={(e) => {
                 handleInteraction();

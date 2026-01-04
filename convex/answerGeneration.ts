@@ -19,6 +19,16 @@ export const generateAnswers = action({
       return { success: true, processed: 0 };
     }
 
+    // Get assignment (for assignment file URLs)
+    const assignment = await ctx.runQuery(
+      internal.questions.getAssignmentForProcessing,
+      { assignmentId: args.assignmentId },
+    );
+
+    if (!assignment) {
+      return { success: false, error: "Assignment not found" };
+    }
+
     // Get notes file URLs
     const notesUrls = await ctx.runQuery(
       internal.questions.getNotesForAssignment,
@@ -42,6 +52,16 @@ export const generateAnswers = action({
         return { inlineData: { data, mimeType } };
       }),
     );
+    // Prepare assignment files once (reuse across all questions)
+    const assignmentParts: Part[] = await Promise.all(
+      (assignment.assignmentFiles || [])
+        .filter((f) => f.url)
+        .map(async (file) => {
+          const { data, mimeType } = await fetchFileAsBase64(file.url as string);
+          return { inlineData: { data, mimeType } };
+        }),
+    );
+    const contextParts = [...notesParts, ...assignmentParts];
 
     // Get Gemini client
     const apiKey = process.env.GEMINI_API_KEY;
@@ -68,7 +88,7 @@ export const generateAnswers = action({
           q.questionType,
           q.additionalInstructionsForAnswer,
           q.additionalInstructionsForWork,
-          notesParts,
+          contextParts,
           client,
           q.answerOptionsMCQ,
         );
@@ -151,6 +171,25 @@ export const regenerateAnswer = action({
         }),
       );
 
+      // Prepare assignment parts
+      const assignment = await ctx.runQuery(
+        internal.questions.getAssignmentForProcessing,
+        { assignmentId: question.assignmentId },
+      );
+      const assignmentParts: Part[] = assignment
+        ? await Promise.all(
+            (assignment.assignmentFiles || [])
+              .filter((f) => f.url)
+              .map(async (file) => {
+                const { data, mimeType } = await fetchFileAsBase64(
+                  file.url as string,
+                );
+                return { inlineData: { data, mimeType } };
+              }),
+          )
+        : [];
+      const contextParts = [...notesParts, ...assignmentParts];
+
       // Get Gemini client
       const apiKey = process.env.GEMINI_API_KEY;
       if (!apiKey) throw new Error("GEMINI_API_KEY not configured");
@@ -171,7 +210,7 @@ export const regenerateAnswer = action({
         question.questionType,
         additionalInstructionsForAnswer,
         question.additionalInstructionsForWork,
-        notesParts,
+        contextParts,
         client,
         question.answerOptionsMCQ,
       );

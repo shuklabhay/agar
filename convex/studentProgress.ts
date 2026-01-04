@@ -142,23 +142,31 @@ export const submitDirectAnswer = mutation({
 
     if (!progress) throw new Error("Progress not found");
 
-    // Only allow submission for MCQ and single_number types
+    // Only allow submission for MCQ and single_value types
     if (
       question.questionType !== "multiple_choice" &&
-      question.questionType !== "single_number"
+      question.questionType !== "single_value"
     ) {
       throw new Error("Use chat for this question type");
     }
 
-    // Normalize and compare answers
+    // Normalize and compare answers (case-insensitive; also accept numeric equivalence)
     const correctAnswer = Array.isArray(question.answer)
       ? question.answer[0]
       : question.answer;
 
-    const studentAnswer = args.answer.trim().toLowerCase();
-    const expected = (correctAnswer ?? "").toString().trim().toLowerCase();
+    const normalize = (val: string | undefined) => val?.trim().toLowerCase() ?? "";
+    const studentAnswer = normalize(args.answer);
+    const expectedRaw = (correctAnswer ?? "").toString();
+    const expected = normalize(expectedRaw);
 
-    const isCorrect = studentAnswer === expected;
+    const bothNumeric =
+      !isNaN(Number(args.answer)) &&
+      !isNaN(Number(expectedRaw));
+
+    const isCorrect = bothNumeric
+      ? Number(args.answer) === Number(expectedRaw)
+      : studentAnswer === expected;
 
     // Update progress
     await ctx.db.patch(progress._id, {

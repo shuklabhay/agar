@@ -66,7 +66,7 @@ export default defineSchema({
     questionText: v.string(),
     questionType: v.union(
       v.literal("multiple_choice"),
-      v.literal("single_number"),
+      v.literal("single_value"),
       v.literal("short_answer"),
       v.literal("free_response"),
       v.literal("skipped"),

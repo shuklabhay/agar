@@ -4,7 +4,7 @@ type Id<TableName extends string> = string & { __tableName: TableName };
 
 export type QuestionType =
   | "multiple_choice"
-  | "single_number"
+  | "single_value"
   | "short_answer"
   | "free_response"
   | "skipped";

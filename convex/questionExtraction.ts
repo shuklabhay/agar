@@ -44,7 +44,7 @@ export const extractQuestions = action({
       // Validate and transform
       const validTypes = [
         "multiple_choice",
-        "single_number",
+        "single_value",
         "short_answer",
         "free_response",
         "skipped",

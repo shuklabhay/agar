@@ -1,6 +1,11 @@
 "use node";
 
-import { GoogleGenAI, FunctionDeclaration, Type } from "@google/genai";
+import {
+  GoogleGenAI,
+  FunctionDeclaration,
+  Schema,
+  Type,
+} from "@google/genai";
 
 const TUTOR_MODEL = "gemini-2.0-flash";
 
@@ -60,6 +65,14 @@ const TUTOR_TOOLS: FunctionDeclaration[] = [
     },
   },
 ];
+
+const TUTOR_RESPONSE_SCHEMA: Schema = {
+  type: Type.OBJECT,
+  properties: {
+    message: { type: Type.STRING },
+  },
+  required: ["message"],
+};
 
 // System instruction - sent once via config, not in messages
 const SYSTEM_INSTRUCTION = `You are Rio, a helpful tutor. Be friendly and encouraging, but concise.
@@ -177,20 +190,33 @@ ${input.question.additionalInstructionsForWork ? `REQUIRED METHOD: Student must 
       config: {
         systemInstruction: SYSTEM_INSTRUCTION,
         tools: [{ functionDeclarations: TUTOR_TOOLS }],
+        responseSchema: TUTOR_RESPONSE_SCHEMA,
       },
     });
 
-    // Parse response
+    // Parse structured message (JSON) plus tool calls
+    let messageFromSchema = "";
+    if (response.text) {
+      try {
+        const parsed = JSON.parse(response.text);
+        if (parsed && typeof parsed.message === "string") {
+          messageFromSchema = parsed.message;
+        }
+      } catch (error) {
+        console.warn("Tutor response JSON parse failed:", error);
+      }
+    }
+
     const candidate = response.candidates?.[0];
     const parts = candidate?.content?.parts || [];
 
-    let message = "";
+    let messageFromParts = "";
     const toolCalls: Array<{ name: string; args: Record<string, unknown> }> =
       [];
 
     for (const part of parts) {
       if (part.text) {
-        message += part.text;
+        messageFromParts += part.text;
       }
       if (part.functionCall && part.functionCall.name) {
         toolCalls.push({
@@ -199,6 +225,8 @@ ${input.question.additionalInstructionsForWork ? `REQUIRED METHOD: Student must 
         });
       }
     }
+
+    let message = messageFromSchema || messageFromParts;
 
     // If no message but has tool calls, generate a friendly response
     if (!message && toolCalls.length > 0) {

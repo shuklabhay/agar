@@ -248,7 +248,7 @@ export function QuestionsReviewPanel({
 
   const typeLabels: Record<string, string> = {
     multiple_choice: "Multiple Choice",
-    single_number: "Number",
+    single_value: "Single Value",
     short_answer: "Short Answer",
     free_response: "Free Response",
     skipped: "Skipped",
