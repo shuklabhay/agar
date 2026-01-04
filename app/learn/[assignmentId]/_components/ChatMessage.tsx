@@ -44,8 +44,9 @@ export function ChatMessage({
 
       // Check if answer was incorrect and trigger shake 10% of the time
       if (
-        message.toolCall?.name === "evaluate_response" &&
-        !(message.toolCall.args.isCorrect as boolean) &&
+        (message.toolCall?.name === "mark_answer_incorrect" ||
+          (message.toolCall?.name === "evaluate_response" &&
+            !(message.toolCall.args.isCorrect as boolean))) &&
         Math.random() < 0.1
       ) {
         setTimeout(() => setShouldShake(true), 500);
@@ -61,6 +62,7 @@ export function ChatMessage({
     if (!message.toolCall) return "idle";
     const { name, args } = message.toolCall;
     if (name === "mark_answer_correct") return "correct";
+    if (name === "mark_answer_incorrect") return "incorrect";
     if (name === "evaluate_response") {
       return (args.isCorrect as boolean) ? "correct" : "incorrect";
     }
@@ -80,6 +82,18 @@ export function ChatMessage({
           <CheckCircle className="h-4 w-4" />
           <span className="font-medium">
             Question {questionNumber ?? "?"} marked correct!
+          </span>
+        </div>
+      );
+    }
+
+    if (name === "mark_answer_incorrect") {
+      const questionNumber = args.questionNumber as string | undefined;
+      return (
+        <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400 text-sm mt-2 bg-amber-50 dark:bg-amber-900/20 rounded-lg px-3 py-2">
+          <XCircle className="h-4 w-4" />
+          <span className="font-medium">
+            Marked incorrect on Question {questionNumber ?? "?"}. Try another approach.
           </span>
         </div>
       );

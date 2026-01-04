@@ -166,10 +166,17 @@ export default function LearnPage() {
     }
   }, [questions, progress, currentQuestionIndex]);
 
+  const currentQuestionId = questions?.[currentQuestionIndex]?._id;
+
   // Reset scroll position when changing questions
   useEffect(() => {
-    questionScrollRef.current?.scrollTo({ top: 0, behavior: "smooth" });
-  }, [currentQuestionIndex]);
+    const scrollEl = questionScrollRef.current;
+    if (!scrollEl) return;
+
+    // Scroll immediately and then smooth in case layout shifts after render
+    scrollEl.scrollTop = 0;
+    scrollEl.scrollTo({ top: 0, behavior: "smooth" });
+  }, [currentQuestionIndex, currentQuestionId]);
 
   // Record time spent when switching questions or leaving page
   useEffect(() => {

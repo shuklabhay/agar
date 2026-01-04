@@ -143,6 +143,15 @@ export default defineSchema({
         result: v.optional(v.any()),
       }),
     ),
+    attachments: v.optional(
+      v.array(
+        v.object({
+          name: v.string(),
+          type: v.string(),
+          storageId: v.id("_storage"),
+        }),
+      ),
+    ),
   })
     .index("by_session_question", ["sessionId", "questionId"])
     .index("by_sessionId", ["sessionId"]),

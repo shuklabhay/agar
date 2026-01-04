@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { ChevronLeft, ChevronRight, Check, X, Loader2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Check, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { LearnQuestion, StudentProgress } from "@/lib/types";
 
@@ -39,6 +39,8 @@ export function QuestionPanel({
   const initProgress = useMutation(api.studentProgress.initializeProgress);
   const markInProgress = useMutation(api.studentProgress.markInProgress);
   const sendMessageToTutor = useAction(api.chat.sendMessageToTutor);
+  const questionId = question?._id;
+  const questionType = question?.questionType;
 
   // Initialize progress when viewing question
   useEffect(() => {
@@ -50,21 +52,45 @@ export function QuestionPanel({
 
   // Sync selected option with progress
   useEffect(() => {
-    if (progress?.selectedAnswer) {
-      setSelectedOption(progress.selectedAnswer);
-    } else {
+    if (!questionId || !questionType) {
       setSelectedOption(null);
-    }
-    if (progress?.submittedText) {
-      setTextAnswer(progress.submittedText);
-    } else {
       setTextAnswer("");
-    }
-    // Clear local incorrect options when status resets or when question changes
-    if (progress?.status !== "incorrect") {
       setIncorrectOptions([]);
+      return;
     }
-  }, [progress?.selectedAnswer, progress?.submittedText, question?._id]);
+
+    const isMCQ = questionType === "multiple_choice";
+
+    if (isMCQ) {
+      if (progress?.status === "incorrect" && progress.selectedAnswer) {
+        setIncorrectOptions((prev) =>
+          prev.includes(progress.selectedAnswer)
+            ? prev
+            : [...prev, progress.selectedAnswer],
+        );
+        setSelectedOption(null);
+      } else {
+        setIncorrectOptions([]);
+        setSelectedOption(progress?.selectedAnswer ?? null);
+      }
+      // MCQ does not use text inputs
+      setTextAnswer("");
+    } else {
+      setIncorrectOptions([]);
+      setSelectedOption(null);
+      if (progress?.submittedText) {
+        setTextAnswer(progress.submittedText);
+      } else {
+        setTextAnswer("");
+      }
+    }
+  }, [
+    progress?.selectedAnswer,
+    progress?.submittedText,
+    progress?.status,
+    questionId,
+    questionType,
+  ]);
 
   // Mark as in progress when user starts interacting
   const handleInteraction = () => {
@@ -97,13 +123,6 @@ export function QuestionPanel({
       console.error("Failed to submit answer:", error);
     } finally {
       setIsCheckingAnswer(false);
-      // If marked incorrect, remember this option and clear selection so they can try another
-      if (question.questionType === "multiple_choice" && progress?.status === "incorrect" && selectedOption) {
-        setIncorrectOptions((prev) =>
-          prev.includes(selectedOption) ? prev : [...prev, selectedOption],
-        );
-        setSelectedOption(null);
-      }
     }
   };
 

@@ -156,10 +156,23 @@ export const sendMessageToTutor = action({
     if (response.toolCalls && response.toolCalls.length > 0) {
       for (const toolCall of response.toolCalls) {
         if (toolCall.name === "mark_answer_correct" && progress) {
+          const detectedAnswer = toolCall.args.detectedAnswer as string | undefined;
+          const isMCQ = question.questionType === "multiple_choice";
           await ctx.runMutation(internal.studentProgress.updateProgressStatus, {
             progressId: progress._id,
             status: "correct",
-            submittedText: toolCall.args.detectedAnswer as string | undefined,
+            submittedText: !isMCQ ? detectedAnswer : undefined,
+            selectedAnswer: isMCQ ? detectedAnswer : undefined,
+          });
+        }
+        if (toolCall.name === "mark_answer_incorrect" && progress) {
+          const detectedAnswer = toolCall.args.detectedAnswer as string | undefined;
+          const isMCQ = question.questionType === "multiple_choice";
+          await ctx.runMutation(internal.studentProgress.updateProgressStatus, {
+            progressId: progress._id,
+            status: "incorrect",
+            submittedText: !isMCQ ? detectedAnswer : undefined,
+            selectedAnswer: isMCQ ? detectedAnswer : undefined,
           });
         }
         if (toolCall.name === "evaluate_response" && progress) {

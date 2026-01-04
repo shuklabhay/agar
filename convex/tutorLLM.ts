@@ -1,6 +1,6 @@
 "use node";
 
-import { GoogleGenAI, FunctionDeclaration, Schema, Type } from "@google/genai";
+import { GoogleGenAI, FunctionDeclaration, Type } from "@google/genai";
 
 const TUTOR_MODEL = "gemini-2.0-flash";
 
@@ -59,15 +59,26 @@ const TUTOR_TOOLS: FunctionDeclaration[] = [
       required: ["isCorrect", "feedback"],
     },
   },
-];
-
-const TUTOR_RESPONSE_SCHEMA: Schema = {
-  type: Type.OBJECT,
-  properties: {
-    message: { type: Type.STRING },
+  {
+    name: "mark_answer_incorrect",
+    description:
+      "Log a clearly incorrect final answer (especially MCQ letters/numbers) so the UI can gray it out. Use this when the student commits to a wrong choice.",
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        reasoning: {
+          type: Type.STRING,
+          description: "Brief reason why the answer is being marked wrong",
+        },
+        detectedAnswer: {
+          type: Type.STRING,
+          description: "The answer the student provided (e.g. MCQ letter)",
+        },
+      },
+      required: ["reasoning", "detectedAnswer"],
+    },
   },
-  required: ["message"],
-};
+];
 
 const SYSTEM_INSTRUCTION = `You are Rio, a helpful tutor. Be friendly and encouraging, but concise. Use a warm tone but keep responses tight.
 
@@ -75,16 +86,21 @@ const SYSTEM_INSTRUCTION = `You are Rio, a helpful tutor. Be friendly and encour
 1. Stay on topic - only discuss the current question
 2. Guide, don't give answers - use Socratic method
 3. Keep responses to 1-3 sentences
+4. Ask only ONE focused question per reply (or none if you've marked an answer). Never chain multiple questions.
+5. Treat each question fresh—do not carry suspicion or verification demands from previous questions.
 
 ## Tool Usage - ONLY for FINAL answers
 - mark_answer_correct: ONLY when student clearly states the correct FINAL answer
 - evaluate_response: ONLY when student submits a complete written answer
+- mark_answer_incorrect: When the student locks in a clearly wrong MCQ letter/number
 
 ## CRITICAL: When to call tools
-- Call mark_answer_correct ONLY when you see the correct answer as the student's final conclusion
+- Call mark_answer_correct ONLY when you see the correct answer as the student's final conclusion. If you tell them they're right, you MUST call the tool.
+- If ATTEMPTS_SO_FAR <= 1 and the answer is correct, mark it correct immediately without demanding more explanation.
 - If student shows work like "2+2=4, so the answer is 4" - call the tool since "4" is their final answer
 - If student is mid-calculation or exploring, do NOT call tools - wait for their final answer
 - Never call tools for partial work or when student is still thinking through the problem
+- If a student commits to an MCQ letter/number that is wrong, call mark_answer_incorrect to log it, then briefly guide with ONE next step.
 - If REQUIRED METHOD is specified, consider the teacher's intent when marking correct
 
 ## Preferred Method Guidance
@@ -100,8 +116,10 @@ const SYSTEM_INSTRUCTION = `You are Rio, a helpful tutor. Be friendly and encour
 - Use analogies - instead be direct about how ideas and concepts connect
 - Do not use markdown in your responses
 
-If the student already has the correct answer or reasoning, acknowledge briefly and mark correct. If attempts so far > 2 and they finally reach the right answer, you can ask for a brief explanation before calling tools, but don't block forever.
-When the student provides a correct sub-step (e.g., a multiplication like 30*30=900), do NOT ask them to re-verify it. If the final answer is correct, call mark_answer_correct (or evaluate_response with isCorrect=true) promptly without extra quizzing.`;
+If the student already has the correct answer or reasoning, acknowledge briefly and mark correct immediately—especially on the first attempt. If attempts so far > 2 and they finally reach the right answer, you can ask for ONE brief explanation before calling tools, but don't block forever.
+When the student provides a correct sub-step (e.g., a multiplication like 30*30=900), do NOT ask them to re-verify it. If the final answer is correct, call mark_answer_correct (or evaluate_response with isCorrect=true) promptly without extra quizzing.
+If the student asks to modify or clarify the question, keep the answer key consistent with the provided CORRECT ANSWER and ensure any options/solution remain coherent.
+End every message without trailing blank lines.`;
 
 import type { TutorQuestion } from "../lib/types";
 
@@ -199,7 +217,8 @@ ${input.question.additionalInstructionsForWork ? `REQUIRED METHOD: Student must 
       }
     }
 
-    let message = messageFromParts;
+    // Trim trailing whitespace to avoid newline endings
+    let message = messageFromParts.trimEnd();
 
     // If no message but has tool calls, generate a friendly response
     if (!message && toolCalls.length > 0) {
@@ -210,8 +229,12 @@ ${input.question.additionalInstructionsForWork ? `REQUIRED METHOD: Student must 
         const isCorrect = toolCall.args.isCorrect as boolean;
         const feedback = toolCall.args.feedback as string;
         message = isCorrect ? `Excellent! ${feedback}` : `${feedback}`;
+      } else if (toolCall.name === "mark_answer_incorrect") {
+        message = "Not quite—that choice isn't correct. Let's adjust and try a different approach.";
       }
     }
+
+    message = message.trimEnd();
 
     return {
       message:
