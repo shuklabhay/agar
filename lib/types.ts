@@ -223,6 +223,7 @@ export interface ReviewQuestion {
   extractionOrder: number;
   questionText: string;
   questionType: string;
+  answerOptionsMCQ?: string[];
   answer?: string | string[];
   keyPoints?: string[];
   source?: "notes" | string[];

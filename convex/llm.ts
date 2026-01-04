@@ -175,27 +175,49 @@ export async function generateAnswerForQuestion(
   )
     .replace("{questionText}", questionText)
     .replace("{questionType}", questionType)
-    .replace("{additionalInstructionsForAnswer}", additionalInstructionsForAnswer || "None")
-    .replace("{additionalInstructionsForWork}", additionalInstructionsForWork || "None");
+    .replace(
+      "{additionalInstructionsForAnswer}",
+      additionalInstructionsForAnswer || "None",
+    )
+    .replace(
+      "{additionalInstructionsForWork}",
+      additionalInstructionsForWork || "None",
+    );
 
-  const response = await client.models.generateContent({
-    model: MODELS.answerGeneration,
-    contents: [{ role: "user", parts: [{ text: prompt }, ...notesParts] }],
-    config: {
-      tools: [{ googleSearch: {} }],
-    },
-  });
+  const maxRetries = 3;
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    const response = await client.models.generateContent({
+      model: MODELS.answerGeneration,
+      contents: [{ role: "user", parts: [{ text: prompt }, ...notesParts] }],
+      config: {
+        tools: [{ googleSearch: {} }],
+      },
+    });
 
-  const responseText = response.text ?? "";
-  const cleaned = cleanJsonResponse(responseText);
+    const responseText = response.text ?? "";
+    const cleaned = cleanJsonResponse(responseText);
 
-  const parsed = JSON.parse(cleaned);
-  // Transform snake_case from LLM to camelCase
-  return {
-    answer: parsed.answer,
-    keyPoints: parsed.key_points || [],
-    source: parsed.source,
-  } as GeneratedAnswer;
+    try {
+      const parsed = JSON.parse(cleaned);
+      return {
+        answer: parsed.answer,
+        keyPoints: parsed.key_points || [],
+        source: parsed.source,
+      } as GeneratedAnswer;
+    } catch {
+      if (attempt === maxRetries) {
+        console.error(
+          `Failed to parse JSON after ${maxRetries} attempts for Q${questionNumber}. Response: ${cleaned.substring(0, 200)}`,
+        );
+        throw new Error(`Invalid JSON response after ${maxRetries} retries`);
+      }
+      console.warn(
+        `JSON parse failed for Q${questionNumber} (attempt ${attempt}/${maxRetries}), retrying...`,
+      );
+    }
+  }
+
+  throw new Error("Unreachable");
 }
 
 // Batch process questions with shared notes context

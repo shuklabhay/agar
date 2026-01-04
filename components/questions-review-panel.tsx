@@ -542,6 +542,29 @@ export function QuestionsReviewPanel({
                     {/* Question Text */}
                     <p className="text-base">{selectedQuestion.questionText}</p>
 
+                    {/* Answer Choices for Multiple Choice */}
+                    {selectedQuestion.questionType === "multiple_choice" &&
+                      selectedQuestion.answerOptionsMCQ &&
+                      selectedQuestion.answerOptionsMCQ.length > 0 && (
+                        <div className="space-y-1.5">
+                          <div className="text-xs font-medium text-muted-foreground">
+                            Answer Choices
+                          </div>
+                          <div className="space-y-1">
+                            {selectedQuestion.answerOptionsMCQ.map(
+                              (option, i) => (
+                                <div
+                                  key={i}
+                                  className="text-sm text-muted-foreground pl-2 py-0.5"
+                                >
+                                  {String.fromCharCode(65 + i)}. {option}
+                                </div>
+                              ),
+                            )}
+                          </div>
+                        </div>
+                      )}
+
                     {/* Skipped Question Message */}
                     {isSkipped && (
                       <div className="flex items-center gap-2 rounded-lg bg-slate-100 dark:bg-slate-900 px-4 py-3 text-slate-600 dark:text-slate-400">
