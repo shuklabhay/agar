@@ -1113,7 +1113,7 @@ function ReviewAssignmentView({
   };
   questions: Array<{
     _id: Id<"questions">;
-    questionNumber: number;
+    questionNumber: string;
     extractionOrder: number;
     questionText: string;
     questionType: string;
@@ -1128,7 +1128,7 @@ function ReviewAssignmentView({
   const processAssignment = useAction(api.processAssignment.processAssignment);
   const [editingQuestion, setEditingQuestion] = useState<{
     _id: Id<"questions">;
-    questionNumber: number;
+    questionNumber: string;
     extractionOrder: number;
     questionText: string;
     questionType: string;

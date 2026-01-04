@@ -7,7 +7,7 @@ import { Check, ChevronRight, ChevronLeft } from "lucide-react";
 
 interface Question {
   _id: Id<"questions">;
-  questionNumber: number;
+  questionNumber: string;
 }
 
 interface Progress {

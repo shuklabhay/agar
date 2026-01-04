@@ -5,7 +5,7 @@ import Cookies from "js-cookie";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ArrowUp, ArrowDown } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, compareQuestionNumbers } from "@/lib/utils";
 import {
   QuestionStats,
   QuestionSortField,
@@ -127,7 +127,10 @@ export function QuestionDifficultyTable({
     let comparison = 0;
     switch (sortField) {
       case "questionNumber":
-        comparison = a.questionNumber - b.questionNumber;
+        comparison = compareQuestionNumbers(
+          a.questionNumber,
+          b.questionNumber,
+        );
         break;
       case "successRate":
         comparison = a.successRate - b.successRate;

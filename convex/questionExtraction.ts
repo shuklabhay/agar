@@ -52,7 +52,7 @@ export const extractQuestions = action({
 
       const questionsToInsert = extractedQuestions.map((q, index) => ({
         assignmentId: args.assignmentId,
-        questionNumber: q.questionNumber,
+        questionNumber: String(q.questionNumber ?? index + 1),
         extractionOrder: index, // Preserve PDF order for sorting
         questionText: q.questionText,
         questionType: validTypes.includes(q.questionType as typeof validTypes[number])

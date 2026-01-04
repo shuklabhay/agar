@@ -20,7 +20,7 @@ export type ProgressStatus =
 export type AnswerSource = "notes" | string[];
 
 export interface ExtractedQuestion {
-  questionNumber: number;
+  questionNumber: string;
   questionText: string;
   questionType: string;
   answerOptionsMCQ?: string[];
@@ -36,7 +36,7 @@ export interface GeneratedAnswer {
 
 export interface StudentQuestion {
   _id: string;
-  questionNumber: number;
+  questionNumber: string;
   extractionOrder: number;
   questionText: string;
   questionType: QuestionType;
@@ -141,7 +141,7 @@ export type SortDirection = "asc" | "desc";
 
 export interface QuestionStats {
   questionId: string;
-  questionNumber: number;
+  questionNumber: string;
   questionText: string;
   questionType: string;
   successRate: number;
@@ -185,7 +185,7 @@ export interface StudentData {
 
 export interface LearnQuestion {
   _id: Id<"questions">;
-  questionNumber: number;
+  questionNumber: string;
   questionText: string;
   questionType: QuestionType;
   answerOptionsMCQ?: string[];
@@ -201,7 +201,7 @@ export interface StudentProgress {
 
 export interface ChatQuestion {
   _id: Id<"questions">;
-  questionNumber: number;
+  questionNumber: string;
   questionText: string;
   questionType: string;
 }
@@ -221,7 +221,7 @@ export interface ExistingStudent {
 
 export interface ReviewQuestion {
   _id: Id<"questions">;
-  questionNumber: number;
+  questionNumber: string;
   extractionOrder: number;
   questionText: string;
   questionType: string;
@@ -234,7 +234,7 @@ export interface ReviewQuestion {
 
 export interface EditableQuestion {
   _id: Id<"questions">;
-  questionNumber: number;
+  questionNumber: string;
   questionText: string;
   questionType: string;
   answer?: string | string[];

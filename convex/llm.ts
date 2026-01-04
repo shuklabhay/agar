@@ -20,7 +20,7 @@ const EXTRACTION_RESPONSE_SCHEMA: Schema = {
   items: {
     type: Type.OBJECT,
     properties: {
-      questionNumber: { type: Type.INTEGER },
+      questionNumber: { type: Type.STRING },
       questionText: { type: Type.STRING },
       questionType: {
         type: Type.STRING,
@@ -183,7 +183,7 @@ function parseJsonWithCleaning<T>(text: string, context: string): T {
 const EXTRACTION_PROMPT = `Extract ALL questions from this assignment document.
 
 OUTPUT FIELDS:
-- questionNumber: as shown in document
+- questionNumber: as shown in document (always a string). If numbering includes letters like "16a/16b/16c", treat each lettered part as its own separate question entry (never merge lettered parts together).
 - questionText: FULL question with instruction (e.g., "Solve for x: 3x + 5 = 20", not just "3x + 5 = 20"). If no instruction given, add one (Solve/Simplify/Factor/etc). If it references a passage/figure, include that reference.
 - Preserve visible formatting cues that matter to the student (blanks like "____", placeholders like "[ ]", line breaks in passage references). If a blank appears in the prompt, keep it in questionText.
 - questionType: "multiple_choice" | "single_value" | "short_answer" | "free_response" | "skipped"
@@ -202,7 +202,7 @@ When teacher provides additional info:
 - "skip question X" → set questionType to "skipped"
 
 Preserve math expressions exactly. Do NOT transcribe tables/graphs; instead, note the reference in questionText (e.g., "Refer to the table on page 2" or "See graph above"). Respond with ONLY valid JSON array:
-[{"questionNumber": 1, "questionText": "...", "questionType": "...", ...}, ...]`;
+[{"questionNumber": "1", "questionText": "...", "questionType": "...", ...}, ...]`;
 
 // Import and re-export from shared types
 import type { ExtractedQuestion, GeneratedAnswer } from "../lib/types";
@@ -276,7 +276,7 @@ Respond with ONLY this JSON:
 // GeneratedAnswer type is imported from lib/types
 
 export async function generateAnswerForQuestion(
-  questionNumber: number,
+  questionNumber: string,
   questionText: string,
   questionType: string,
   additionalInstructionsForAnswer: string | undefined,
@@ -301,7 +301,7 @@ export async function generateAnswerForQuestion(
 
   const prompt = ANSWER_PROMPT.replace(
     "{questionNumber}",
-    String(questionNumber),
+    questionNumber,
   )
     .replace("{questionText}", questionText)
     .replace("{questionType}", questionType)
@@ -385,7 +385,7 @@ function extractAnswerFromText(
 // Batch process questions with shared notes context
 export async function generateAnswersForQuestions(
   questions: Array<{
-    questionNumber: number;
+    questionNumber: string;
     questionText: string;
     questionType: string;
     additionalInstructionsForAnswer?: string;
@@ -393,7 +393,7 @@ export async function generateAnswersForQuestions(
     answerOptionsMCQ?: string[];
   }>,
   notesFileUrls: string[],
-): Promise<Map<number, GeneratedAnswer>> {
+): Promise<Map<string, GeneratedAnswer>> {
   const client = getClient();
 
   // Prepare notes files once (reuse across questions)
@@ -404,7 +404,7 @@ export async function generateAnswersForQuestions(
     }),
   );
 
-  const results = new Map<number, GeneratedAnswer>();
+  const results = new Map<string, GeneratedAnswer>();
 
   // Process questions (could parallelize in batches later)
   for (const q of questions) {

@@ -61,7 +61,7 @@ export default defineSchema({
   }).index("by_classId", ["classId"]),
   questions: defineTable({
     assignmentId: v.id("assignments"),
-    questionNumber: v.number(),
+    questionNumber: v.string(),
     extractionOrder: v.number(), // Order question appears in PDF (for sorting)
     questionText: v.string(),
     questionType: v.union(

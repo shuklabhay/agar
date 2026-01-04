@@ -51,7 +51,7 @@ export const insertQuestions = internalMutation({
     questions: v.array(
       v.object({
         assignmentId: v.id("assignments"),
-        questionNumber: v.number(),
+        questionNumber: v.string(),
         extractionOrder: v.number(),
         questionText: v.string(),
         questionType: v.union(
