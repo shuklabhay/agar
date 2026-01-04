@@ -466,7 +466,9 @@ export const deleteAssignment = mutation({
     // Delete all questions for this assignment
     const questions = await ctx.db
       .query("questions")
-      .withIndex("by_assignmentId", (q) => q.eq("assignmentId", args.assignmentId))
+      .withIndex("by_assignmentId", (q) =>
+        q.eq("assignmentId", args.assignmentId),
+      )
       .collect();
 
     for (const question of questions) {
@@ -474,7 +476,10 @@ export const deleteAssignment = mutation({
     }
 
     // Delete all storage files
-    for (const file of [...assignment.assignmentFiles, ...assignment.notesFiles]) {
+    for (const file of [
+      ...assignment.assignmentFiles,
+      ...assignment.notesFiles,
+    ]) {
       await ctx.storage.delete(file.storageId);
     }
 
@@ -531,21 +536,28 @@ export const createEmptyDraft = mutation({
       throw new Error("Class not found or access denied");
     }
 
-    // Check if there's already a draft for this class
-    const existingDrafts = await ctx.db
+    const allAssignments = await ctx.db
       .query("assignments")
       .withIndex("by_classId", (q) => q.eq("classId", args.classId))
-      .filter((q) => q.eq(q.field("isDraft"), true))
       .collect();
 
-    // Return existing draft if one exists
-    if (existingDrafts.length > 0) {
-      return existingDrafts[0]._id;
+    const untitledPattern = /^Untitled Assignment(?: (\d+))?$/;
+    const usedNumbers: number[] = [];
+    for (const assignment of allAssignments) {
+      const match = assignment.name.match(untitledPattern);
+      if (match) {
+        usedNumbers.push(match[1] ? parseInt(match[1], 10) : 0);
+      }
     }
 
-    // Create new empty draft
+    let draftName = "Untitled Assignment";
+    if (usedNumbers.length > 0) {
+      const maxNumber = Math.max(...usedNumbers);
+      draftName = `Untitled Assignment ${maxNumber + 1}`;
+    }
+
     const draftId = await ctx.db.insert("assignments", {
-      name: "Untitled Assignment",
+      name: draftName,
       classId: args.classId,
       assignmentFiles: [],
       notesFiles: [],
