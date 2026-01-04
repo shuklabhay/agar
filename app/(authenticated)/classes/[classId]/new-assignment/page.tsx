@@ -102,6 +102,10 @@ export default function NewAssignmentPage() {
   >([]);
   const [isDraggingAssignment, setIsDraggingAssignment] = useState(false);
   const [isDraggingNotes, setIsDraggingNotes] = useState(false);
+  const [draggingFile, setDraggingFile] = useState<{
+    file: UploadedFile;
+    fromCategory: FileCategory;
+  } | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [previewFile, setPreviewFile] = useState<UploadedFile | null>(null);
   const [draftId, setDraftId] = useState<Id<"assignments"> | null>(null);
@@ -431,6 +435,23 @@ export default function NewAssignmentPage() {
     }
   };
 
+  const handleMoveFile = useCallback(
+    (file: UploadedFile, fromCategory: FileCategory, toCategory: FileCategory) => {
+      if (fromCategory === toCategory) return;
+
+      const setSourceFiles = fromCategory === "assignment" ? setAssignmentFiles : setNotesFiles;
+      const setDestFiles = toCategory === "assignment" ? setAssignmentFiles : setNotesFiles;
+
+      // Remove from source
+      setSourceFiles((prev) => prev.filter((f) => f.id !== file.id));
+      // Add to destination
+      setDestFiles((prev) => [...prev, file]);
+
+      toast.success(`Moved "${file.fileName}" to ${toCategory === "assignment" ? "Assignment" : "Notes"}`);
+    },
+    [],
+  );
+
   const handleDragOver = useCallback(
     (e: React.DragEvent, category: FileCategory) => {
       e.preventDefault();
@@ -471,11 +492,20 @@ export default function NewAssignmentPage() {
       } else {
         setIsDraggingNotes(false);
       }
+
+      // Check if this is an internal file move
+      if (draggingFile) {
+        handleMoveFile(draggingFile.file, draggingFile.fromCategory, category);
+        setDraggingFile(null);
+        return;
+      }
+
+      // External file drop
       if (e.dataTransfer.files.length > 0) {
         handleFileUpload(e.dataTransfer.files, category);
       }
     },
-    [handleFileUpload],
+    [handleFileUpload, draggingFile, handleMoveFile],
   );
 
   const handleShowConfirmation = (e: React.FormEvent) => {
@@ -590,7 +620,6 @@ export default function NewAssignmentPage() {
       category === "assignment"
         ? uploadingAssignmentFiles
         : uploadingNotesFiles;
-
     return (
       <div className="flex-1 space-y-2">
         <Label>{label}</Label>
@@ -683,7 +712,19 @@ export default function NewAssignmentPage() {
             {uploadedFilesList.map((file) => (
               <Card
                 key={file.id}
-                className="cursor-pointer hover:bg-muted/50 transition-colors"
+                draggable
+                onDragStart={(e) => {
+                  e.dataTransfer.effectAllowed = "move";
+                  setDraggingFile({ file, fromCategory: category });
+                }}
+                onDragEnd={() => {
+                  setDraggingFile(null);
+                  setIsDraggingAssignment(false);
+                  setIsDraggingNotes(false);
+                }}
+                className={`cursor-grab hover:bg-muted/50 transition-all active:cursor-grabbing ${
+                  draggingFile?.file.id === file.id ? "opacity-50 scale-95" : ""
+                }`}
                 onClick={() => setPreviewFile(file)}
               >
                 <CardContent className="flex items-center gap-2 p-2">
