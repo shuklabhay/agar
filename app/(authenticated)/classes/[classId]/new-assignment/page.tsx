@@ -914,11 +914,7 @@ export default function NewAssignmentPage() {
                     key={f.id}
                     type="button"
                     className="flex items-center gap-2 text-sm w-full text-left hover:bg-muted/50 rounded px-1 py-0.5 -mx-1 transition-colors"
-                    onClick={() => setPreviewFile({
-                      fileName: f.fileName,
-                      contentType: f.contentType,
-                      previewUrl: f.previewUrl,
-                    })}
+                    onClick={() => setPreviewFile(f)}
                   >
                     {getFileIcon(f.contentType)}
                     <span className="truncate hover:underline">{f.fileName}</span>
@@ -937,11 +933,7 @@ export default function NewAssignmentPage() {
                     key={f.id}
                     type="button"
                     className="flex items-center gap-2 text-sm w-full text-left hover:bg-muted/50 rounded px-1 py-0.5 -mx-1 transition-colors"
-                    onClick={() => setPreviewFile({
-                      fileName: f.fileName,
-                      contentType: f.contentType,
-                      previewUrl: f.previewUrl,
-                    })}
+                    onClick={() => setPreviewFile(f)}
                   >
                     {getFileIcon(f.contentType)}
                     <span className="truncate hover:underline">{f.fileName}</span>
