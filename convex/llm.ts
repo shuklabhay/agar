@@ -255,7 +255,7 @@ TYPE: {questionType}
 FORMAT: {additionalInstructionsForAnswer}
 METHOD: {additionalInstructionsForWork}
 
-Answer using the notes provided. Use Google Search if notes don't cover the topic.
+Answer using the notes provided. If the notes do NOT contain the concept/facts or method you need, use Google Search to pull the relevant facts/concepts, then solve the question. When you use search, include the URLs in source.
 
 ANSWER FORMAT:
 - short_answer: expression (e.g., "3x + 27")
@@ -263,7 +263,7 @@ ANSWER FORMAT:
 - multiple_choice: ONE letter only (A/B/C/D)
 - free_response: array of key points
 
-KEY_POINTS: 1-2 brief facts (<15 words each) that directly support YOUR answer to THIS question. Cite notes or explain reasoning.
+KEY_POINTS: 1-2 brief facts (<15 words each) that directly support YOUR answer to THIS question. Cite notes; if you used web search, cite the specific facts from the found pages.
 
 SOURCE: "notes" or array of search URLs used.
 
