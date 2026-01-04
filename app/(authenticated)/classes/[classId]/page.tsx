@@ -243,44 +243,42 @@ export default function ClassDetailPage() {
         </div>
 
         <div
-          className={`relative rounded-lg border-2 border-dashed transition-colors ${
-            isDraggingOver
-              ? "border-primary bg-primary/5"
-              : "border-transparent"
-          }`}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
         >
-          {isDraggingOver ? (
-            /* Dropzone content when dragging */
-            <div className="flex flex-col items-center justify-center py-16">
-              <div className="rounded-full p-4 mb-4 bg-primary/10">
-                <Upload className="h-8 w-8 text-primary" />
-              </div>
-              <h3 className="text-lg font-semibold mb-1">Drop files here</h3>
-              <p className="text-muted-foreground text-center max-w-sm">
-                Release to upload files and create a new assignment
-              </p>
-            </div>
-          ) : sortedAssignments.length === 0 ? (
-            <Card className="border-dashed border-muted-foreground/25">
+          {sortedAssignments.length === 0 ? (
+            <Card className={`border-dashed transition-colors ${
+              isDraggingOver
+                ? "border-primary border-2 bg-primary/5"
+                : "border-muted-foreground/25"
+            }`}>
               <CardContent className="flex flex-col items-center justify-center py-16">
-                <div className="rounded-full p-4 mb-4 bg-muted">
-                  <FileText className="h-8 w-8 text-muted-foreground" />
-                </div>
-                <h3 className="text-lg font-semibold mb-1">No assignments yet</h3>
-                <p className="text-muted-foreground text-center max-w-sm mb-4">
-                  Create your first assignment to start sharing materials with students.
-                </p>
-                <Button onClick={handleCreateAssignment} disabled={isCreatingAssignment}>
-                  {isCreatingAssignment ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
+                <div className={`rounded-full p-4 mb-4 ${isDraggingOver ? "bg-primary/10" : "bg-muted"}`}>
+                  {isDraggingOver ? (
+                    <Upload className="h-8 w-8 text-primary" />
                   ) : (
-                    <Plus className="h-4 w-4" />
+                    <FileText className="h-8 w-8 text-muted-foreground" />
                   )}
-                  Create Your First Assignment
-                </Button>
+                </div>
+                <h3 className="text-lg font-semibold mb-1">
+                  {isDraggingOver ? "Drop files here" : "No assignments yet"}
+                </h3>
+                <p className="text-muted-foreground text-center max-w-sm mb-4">
+                  {isDraggingOver
+                    ? "Release to upload files and create a new assignment"
+                    : "Create your first assignment to start sharing materials with students."}
+                </p>
+                {!isDraggingOver && (
+                  <Button onClick={handleCreateAssignment} disabled={isCreatingAssignment}>
+                    {isCreatingAssignment ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Plus className="h-4 w-4" />
+                    )}
+                    Create Your First Assignment
+                  </Button>
+                )}
               </CardContent>
             </Card>
           ) : (
