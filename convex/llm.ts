@@ -87,6 +87,8 @@ QUESTION TEXT RULES:
 - Apply any corrections/rewording from ADDITIONAL INFO directly to questionText
 
 HANDLING ADDITIONAL INFO FROM TEACHER:
+Additional info is the OVERRIDING AUTHORITY - when the teacher says to do something, DO IT. It takes precedence over default behavior.
+
 The teacher may refer to questions by number, section, module, or description. Match flexibly (e.g., "question 6 in english" or "module 1 question 6" both refer to question 6).
 
 - QUESTION MODIFICATIONS (apply directly to questionText):
@@ -94,11 +96,13 @@ The teacher may refer to questions by number, section, module, or description. M
   - "question X has an error, change Y to Z" → fix the number/text in questionText
   - "make question X more challenging" → rewrite questionText
 
-- MCQ ANSWER OPTION MODIFICATIONS (modify answerOptionsMCQ array directly!):
-  - "replace option B with something about fortnite" → CHANGE the actual text of option B in answerOptionsMCQ to something fortnite-related
-  - "change option A to say XYZ" → REPLACE option A text in answerOptionsMCQ with "XYZ"
-  - "make option C about basketball" → REPLACE option C text with something basketball-related
-  - IMPORTANT: When told to replace/change an MCQ option, you MUST modify the answerOptionsMCQ array itself, not just store instructions!
+- MCQ ANSWER OPTION MODIFICATIONS:
+  - "replace option B with something about fortnite" → modify answerOptionsMCQ
+  - "change option A to say XYZ" → modify answerOptionsMCQ
+  - "make option C about basketball" → modify answerOptionsMCQ
+  - CRITICAL: Before replacing an option, FIRST identify which option is the CORRECT answer by analyzing the question. Then replace a WRONG option, NOT the correct one.
+  - Example: If teacher says "replace an option with fortnite" and you determine option C is correct, replace A, B, or D instead.
+  - If teacher explicitly specifies which option to replace (e.g., "replace option B"), check if B is correct. If it is, replace a different wrong option instead and note this in additionalInstructionsForAnswer.
 
 - ANSWER FORMAT REQUIREMENTS (put in additionalInstructionsForAnswer):
   - "accept simplified form only" → store in additionalInstructionsForAnswer
