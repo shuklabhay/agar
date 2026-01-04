@@ -63,9 +63,15 @@ export default function ClassDetailPage() {
   const renameAssignment = useMutation(api.assignments.renameAssignment);
   const createEmptyDraft = useMutation(api.assignments.createEmptyDraft);
 
-  const [deleteTarget, setDeleteTarget] = useState<{ id: Id<"assignments">; name: string } | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{
+    id: Id<"assignments">;
+    name: string;
+  } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [renameTarget, setRenameTarget] = useState<{ id: Id<"assignments">; name: string } | null>(null);
+  const [renameTarget, setRenameTarget] = useState<{
+    id: Id<"assignments">;
+    name: string;
+  } | null>(null);
   const [newName, setNewName] = useState("");
   const [isRenaming, setIsRenaming] = useState(false);
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
@@ -86,15 +92,18 @@ export default function ClassDetailPage() {
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
-    setIsDraggingOver(false);
+    // Keep dropzone active - will be reset when dialog closes
     if (e.dataTransfer.files.length > 0) {
       setDroppedFiles(Array.from(e.dataTransfer.files));
       setShowCategoryDialog(true);
+    } else {
+      setIsDraggingOver(false);
     }
   }, []);
 
   const handleCategorySelect = async (category: "assignment" | "notes") => {
     setShowCategoryDialog(false);
+    setIsDraggingOver(false);
     setIsCreatingAssignment(true);
     try {
       const draftId = await createEmptyDraft({ classId });
@@ -125,10 +134,12 @@ export default function ClassDetailPage() {
   };
 
   // Sort assignments by name
-  const sortedAssignments = assignments ? [...assignments].sort((a, b) => {
-    const comparison = a.name.localeCompare(b.name);
-    return sortOrder === "asc" ? comparison : -comparison;
-  }) : [];
+  const sortedAssignments = assignments
+    ? [...assignments].sort((a, b) => {
+        const comparison = a.name.localeCompare(b.name);
+        return sortOrder === "asc" ? comparison : -comparison;
+      })
+    : [];
 
   const toggleSort = () => {
     setSortOrder(sortOrder === "asc" ? "desc" : "asc");
@@ -152,7 +163,10 @@ export default function ClassDetailPage() {
     if (!renameTarget || !newName.trim()) return;
     setIsRenaming(true);
     try {
-      await renameAssignment({ assignmentId: renameTarget.id, name: newName.trim() });
+      await renameAssignment({
+        assignmentId: renameTarget.id,
+        name: newName.trim(),
+      });
       toast.success("Assignment renamed");
       setRenameTarget(null);
       setNewName("");
@@ -215,7 +229,10 @@ export default function ClassDetailPage() {
             )}
           </div>
         </div>
-        <Button onClick={handleCreateAssignment} disabled={isCreatingAssignment}>
+        <Button
+          onClick={handleCreateAssignment}
+          disabled={isCreatingAssignment}
+        >
           {isCreatingAssignment ? (
             <Loader2 className="h-4 w-4 animate-spin" />
           ) : (
@@ -236,7 +253,11 @@ export default function ClassDetailPage() {
               onClick={toggleSort}
               className="h-7 text-xs text-muted-foreground"
             >
-              {sortOrder === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}
+              {sortOrder === "asc" ? (
+                <ArrowUp className="h-3 w-3" />
+              ) : (
+                <ArrowDown className="h-3 w-3" />
+              )}
               {sortOrder === "asc" ? "A-Z" : "Z-A"}
             </Button>
           )}
@@ -248,13 +269,21 @@ export default function ClassDetailPage() {
           onDrop={handleDrop}
         >
           {sortedAssignments.length === 0 ? (
-            <Card className={`border-dashed transition-colors ${
-              isDraggingOver
-                ? "border-primary border-2 bg-primary/5"
-                : "border-muted-foreground/25"
-            }`}>
-              <CardContent className="flex flex-col items-center justify-center py-16">
-                <div className={`rounded-full p-4 mb-4 ${isDraggingOver ? "bg-primary/10" : "bg-muted"}`}>
+            <Card
+              className={`border-dashed transition-colors ${
+                isDraggingOver
+                  ? "border-primary border-2 bg-primary/5"
+                  : "border-muted-foreground/25"
+              }`}
+            >
+              <CardContent
+                className={`flex flex-col items-center justify-center ${
+                  isDraggingOver ? "py-22" : "py-16"
+                }`}
+              >
+                <div
+                  className={`rounded-full p-4 mb-4 ${isDraggingOver ? "bg-primary/10" : "bg-muted"}`}
+                >
                   {isDraggingOver ? (
                     <Upload className="h-8 w-8 text-primary" />
                   ) : (
@@ -270,12 +299,8 @@ export default function ClassDetailPage() {
                     : "Create your first assignment to start sharing materials with students."}
                 </p>
                 {!isDraggingOver && (
-                  <Button onClick={handleCreateAssignment} disabled={isCreatingAssignment}>
-                    {isCreatingAssignment ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Plus className="h-4 w-4" />
-                    )}
+                  <Button onClick={handleCreateAssignment}>
+                    <Plus className="h-4 w-4" />
                     Create Your First Assignment
                   </Button>
                 )}
@@ -283,98 +308,114 @@ export default function ClassDetailPage() {
             </Card>
           ) : (
             <div className="grid gap-3">
-            {sortedAssignments.map((assignment) => (
-              <div key={assignment._id} className="group relative">
-                <Link href={`/classes/${classId}/${assignment._id}`}>
-                  <Card
-                    className={`transition-all hover:shadow-md hover:border-primary/50 group-hover:bg-muted/30 ${
-                      assignment.isDraft ? "border-dashed border-2" : ""
-                    }`}
-                  >
-                    <CardContent className="flex items-center gap-3 p-3 pr-28">
-                      <div className="rounded-lg bg-muted p-2">
-                        <FileText className="h-5 w-5 text-muted-foreground" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <h3 className="font-semibold group-hover:text-primary transition-colors truncate">
-                            {assignment.name}
-                          </h3>
-                          {assignment.isDraft && (
-                            <Badge variant="outline" className="text-xs">
-                              Draft
-                            </Badge>
-                          )}
+              {sortedAssignments.map((assignment) => (
+                <div key={assignment._id} className="group relative">
+                  <Link href={`/classes/${classId}/${assignment._id}`}>
+                    <Card
+                      className={`transition-all hover:shadow-md hover:border-primary/50 group-hover:bg-muted/30 ${
+                        assignment.isDraft ? "border-dashed border-2" : ""
+                      }`}
+                    >
+                      <CardContent className="flex items-center gap-3 p-3 pr-28">
+                        <div className="rounded-lg bg-muted p-2">
+                          <FileText className="h-5 w-5 text-muted-foreground" />
                         </div>
-                        <p className="text-sm text-muted-foreground">
-                          {assignment.assignmentFilesCount} assignment file
-                          {assignment.assignmentFilesCount !== 1 ? "s" : ""},{" "}
-                          {assignment.notesFilesCount} note
-                          {assignment.notesFilesCount !== 1 ? "s" : ""}
-                        </p>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </Link>
-                <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
-                  {!assignment.isDraft && (
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <h3 className="font-semibold group-hover:text-primary transition-colors truncate">
+                              {assignment.name}
+                            </h3>
+                            {assignment.isDraft && (
+                              <Badge variant="outline" className="text-xs">
+                                Draft
+                              </Badge>
+                            )}
+                          </div>
+                          <p className="text-sm text-muted-foreground">
+                            {assignment.assignmentFilesCount} assignment file
+                            {assignment.assignmentFilesCount !== 1
+                              ? "s"
+                              : ""}, {assignment.notesFilesCount} note
+                            {assignment.notesFilesCount !== 1 ? "s" : ""}
+                          </p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </Link>
+                  <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                    {!assignment.isDraft && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground hover:text-primary opacity-0 group-hover:opacity-100 transition-opacity"
+                        title="Copy student link"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          const studentLink = `${window.location.origin}/learn/${assignment._id}`;
+                          navigator.clipboard.writeText(studentLink);
+                          toast.success("Student link copied");
+                        }}
+                      >
+                        <LinkIcon className="h-4 w-4" />
+                      </Button>
+                    )}
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-8 w-8 text-muted-foreground hover:text-primary opacity-0 group-hover:opacity-100 transition-opacity"
-                      title="Copy student link"
+                      className="h-8 w-8 text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity"
                       onClick={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
-                        const studentLink = `${window.location.origin}/learn/${assignment._id}`;
-                        navigator.clipboard.writeText(studentLink);
-                        toast.success("Student link copied");
+                        setRenameTarget({
+                          id: assignment._id,
+                          name: assignment.name,
+                        });
+                        setNewName(assignment.name);
                       }}
                     >
-                      <LinkIcon className="h-4 w-4" />
+                      <Pencil className="h-4 w-4" />
                     </Button>
-                  )}
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      setRenameTarget({ id: assignment._id, name: assignment.name });
-                      setNewName(assignment.name);
-                    }}
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-opacity"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      setDeleteTarget({ id: assignment._id, name: assignment.name });
-                    }}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setDeleteTarget({
+                          id: assignment._id,
+                          name: assignment.name,
+                        });
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
           )}
         </div>
       </div>
 
       {/* Delete Confirmation Dialog */}
-      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+      <AlertDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Assignment</AlertDialogTitle>
             <AlertDialogDescription className="space-y-2">
-              <span className="block">Are you sure you want to delete &quot;<strong>{deleteTarget?.name}</strong>&quot;?</span>
-              <span className="block">This will permanently delete all files, questions, and answers. This action cannot be undone.</span>
+              <span className="block">
+                Are you sure you want to delete &quot;
+                <strong>{deleteTarget?.name}</strong>&quot;?
+              </span>
+              <span className="block">
+                This will permanently delete all files, questions, and answers.
+                This action cannot be undone.
+              </span>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -398,7 +439,10 @@ export default function ClassDetailPage() {
       </AlertDialog>
 
       {/* Rename Dialog */}
-      <Dialog open={!!renameTarget} onOpenChange={(open) => !open && setRenameTarget(null)}>
+      <Dialog
+        open={!!renameTarget}
+        onOpenChange={(open) => !open && setRenameTarget(null)}
+      >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Rename Assignment</DialogTitle>
@@ -413,8 +457,13 @@ export default function ClassDetailPage() {
             <Button variant="outline" onClick={() => setRenameTarget(null)}>
               Cancel
             </Button>
-            <Button onClick={handleRename} disabled={isRenaming || !newName.trim()}>
-              {isRenaming ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+            <Button
+              onClick={handleRename}
+              disabled={isRenaming || !newName.trim()}
+            >
+              {isRenaming ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : null}
               Rename
             </Button>
           </DialogFooter>
@@ -422,17 +471,23 @@ export default function ClassDetailPage() {
       </Dialog>
 
       {/* File Category Selection Dialog */}
-      <Dialog open={showCategoryDialog} onOpenChange={(open) => {
-        if (!open) {
-          setShowCategoryDialog(false);
-          setDroppedFiles([]);
-        }
-      }}>
-        <DialogContent className="sm:max-w-md">
+      <Dialog
+        open={showCategoryDialog}
+        onOpenChange={(open) => {
+          if (!open) {
+            setShowCategoryDialog(false);
+            setDroppedFiles([]);
+            setIsDraggingOver(false);
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-md" showCloseButton={false}>
           <DialogHeader>
             <DialogTitle>Select File Type</DialogTitle>
             <DialogDescription>
-              Where should {droppedFiles.length === 1 ? "this file" : "these files"} be added?
+              Where should{" "}
+              {droppedFiles.length === 1 ? "this file" : "these files"} be
+              added?
             </DialogDescription>
           </DialogHeader>
           <div className="grid grid-cols-2 gap-4 pt-2">

@@ -202,7 +202,7 @@ export function AppSidebar() {
               <SidebarMenuItem>
                 <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
                   <DialogTrigger asChild>
-                    <SidebarMenuButton tooltip="Settings">
+                    <SidebarMenuButton>
                       <Settings />
                       <span>Settings</span>
                     </SidebarMenuButton>
