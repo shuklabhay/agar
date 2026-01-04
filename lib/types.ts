@@ -9,7 +9,11 @@ export type QuestionType =
 
 export type QuestionStatus = "pending" | "processing" | "ready" | "approved";
 
-export type ProgressStatus = "not_started" | "in_progress" | "correct" | "incorrect";
+export type ProgressStatus =
+  | "not_started"
+  | "in_progress"
+  | "correct"
+  | "incorrect";
 
 export type AnswerSource = "notes" | string[];
 
@@ -19,7 +23,8 @@ export interface ExtractedQuestion {
   questionText: string;
   questionType: string;
   answerOptionsMCQ?: string[];
-  additionalInstructionsForAnswering?: string;
+  additionalInstructionsForAnswer?: string;
+  additionalInstructionsForWork?: string;
 }
 
 // Generated answer from LLM
@@ -42,7 +47,8 @@ export interface StudentQuestion {
 // Full question (teacher view)
 export interface Question extends StudentQuestion {
   assignmentId: string;
-  additionalInstructionsForAnswering?: string;
+  additionalInstructionsForAnswer?: string;
+  additionalInstructionsForWork?: string;
   answer?: string | string[];
   keyPoints?: string[];
   source?: AnswerSource;
@@ -56,4 +62,5 @@ export interface TutorQuestion {
   answerOptionsMCQ?: string[];
   answer?: string | string[];
   keyPoints?: string[];
+  additionalInstructionsForWork?: string;
 }

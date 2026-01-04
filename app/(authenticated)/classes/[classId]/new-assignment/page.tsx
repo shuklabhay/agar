@@ -436,18 +436,26 @@ export default function NewAssignmentPage() {
   };
 
   const handleMoveFile = useCallback(
-    (file: UploadedFile, fromCategory: FileCategory, toCategory: FileCategory) => {
+    (
+      file: UploadedFile,
+      fromCategory: FileCategory,
+      toCategory: FileCategory,
+    ) => {
       if (fromCategory === toCategory) return;
 
-      const setSourceFiles = fromCategory === "assignment" ? setAssignmentFiles : setNotesFiles;
-      const setDestFiles = toCategory === "assignment" ? setAssignmentFiles : setNotesFiles;
+      const setSourceFiles =
+        fromCategory === "assignment" ? setAssignmentFiles : setNotesFiles;
+      const setDestFiles =
+        toCategory === "assignment" ? setAssignmentFiles : setNotesFiles;
 
       // Remove from source
       setSourceFiles((prev) => prev.filter((f) => f.id !== file.id));
       // Add to destination
       setDestFiles((prev) => [...prev, file]);
 
-      toast.success(`Moved "${file.fileName}" to ${toCategory === "assignment" ? "Assignment" : "Notes"}`);
+      toast.success(
+        `Moved "${file.fileName}" to ${toCategory === "assignment" ? "Assignment" : "Notes"}`,
+      );
     },
     [],
   );
@@ -479,7 +487,10 @@ export default function NewAssignmentPage() {
   // Process pending files after handleFileUpload is available
   useEffect(() => {
     if (pendingFilesToProcess) {
-      handleFileUpload(pendingFilesToProcess.files, pendingFilesToProcess.category);
+      handleFileUpload(
+        pendingFilesToProcess.files,
+        pendingFilesToProcess.category,
+      );
       setPendingFilesToProcess(null);
     }
   }, [pendingFilesToProcess, handleFileUpload]);
@@ -1034,7 +1045,7 @@ export default function NewAssignmentPage() {
               </div>
             )}
 
-            <div className="bg-blue-50 dark:bg-blue-950/30 rounded-lg p-3 text-sm">
+            <div className="bg-blue-50 dark:bg-blue-950/30 rounded-lg p-3 text-sm mt-8">
               <p className="text-blue-800 dark:text-blue-200">
                 After creating, the system will automatically extract questions
                 and generate answers using AI. This may take a few minutes.
@@ -1042,7 +1053,7 @@ export default function NewAssignmentPage() {
             </div>
           </div>
 
-          <div className="flex justify-end gap-2 mt-4">
+          <div className="flex justify-end gap-2">
             <Button
               variant="outline"
               onClick={() => setShowConfirmDialog(false)}

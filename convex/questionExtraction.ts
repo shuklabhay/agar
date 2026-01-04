@@ -59,7 +59,8 @@ export const extractQuestions = action({
           ? (q.questionType as typeof validTypes[number])
           : ("short_answer" as const),
         answerOptionsMCQ: q.answerOptionsMCQ,
-        additionalInstructionsForAnswering: q.additionalInstructionsForAnswering,
+        additionalInstructionsForAnswer: q.additionalInstructionsForAnswer,
+        additionalInstructionsForWork: q.additionalInstructionsForWork,
         status: "pending" as const,
       }));
 

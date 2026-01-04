@@ -145,6 +145,7 @@ export const sendMessageToTutor = action({
         answer: question.answer,
         // Only include keyPoints on first message - they'll be in history for subsequent calls
         keyPoints: isFirstMessageForQuestion ? question.keyPoints : undefined,
+        additionalInstructionsForWork: question.additionalInstructionsForWork,
       },
       history: history.map((m) => ({
         role: m.role,

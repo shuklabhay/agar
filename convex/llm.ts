@@ -39,9 +39,10 @@ For each question, provide:
 2. questionText: The COMPLETE question including both the instruction AND the problem. See QUESTION TEXT RULES below.
 3. questionType: One of "multiple_choice", "single_number", "short_answer", "free_response", "skipped"
 4. answerOptionsMCQ: Array of choices if multiple choice, otherwise omit
-5. additionalInstructionsForAnswering: ONLY include instructions about how to GRADE/ACCEPT answers
-   (e.g., "only accept Bernoulli's equation", "accept equivalent forms")
-   Do NOT put question modifications here - apply those to questionText instead
+5. additionalInstructionsForAnswer: Instructions about the ANSWER itself - corrections to answer choices, what format to accept
+   (e.g., "replace option B with 'fortnite'", "accept equivalent forms", "answer must be in fraction form")
+6. additionalInstructionsForWork: Instructions about HOW TO SOLVE the problem - required methods or approaches
+   (e.g., "must use quadratic formula", "solve using Bernoulli's equation only", "show work using integration by parts")
 
 QUESTION TEXT RULES:
 - ALWAYS include the instruction with the problem, not just the equation/expression alone
@@ -72,10 +73,15 @@ HANDLING ADDITIONAL INFO FROM TEACHER:
   - "question X has an error, change Y to Z" → fix the number/text in questionText
   - "make question X more challenging" → rewrite questionText
 
-- ANSWER INSTRUCTIONS (put in additionalInstructionsForAnswering):
-  - "only accept Bernoulli's equation for #5" → store in that question's additionalInstructionsForAnswering
-  - "accept simplified form only" → store in additionalInstructionsForAnswering
-  - "partial credit for showing work" → store in additionalInstructionsForAnswering
+- ANSWER MODIFICATIONS (put in additionalInstructionsForAnswer):
+  - "replace option B with something about fortnite" → store in additionalInstructionsForAnswer
+  - "accept simplified form only" → store in additionalInstructionsForAnswer
+  - "answer must be a decimal, not fraction" → store in additionalInstructionsForAnswer
+
+- METHOD/WORK REQUIREMENTS (put in additionalInstructionsForWork):
+  - "only accept if using quadratic formula" → store in additionalInstructionsForWork
+  - "must solve using Bernoulli's equation" → store in additionalInstructionsForWork
+  - "require showing work with integration" → store in additionalInstructionsForWork
 
 - SKIP INSTRUCTIONS:
   - "skip question X" → set questionType to "skipped"
@@ -130,7 +136,8 @@ export async function extractQuestionsFromFiles(
 
 const ANSWER_PROMPT = `QUESTION #{questionNumber}: {questionText}
 QUESTION TYPE: {questionType}
-TEACHER SPECIAL INSTRUCTIONS: {additionalInstructions}
+ANSWER FORMAT INSTRUCTIONS: {additionalInstructionsForAnswer}
+REQUIRED METHOD/APPROACH: {additionalInstructionsForWork}
 
 TASK: Answer the question using the notes. Use Google Search if notes don't cover the topic.
 
@@ -157,7 +164,8 @@ export async function generateAnswerForQuestion(
   questionNumber: number,
   questionText: string,
   questionType: string,
-  additionalInstructions: string | undefined,
+  additionalInstructionsForAnswer: string | undefined,
+  additionalInstructionsForWork: string | undefined,
   notesParts: Part[],
   client: GoogleGenAI,
 ): Promise<GeneratedAnswer> {
@@ -167,7 +175,8 @@ export async function generateAnswerForQuestion(
   )
     .replace("{questionText}", questionText)
     .replace("{questionType}", questionType)
-    .replace("{additionalInstructions}", additionalInstructions || "None");
+    .replace("{additionalInstructionsForAnswer}", additionalInstructionsForAnswer || "None")
+    .replace("{additionalInstructionsForWork}", additionalInstructionsForWork || "None");
 
   const response = await client.models.generateContent({
     model: MODELS.answerGeneration,
@@ -195,7 +204,8 @@ export async function generateAnswersForQuestions(
     questionNumber: number;
     questionText: string;
     questionType: string;
-    additionalInstructionsForAnswering?: string;
+    additionalInstructionsForAnswer?: string;
+    additionalInstructionsForWork?: string;
   }>,
   notesFileUrls: string[],
 ): Promise<Map<number, GeneratedAnswer>> {
@@ -218,7 +228,8 @@ export async function generateAnswersForQuestions(
         q.questionNumber,
         q.questionText,
         q.questionType,
-        q.additionalInstructionsForAnswering,
+        q.additionalInstructionsForAnswer,
+        q.additionalInstructionsForWork,
         notesParts,
         client,
       );

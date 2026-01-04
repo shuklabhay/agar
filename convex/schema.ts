@@ -61,7 +61,8 @@ export default defineSchema({
       v.literal("skipped"),
     ),
     answerOptionsMCQ: v.optional(v.array(v.string())),
-    additionalInstructionsForAnswering: v.optional(v.string()),
+    additionalInstructionsForAnswer: v.optional(v.string()), // Corrections to answer choices
+    additionalInstructionsForWork: v.optional(v.string()), // How to arrive at the answer (method requirements)
     answer: v.optional(
       v.union(
         v.string(),

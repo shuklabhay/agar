@@ -41,7 +41,8 @@ export const generateAnswers = action({
         questionNumber: q.questionNumber,
         questionText: q.questionText,
         questionType: q.questionType,
-        additionalInstructionsForAnswering: q.additionalInstructionsForAnswering,
+        additionalInstructionsForAnswer: q.additionalInstructionsForAnswer,
+        additionalInstructionsForWork: q.additionalInstructionsForWork,
       }));
 
       // Generate answers
@@ -131,10 +132,10 @@ export const regenerateAnswer = action({
       const client = new GoogleGenAI({ apiKey });
 
       // Build teacher info with feedback if provided
-      let additionalInstructions = question.additionalInstructionsForAnswering || "";
+      let additionalInstructionsForAnswer = question.additionalInstructionsForAnswer || "";
       if (args.feedback) {
-        additionalInstructions = additionalInstructions
-          ? `${additionalInstructions}\n\nTeacher feedback for regeneration: ${args.feedback}`
+        additionalInstructionsForAnswer = additionalInstructionsForAnswer
+          ? `${additionalInstructionsForAnswer}\n\nTeacher feedback for regeneration: ${args.feedback}`
           : `Teacher feedback for regeneration: ${args.feedback}`;
       }
 
@@ -143,7 +144,8 @@ export const regenerateAnswer = action({
         question.questionNumber,
         question.questionText,
         question.questionType,
-        additionalInstructions,
+        additionalInstructionsForAnswer,
+        question.additionalInstructionsForWork,
         notesParts,
         client,
       );

@@ -60,7 +60,8 @@ export const insertQuestions = internalMutation({
           v.literal("skipped"),
         ),
         answerOptionsMCQ: v.optional(v.array(v.string())),
-        additionalInstructionsForAnswering: v.optional(v.string()),
+        additionalInstructionsForAnswer: v.optional(v.string()),
+        additionalInstructionsForWork: v.optional(v.string()),
         status: v.union(
           v.literal("pending"),
           v.literal("processing"),
