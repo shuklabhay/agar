@@ -201,7 +201,7 @@ When teacher provides additional info:
 - Method requirements → put in additionalInstructionsForWork
 - "skip question X" → set questionType to "skipped"
 
-Preserve math expressions exactly. Respond with ONLY valid JSON array:
+Preserve math expressions exactly. Do NOT transcribe tables/graphs; instead, note the reference in questionText (e.g., "Refer to the table on page 2" or "See graph above"). Respond with ONLY valid JSON array:
 [{"questionNumber": 1, "questionText": "...", "questionType": "...", ...}, ...]`;
 
 // Import and re-export from shared types
@@ -255,7 +255,10 @@ TYPE: {questionType}
 FORMAT: {additionalInstructionsForAnswer}
 METHOD: {additionalInstructionsForWork}
 
-Answer using the notes provided. If the notes do NOT contain the concept/facts or method you need, use Google Search to pull the relevant facts/concepts, then solve the question. When you use search, include the URLs in source.
+Answer using the notes provided. If the notes are missing the concept/facts/method you need (e.g., math notes but grammar question), use Google Search to fetch what’s missing, then solve. You can still use notes if any part is relevant; otherwise rely on search results.
+
+- If you used only notes → set source to "notes" and keep key_points quoted/paraphrased from notes.
+- If you used search (even partially) → set source to an array of the actual URLs you used (not "notes"). Do NOT fabricate note citations.
 
 ANSWER FORMAT:
 - short_answer: expression (e.g., "3x + 27")
@@ -263,7 +266,7 @@ ANSWER FORMAT:
 - multiple_choice: ONE letter only (A/B/C/D)
 - free_response: array of key points
 
-KEY_POINTS: 1-2 brief facts (<15 words each) that directly support YOUR answer to THIS question. Cite notes; if you used web search, cite the specific facts from the found pages.
+KEY_POINTS: 1-2 brief facts (<15 words each) that directly support YOUR answer to THIS question. Quote or paraphrase from notes if you used notes; if you used web search, briefly cite the relevant fact from the page.
 
 SOURCE: "notes" or array of search URLs used.
 
@@ -330,10 +333,23 @@ export async function generateAnswerForQuestion(
         keyPoints?: string[];
         source?: string | string[];
       }>(responseText, `Answer for Q${questionNumber}`);
+
+      // Extract grounded URLs (if any) from grounding metadata
+      const candidate = response.candidates?.[0];
+      const groundingUrls: string[] =
+        candidate?.groundingMetadata?.groundingChunks
+          ?.map((chunk) => chunk.web?.uri)
+          .filter((uri): uri is string => Boolean(uri)) || [];
+
       return {
         answer: parsed.answer ?? "",
         keyPoints: parsed.key_points || parsed.keyPoints || [],
-        source: parsed.source ?? "notes",
+        source:
+          Array.isArray(parsed.source) && parsed.source.length > 0
+            ? parsed.source
+            : groundingUrls.length > 0
+              ? groundingUrls
+              : parsed.source ?? "notes",
       } as GeneratedAnswer;
     }, `Answer generation for Q${questionNumber}`);
   } catch (error) {

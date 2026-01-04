@@ -33,10 +33,9 @@ export function QuestionPanel({
 }: QuestionPanelProps) {
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [textAnswer, setTextAnswer] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isCheckingAnswer, setIsCheckingAnswer] = useState(false);
+  const [incorrectOptions, setIncorrectOptions] = useState<string[]>([]);
 
-  const submitAnswer = useMutation(api.studentProgress.submitDirectAnswer);
   const initProgress = useMutation(api.studentProgress.initializeProgress);
   const markInProgress = useMutation(api.studentProgress.markInProgress);
   const sendMessageToTutor = useAction(api.chat.sendMessageToTutor);
@@ -61,6 +60,10 @@ export function QuestionPanel({
     } else {
       setTextAnswer("");
     }
+    // Clear local incorrect options when status resets or when question changes
+    if (progress?.status !== "incorrect") {
+      setIncorrectOptions([]);
+    }
   }, [progress?.selectedAnswer, progress?.submittedText, question?._id]);
 
   // Mark as in progress when user starts interacting
@@ -78,34 +81,29 @@ export function QuestionPanel({
 
     if (!answer) return;
 
-    setIsSubmitting(true);
+    setIsCheckingAnswer(true);
     try {
-      await submitAnswer({
+      const answerText =
+        question.questionType === "multiple_choice"
+          ? `I choose option ${answer}.`
+          : `Here's my answer to the question:\n\n${answer}`;
+
+      await sendMessageToTutor({
         sessionId,
         questionId: question._id,
-        answer,
+        message: `${answerText}\n\nPlease check if this is correct and give me feedback.`,
       });
     } catch (error) {
       console.error("Failed to submit answer:", error);
     } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleCheckAnswer = async () => {
-    if (!sessionId || !question || !textAnswer.trim()) return;
-
-    setIsCheckingAnswer(true);
-    try {
-      await sendMessageToTutor({
-        sessionId,
-        questionId: question._id,
-        message: `Here's my answer to the question:\n\n${textAnswer}\n\nPlease check if this is correct and give me feedback.`,
-      });
-    } catch (error) {
-      console.error("Failed to check answer:", error);
-    } finally {
       setIsCheckingAnswer(false);
+      // If marked incorrect, remember this option and clear selection so they can try another
+      if (question.questionType === "multiple_choice" && progress?.status === "incorrect" && selectedOption) {
+        setIncorrectOptions((prev) =>
+          prev.includes(selectedOption) ? prev : [...prev, selectedOption],
+        );
+        setSelectedOption(null);
+      }
     }
   };
 
@@ -134,10 +132,6 @@ export function QuestionPanel({
 
   const isCorrect = progress?.status === "correct";
   const isIncorrect = progress?.status === "incorrect";
-  const canSubmitDirectly =
-    question.questionType === "multiple_choice" ||
-    question.questionType === "single_value";
-
   return (
     <div className="h-full flex flex-col">
       {/* Scrollable content area */}
@@ -153,11 +147,7 @@ export function QuestionPanel({
               <Check className="h-3 w-3 mr-1" /> Correct
             </Badge>
           )}
-          {isIncorrect && (
-            <Badge variant="destructive">
-              <X className="h-3 w-3 mr-1" /> Try Again
-            </Badge>
-          )}
+          {isIncorrect && null}
         </div>
 
         {/* Question text */}
@@ -174,29 +164,30 @@ export function QuestionPanel({
                 {question.answerOptionsMCQ.map((option, i) => {
                   const letter = String.fromCharCode(65 + i);
                   const isSelected = selectedOption === letter;
+                  const isDisabled = incorrectOptions.includes(letter) || isCorrect;
                   return (
                     <Button
                       key={i}
-                      variant={isSelected ? "default" : "outline"}
+                      variant="outline"
                       className={cn(
                         "w-full justify-start text-left h-auto py-3 px-4",
-                        isCorrect &&
-                          isSelected &&
-                          "bg-green-500 hover:bg-green-500",
-                        isIncorrect &&
-                          isSelected &&
-                          "bg-red-100 border-red-300 dark:bg-red-900/30",
+                        isSelected &&
+                          "border-primary text-primary bg-primary/10 hover:bg-primary/15",
+                        incorrectOptions.includes(letter) &&
+                          "border-muted text-muted-foreground bg-muted/30",
                       )}
                       onClick={() => {
                         handleInteraction();
                         setSelectedOption(letter);
                       }}
-                      disabled={isCorrect}
+                      disabled={isDisabled}
                     >
                       <span className="font-semibold mr-3 shrink-0">
                         {letter}.
                       </span>
-                      <span className="text-left">{option}</span>
+                      <span className="text-left whitespace-normal break-words">
+                        {option}
+                      </span>
                     </Button>
                   );
                 })}
@@ -254,30 +245,30 @@ export function QuestionPanel({
           )}
         </div>
 
-        {/* Submit Button (only for MCQ/number) */}
-        {canSubmitDirectly && (
-          <Button
-            onClick={handleSubmit}
-            disabled={
-              isCorrect ||
-              isSubmitting ||
-              (question.questionType === "multiple_choice"
-                ? !selectedOption
-                : !textAnswer)
-            }
-            className={cn("w-full mt-2", isCorrect && "invisible")}
-            size="lg"
-          >
-            {isSubmitting ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Checking...
-              </>
-            ) : (
-              "Submit Answer"
-            )}
-          </Button>
-        )}
+        {/* Submit Button (all types go through tutor) */}
+        <Button
+          onClick={handleSubmit}
+          disabled={
+            isCorrect ||
+            isCheckingAnswer ||
+            (question.questionType === "multiple_choice" && !selectedOption) ||
+            (question.questionType === "single_value" && !textAnswer.trim()) ||
+            (question.questionType !== "multiple_choice" &&
+              question.questionType !== "single_value" &&
+              !textAnswer.trim())
+          }
+          className={cn("w-full mt-2", isCorrect && "invisible")}
+          size="lg"
+        >
+          {isCheckingAnswer ? (
+            <>
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              Checking...
+            </>
+          ) : (
+            "Submit Answer"
+          )}
+        </Button>
 
         {/* Success message */}
         {isCorrect && (

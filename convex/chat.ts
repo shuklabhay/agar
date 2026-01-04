@@ -134,17 +134,13 @@ export const sendMessageToTutor = action({
     // Call the tutor LLM
     const { callTutorLLM } = await import("./tutorLLM");
 
-    // First message for this question gets the full context with keyPoints
-    const isFirstMessageForQuestion = history.length === 0;
-
     const response = await callTutorLLM({
       question: {
         questionText: question.questionText,
         questionType: question.questionType,
         answerOptionsMCQ: question.answerOptionsMCQ,
         answer: question.answer,
-        // Only include keyPoints on first message - they'll be in history for subsequent calls
-        keyPoints: isFirstMessageForQuestion ? question.keyPoints : undefined,
+        keyPoints: question.keyPoints,
         additionalInstructionsForWork: question.additionalInstructionsForWork,
       },
       history: history.map((m) => ({
@@ -153,7 +149,7 @@ export const sendMessageToTutor = action({
       })),
       studentMessage: args.message,
       files: args.files,
-      isFirstMessageForQuestion,
+      attempts: progress?.attempts,
     });
 
     // Handle tool calls (mark correct, etc.)

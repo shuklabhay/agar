@@ -1,11 +1,6 @@
 "use node";
 
-import {
-  GoogleGenAI,
-  FunctionDeclaration,
-  Schema,
-  Type,
-} from "@google/genai";
+import { GoogleGenAI, FunctionDeclaration, Schema, Type } from "@google/genai";
 
 const TUTOR_MODEL = "gemini-2.0-flash";
 
@@ -74,8 +69,7 @@ const TUTOR_RESPONSE_SCHEMA: Schema = {
   required: ["message"],
 };
 
-// System instruction - sent once via config, not in messages
-const SYSTEM_INSTRUCTION = `You are Rio, a helpful tutor. Be friendly and encouraging, but concise.
+const SYSTEM_INSTRUCTION = `You are Rio, a helpful tutor. Be friendly and encouraging, but concise. Use a warm tone but keep responses tight.
 
 ## Core Rules
 1. Stay on topic - only discuss the current question
@@ -103,7 +97,11 @@ const SYSTEM_INSTRUCTION = `You are Rio, a helpful tutor. Be friendly and encour
 - Discuss off-topic things
 - Overly push the user to answer the question
 - Mark partial/incomplete answers as correct (if they get the correct answer over a chain of messages that's fine)
-- Use analogies - instead be direct about how ideas and concepts connect`;
+- Use analogies - instead be direct about how ideas and concepts connect
+- Do not use markdown in your responses
+
+If the student already has the correct answer or reasoning, acknowledge briefly and mark correct. If attempts so far > 2 and they finally reach the right answer, you can ask for a brief explanation before calling tools, but don't block forever.
+When the student provides a correct sub-step (e.g., a multiplication like 30*30=900), do NOT ask them to re-verify it. If the final answer is correct, call mark_answer_correct (or evaluate_response with isCorrect=true) promptly without extra quizzing.`;
 
 import type { TutorQuestion } from "../lib/types";
 
@@ -112,7 +110,7 @@ interface TutorInput {
   history: Array<{ role: string; content: string }>;
   studentMessage: string;
   files?: Array<{ name: string; type: string; data: string }>;
-  isFirstMessageForQuestion: boolean;
+  attempts?: number;
 }
 
 interface TutorResponse {
@@ -128,6 +126,7 @@ export async function callTutorLLM(input: TutorInput): Promise<TutorResponse> {
 QUESTION: ${input.question.questionText}
 TYPE: ${input.question.questionType}
 ${input.question.answerOptionsMCQ ? `OPTIONS:\n${input.question.answerOptionsMCQ.map((o, i) => `${String.fromCharCode(65 + i)}. ${o}`).join("\n")}` : ""}
+ATTEMPTS_SO_FAR: ${input.attempts ?? 0}
 
 [HIDDEN - For guidance only]
 CORRECT ANSWER: ${JSON.stringify(input.question.answer)}
@@ -158,30 +157,16 @@ ${input.question.additionalInstructionsForWork ? `REQUIRED METHOD: Student must 
   }
 
   // Build messages array
-  let messages;
-  if (input.isFirstMessageForQuestion) {
-    // First message for this question: include question context with keyPoints
-    messages = [
-      {
-        role: "user" as const,
-        parts: [
-          {
-            text: `${questionContext}\n\nStudent says: ${input.studentMessage}`,
-          },
-          ...fileParts,
-        ],
-      },
-    ];
-  } else {
-    // Subsequent messages: history already contains the context from first message
-    messages = [
-      ...conversationHistory,
-      {
-        role: "user" as const,
-        parts: [{ text: input.studentMessage }, ...fileParts],
-      },
-    ];
-  }
+  const messages = [
+    ...conversationHistory,
+    {
+      role: "user" as const,
+      parts: [
+        { text: `${questionContext}\n\nStudent says: ${input.studentMessage}` },
+        ...fileParts,
+      ],
+    },
+  ];
 
   try {
     const response = await client.models.generateContent({
@@ -190,26 +175,14 @@ ${input.question.additionalInstructionsForWork ? `REQUIRED METHOD: Student must 
       config: {
         systemInstruction: SYSTEM_INSTRUCTION,
         tools: [{ functionDeclarations: TUTOR_TOOLS }],
-        responseSchema: TUTOR_RESPONSE_SCHEMA,
       },
     });
 
-    // Parse structured message (JSON) plus tool calls
-    let messageFromSchema = "";
-    if (response.text) {
-      try {
-        const parsed = JSON.parse(response.text);
-        if (parsed && typeof parsed.message === "string") {
-          messageFromSchema = parsed.message;
-        }
-      } catch (error) {
-        console.warn("Tutor response JSON parse failed:", error);
-      }
-    }
-
+    // Parse plain text + tool calls
     const candidate = response.candidates?.[0];
     const parts = candidate?.content?.parts || [];
 
+    // Build message purely from parts to avoid duplicate text from response.text
     let messageFromParts = "";
     const toolCalls: Array<{ name: string; args: Record<string, unknown> }> =
       [];
@@ -226,7 +199,7 @@ ${input.question.additionalInstructionsForWork ? `REQUIRED METHOD: Student must 
       }
     }
 
-    let message = messageFromSchema || messageFromParts;
+    let message = messageFromParts;
 
     // If no message but has tool calls, generate a friendly response
     if (!message && toolCalls.length > 0) {
