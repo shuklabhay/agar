@@ -3,6 +3,16 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useMutation, useQuery, useAction } from "convex/react";
+
+// Global store for pending files (persists across client-side navigation)
+declare global {
+  interface Window {
+    __pendingDroppedFiles?: {
+      files: File[];
+      category: "assignment" | "notes";
+    };
+  }
+}
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
@@ -187,6 +197,20 @@ export default function NewAssignmentPage() {
       setDraftLoaded(true);
     }
   }, [existingDraft, draftLoaded]);
+
+  const [pendingFilesToProcess, setPendingFilesToProcess] = useState<{
+    files: File[];
+    category: FileCategory;
+  } | null>(null);
+
+  // Check for pending dropped files from the class detail page
+  useEffect(() => {
+    if (draftLoaded && window.__pendingDroppedFiles) {
+      const pending = window.__pendingDroppedFiles;
+      delete window.__pendingDroppedFiles;
+      setPendingFilesToProcess(pending);
+    }
+  }, [draftLoaded]);
 
   // Auto-save draft when data changes
   useEffect(() => {
@@ -430,6 +454,14 @@ export default function NewAssignmentPage() {
     },
     [],
   );
+
+  // Process pending files after handleFileUpload is available
+  useEffect(() => {
+    if (pendingFilesToProcess) {
+      handleFileUpload(pendingFilesToProcess.files, pendingFilesToProcess.category);
+      setPendingFilesToProcess(null);
+    }
+  }, [pendingFilesToProcess, handleFileUpload]);
 
   const handleDrop = useCallback(
     (e: React.DragEvent, category: FileCategory) => {

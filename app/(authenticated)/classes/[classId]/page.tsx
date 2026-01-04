@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useParams } from "next/navigation";
+import { useState, useCallback } from "react";
+import { useParams, useRouter } from "next/navigation";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
@@ -18,6 +18,7 @@ import {
   ArrowDown,
   Pencil,
   Link as LinkIcon,
+  Upload,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -33,6 +34,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -41,8 +43,19 @@ import { Input } from "@/components/ui/input";
 import Link from "next/link";
 import { toast } from "sonner";
 
+// Global store for pending dropped files
+declare global {
+  interface Window {
+    __pendingDroppedFiles?: {
+      files: File[];
+      category: "assignment" | "notes";
+    };
+  }
+}
+
 export default function ClassDetailPage() {
   const params = useParams();
+  const router = useRouter();
   const classId = params.classId as Id<"classes">;
   const classData = useQuery(api.classes.getClass, { classId });
   const assignments = useQuery(api.assignments.listAssignments, { classId });
@@ -55,6 +68,38 @@ export default function ClassDetailPage() {
   const [newName, setNewName] = useState("");
   const [isRenaming, setIsRenaming] = useState(false);
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+  const [isDraggingOver, setIsDraggingOver] = useState(false);
+  const [droppedFiles, setDroppedFiles] = useState<File[]>([]);
+  const [showCategoryDialog, setShowCategoryDialog] = useState(false);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDraggingOver(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDraggingOver(false);
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDraggingOver(false);
+    if (e.dataTransfer.files.length > 0) {
+      setDroppedFiles(Array.from(e.dataTransfer.files));
+      setShowCategoryDialog(true);
+    }
+  }, []);
+
+  const handleCategorySelect = (category: "assignment" | "notes") => {
+    window.__pendingDroppedFiles = {
+      files: droppedFiles,
+      category,
+    };
+    setShowCategoryDialog(false);
+    setDroppedFiles([]);
+    router.push(`/classes/${classId}/new-assignment`);
+  };
 
   // Sort assignments by name
   const sortedAssignments = assignments ? [...assignments].sort((a, b) => {
@@ -173,22 +218,42 @@ export default function ClassDetailPage() {
         </div>
 
         {sortedAssignments.length === 0 ? (
-          <Card className="border-dashed">
+          <Card
+            className={`border-dashed transition-colors ${
+              isDraggingOver
+                ? "border-primary border-2 bg-primary/5"
+                : "border-muted-foreground/25"
+            }`}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+          >
             <CardContent className="flex flex-col items-center justify-center py-16">
-              <div className="rounded-full bg-muted p-4 mb-4">
-                <FileText className="h-8 w-8 text-muted-foreground" />
+              <div className={`rounded-full p-4 mb-4 transition-colors ${
+                isDraggingOver ? "bg-primary/10" : "bg-muted"
+              }`}>
+                {isDraggingOver ? (
+                  <Upload className="h-8 w-8 text-primary" />
+                ) : (
+                  <FileText className="h-8 w-8 text-muted-foreground" />
+                )}
               </div>
-              <h3 className="text-lg font-semibold mb-1">No assignments yet</h3>
+              <h3 className="text-lg font-semibold mb-1">
+                {isDraggingOver ? "Drop files here" : "No assignments yet"}
+              </h3>
               <p className="text-muted-foreground text-center max-w-sm mb-4">
-                Create your first assignment to start sharing materials with
-                students.
+                {isDraggingOver
+                  ? "Release to upload files and create a new assignment"
+                  : "Create your first assignment to start sharing materials with students."}
               </p>
-              <Button asChild>
-                <Link href={`/classes/${classId}/new-assignment`}>
-                  <Plus className="h-4 w-4" />
-                  Create Your First Assignment
-                </Link>
-              </Button>
+              {!isDraggingOver && (
+                <Button asChild>
+                  <Link href={`/classes/${classId}/new-assignment`}>
+                    <Plus className="h-4 w-4" />
+                    Create Your First Assignment
+                  </Link>
+                </Button>
+              )}
             </CardContent>
           </Card>
         ) : (
@@ -333,6 +398,41 @@ export default function ClassDetailPage() {
               Rename
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* File Category Selection Dialog */}
+      <Dialog open={showCategoryDialog} onOpenChange={(open) => {
+        if (!open) {
+          setShowCategoryDialog(false);
+          setDroppedFiles([]);
+        }
+      }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Select File Type</DialogTitle>
+            <DialogDescription>
+              Where should {droppedFiles.length === 1 ? "this file" : "these files"} be added?
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-4 pt-2">
+            <Button
+              variant="outline"
+              className="h-24 flex flex-col gap-2"
+              onClick={() => handleCategorySelect("assignment")}
+            >
+              <FileText className="h-8 w-8" />
+              <span>Assignment</span>
+            </Button>
+            <Button
+              variant="outline"
+              className="h-24 flex flex-col gap-2"
+              onClick={() => handleCategorySelect("notes")}
+            >
+              <BookOpen className="h-8 w-8" />
+              <span>Notes</span>
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
