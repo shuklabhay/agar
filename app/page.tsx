@@ -1,7 +1,7 @@
 "use client";
 
 import { useConvexAuth } from "convex/react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
@@ -10,12 +10,14 @@ import { ArrowRight, BookOpen, Users, Brain, CheckCircle } from "lucide-react";
 export default function Home() {
   const { isAuthenticated, isLoading } = useConvexAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   useEffect(() => {
-    if (!isLoading && isAuthenticated) {
+    const landingOverride = searchParams.get("landing") === "1";
+    if (!isLoading && isAuthenticated && !landingOverride) {
       router.push("/classes");
     }
-  }, [isAuthenticated, isLoading, router]);
+  }, [isAuthenticated, isLoading, router, searchParams]);
 
   if (isLoading) {
     return (
