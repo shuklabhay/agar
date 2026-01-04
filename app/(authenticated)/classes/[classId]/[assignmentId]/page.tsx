@@ -34,16 +34,8 @@ import Link from "next/link";
 import { toast } from "sonner";
 import { QuestionsReviewPanel } from "@/components/questions-review-panel";
 import { EditAnswerDialog } from "@/components/edit-answer-dialog";
+import { FileListCompact } from "@/components/file-list-compact";
 import { UploadedFile, UploadingFile, FileCategory } from "@/lib/types";
-
-declare global {
-  interface Window {
-    __pendingDroppedFiles?: {
-      files: File[];
-      category: "assignment" | "notes";
-    };
-  }
-}
 
 const ACCEPTED_FILE_TYPES = {
   "image/jpeg": [".jpg", ".jpeg"],
@@ -266,20 +258,6 @@ function EditAssignmentView({
     },
     [dialogSize],
   );
-
-  const [pendingFilesToProcess, setPendingFilesToProcess] = useState<{
-    files: File[];
-    category: FileCategory;
-  } | null>(null);
-
-  // Check for pending dropped files from the class detail page
-  useEffect(() => {
-    if (dataLoaded && window.__pendingDroppedFiles) {
-      const pending = window.__pendingDroppedFiles;
-      delete window.__pendingDroppedFiles;
-      setPendingFilesToProcess(pending);
-    }
-  }, [dataLoaded]);
 
   // Auto-save draft when data changes
   useEffect(() => {
@@ -545,17 +523,6 @@ function EditAssignmentView({
     },
     [],
   );
-
-  // Process pending files after handleFileUpload is available
-  useEffect(() => {
-    if (pendingFilesToProcess) {
-      handleFileUpload(
-        pendingFilesToProcess.files,
-        pendingFilesToProcess.category,
-      );
-      setPendingFilesToProcess(null);
-    }
-  }, [pendingFilesToProcess, handleFileUpload]);
 
   const handleDrop = useCallback(
     (e: React.DragEvent, category: FileCategory) => {
@@ -1189,87 +1156,6 @@ function ReviewAssignmentView({
     }
   };
 
-  const getFileIcon = (contentType: string) => {
-    if (contentType.startsWith("image/")) {
-      return <ImageIcon className="h-4 w-4" />;
-    }
-    if (
-      contentType === "application/msword" ||
-      contentType ===
-        "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-    ) {
-      return <FileIcon className="h-4 w-4" />;
-    }
-    return <FileText className="h-4 w-4" />;
-  };
-
-  const getFileTypeBadge = (contentType: string) => {
-    switch (contentType) {
-      case "image/jpeg":
-        return "JPEG";
-      case "image/png":
-        return "PNG";
-      case "application/pdf":
-        return "PDF";
-      case "application/msword":
-        return "DOC";
-      case "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
-        return "DOCX";
-      default:
-        return "File";
-    }
-  };
-
-  const renderFileListCompact = (
-    files: Array<{
-      storageId: Id<"_storage">;
-      fileName: string;
-      contentType: string;
-      url: string | null;
-    }>,
-  ) => {
-    if (files.length === 0) {
-      return <span className="text-sm text-muted-foreground">None</span>;
-    }
-
-    return (
-      <div className="flex flex-wrap gap-1.5">
-        {files.map((file, index) => (
-          <button
-            key={index}
-            className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-muted/50 hover:bg-muted text-sm transition-colors"
-            onClick={() =>
-              file.url &&
-              setPreviewFile({
-                fileName: file.fileName,
-                contentType: file.contentType,
-                url: file.url,
-              })
-            }
-          >
-            {getFileIcon(file.contentType)}
-            <span className="truncate max-w-[150px]">{file.fileName}</span>
-            <Badge variant="secondary" className="text-[10px] px-1 py-0">
-              {getFileTypeBadge(file.contentType)}
-            </Badge>
-            {file.url && (
-              <a
-                href={file.url}
-                download={file.fileName}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={(e) => e.stopPropagation()}
-                className="hover:text-primary"
-              >
-                <Download className="h-3 w-3" />
-              </a>
-            )}
-          </button>
-        ))}
-      </div>
-    );
-  };
-
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -1325,7 +1211,10 @@ function ReviewAssignmentView({
             <span className="text-sm text-muted-foreground shrink-0 w-20">
               Assignment:
             </span>
-            {renderFileListCompact(assignment.assignmentFiles)}
+            <FileListCompact
+              files={assignment.assignmentFiles}
+              onFileClick={setPreviewFile}
+            />
           </div>
 
           {/* Notes Files */}
@@ -1333,7 +1222,10 @@ function ReviewAssignmentView({
             <span className="text-sm text-muted-foreground shrink-0 w-20">
               Notes:
             </span>
-            {renderFileListCompact(assignment.notesFiles)}
+            <FileListCompact
+              files={assignment.notesFiles}
+              onFileClick={setPreviewFile}
+            />
           </div>
 
           {/* Additional Information */}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
@@ -19,6 +19,8 @@ import {
   Pencil,
   Link as LinkIcon,
   Upload,
+  Image as ImageIcon,
+  FileIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -34,7 +36,6 @@ import {
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -43,13 +44,41 @@ import { Input } from "@/components/ui/input";
 import Link from "next/link";
 import { toast } from "sonner";
 
-// Global store for pending dropped files
-declare global {
-  interface Window {
-    __pendingDroppedFiles?: {
-      files: File[];
-      category: "assignment" | "notes";
-    };
+interface UploadedFileInfo {
+  storageId: Id<"_storage">;
+  fileName: string;
+  contentType: string;
+  size: number;
+}
+
+function getFileIcon(contentType: string) {
+  if (contentType.startsWith("image/")) {
+    return <ImageIcon className="h-4 w-4" />;
+  }
+  if (
+    contentType === "application/msword" ||
+    contentType ===
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+  ) {
+    return <FileIcon className="h-4 w-4" />;
+  }
+  return <FileText className="h-4 w-4" />;
+}
+
+function getFileTypeBadge(contentType: string) {
+  switch (contentType) {
+    case "image/jpeg":
+      return "JPEG";
+    case "image/png":
+      return "PNG";
+    case "application/pdf":
+      return "PDF";
+    case "application/msword":
+      return "DOC";
+    case "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+      return "DOCX";
+    default:
+      return "File";
   }
 }
 
@@ -62,6 +91,11 @@ export default function ClassDetailPage() {
   const deleteAssignment = useMutation(api.assignments.deleteAssignment);
   const renameAssignment = useMutation(api.assignments.renameAssignment);
   const createEmptyDraft = useMutation(api.assignments.createEmptyDraft);
+  const generateUploadUrl = useMutation(api.assignments.generateUploadUrl);
+  const validateUploadedFile = useMutation(
+    api.assignments.validateUploadedFile,
+  );
+  const saveDraft = useMutation(api.assignments.saveDraft);
 
   const [deleteTarget, setDeleteTarget] = useState<{
     id: Id<"assignments">;
@@ -77,8 +111,15 @@ export default function ClassDetailPage() {
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   const [droppedFiles, setDroppedFiles] = useState<File[]>([]);
+  const [currentFileIndex, setCurrentFileIndex] = useState(0);
   const [showCategoryDialog, setShowCategoryDialog] = useState(false);
   const [isCreatingAssignment, setIsCreatingAssignment] = useState(false);
+  const [createdDraftId, setCreatedDraftId] =
+    useState<Id<"assignments"> | null>(null);
+  const uploadedFilesRef = useRef<{
+    assignmentFiles: UploadedFileInfo[];
+    notesFiles: UploadedFileInfo[];
+  }>({ assignmentFiles: [], notesFiles: [] });
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -90,36 +131,117 @@ export default function ClassDetailPage() {
     setIsDraggingOver(false);
   }, []);
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    // Keep dropzone active - will be reset when dialog closes
-    if (e.dataTransfer.files.length > 0) {
-      setDroppedFiles(Array.from(e.dataTransfer.files));
-      setShowCategoryDialog(true);
-    } else {
-      setIsDraggingOver(false);
-    }
-  }, []);
+  const handleDrop = useCallback(
+    async (e: React.DragEvent) => {
+      e.preventDefault();
+      if (e.dataTransfer.files.length > 0) {
+        const files = Array.from(e.dataTransfer.files);
+        setDroppedFiles(files);
+        setCurrentFileIndex(0);
+        uploadedFilesRef.current = { assignmentFiles: [], notesFiles: [] };
+
+        const draftId = await createEmptyDraft({ classId });
+        setCreatedDraftId(draftId);
+        setShowCategoryDialog(true);
+      } else {
+        setIsDraggingOver(false);
+      }
+    },
+    [classId, createEmptyDraft],
+  );
+
+  const uploadFileToCategory = useCallback(
+    async (
+      file: File,
+      category: "assignment" | "notes",
+      draftId: Id<"assignments">,
+    ) => {
+      const uploadUrl = await generateUploadUrl();
+
+      await new Promise<void>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.addEventListener("load", () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            resolve();
+          } else {
+            reject(new Error("Upload failed"));
+          }
+        });
+        xhr.addEventListener("error", () => reject(new Error("Upload failed")));
+        xhr.open("POST", uploadUrl);
+        xhr.send(file);
+      });
+
+      const response = await fetch(uploadUrl, { method: "POST", body: file });
+      const { storageId } = await response.json();
+      const validated = await validateUploadedFile({ storageId });
+
+      const fileInfo: UploadedFileInfo = {
+        storageId: validated.storageId,
+        fileName: file.name,
+        contentType: validated.contentType,
+        size: validated.size,
+      };
+
+      if (category === "assignment") {
+        uploadedFilesRef.current.assignmentFiles.push(fileInfo);
+      } else {
+        uploadedFilesRef.current.notesFiles.push(fileInfo);
+      }
+
+      await saveDraft({
+        classId,
+        draftId,
+        name: "Untitled Assignment",
+        assignmentFiles: uploadedFilesRef.current.assignmentFiles,
+        notesFiles: uploadedFilesRef.current.notesFiles,
+      });
+    },
+    [classId, generateUploadUrl, validateUploadedFile, saveDraft],
+  );
 
   const handleCategorySelect = async (category: "assignment" | "notes") => {
-    setShowCategoryDialog(false);
-    setIsDraggingOver(false);
-    setIsCreatingAssignment(true);
-    try {
-      const draftId = await createEmptyDraft({ classId });
-      window.__pendingDroppedFiles = {
-        files: droppedFiles,
-        category,
-      };
+    if (!createdDraftId) return;
+
+    const currentFile = droppedFiles[currentFileIndex];
+    uploadFileToCategory(currentFile, category, createdDraftId);
+
+    if (currentFileIndex < droppedFiles.length - 1) {
+      setCurrentFileIndex(currentFileIndex + 1);
+    } else {
+      setShowCategoryDialog(false);
+      setIsDraggingOver(false);
+      const draftId = createdDraftId;
       setDroppedFiles([]);
+      setCurrentFileIndex(0);
+      setCreatedDraftId(null);
       router.push(`/classes/${classId}/${draftId}`);
-    } catch {
-      toast.error("Failed to create assignment");
-      setDroppedFiles([]);
-    } finally {
-      setIsCreatingAssignment(false);
     }
   };
+
+  const handleDialogClose = useCallback(async () => {
+    if (!createdDraftId) return;
+
+    const remainingFiles = droppedFiles.slice(currentFileIndex);
+    for (const file of remainingFiles) {
+      uploadFileToCategory(file, "notes", createdDraftId);
+    }
+
+    setShowCategoryDialog(false);
+    setIsDraggingOver(false);
+    const draftId = createdDraftId;
+    setDroppedFiles([]);
+    setCurrentFileIndex(0);
+    setCreatedDraftId(null);
+    router.push(`/classes/${classId}/${draftId}`);
+  }, [
+    createdDraftId,
+    droppedFiles,
+    currentFileIndex,
+    uploadFileToCategory,
+    classId,
+    router,
+  ]);
 
   const handleCreateAssignment = async () => {
     setIsCreatingAssignment(true);
@@ -475,21 +597,29 @@ export default function ClassDetailPage() {
         open={showCategoryDialog}
         onOpenChange={(open) => {
           if (!open) {
-            setShowCategoryDialog(false);
-            setDroppedFiles([]);
-            setIsDraggingOver(false);
+            handleDialogClose();
           }
         }}
       >
         <DialogContent className="sm:max-w-md" showCloseButton={false}>
           <DialogHeader>
-            <DialogTitle>Select File Type</DialogTitle>
-            <DialogDescription>
-              Where should{" "}
-              {droppedFiles.length === 1 ? "this file" : "these files"} be
-              added?
-            </DialogDescription>
+            <DialogTitle>
+              Select File Type
+              {droppedFiles.length > 1 &&
+                ` (${currentFileIndex + 1}/${droppedFiles.length})`}
+            </DialogTitle>
           </DialogHeader>
+          {droppedFiles[currentFileIndex] && (
+            <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-muted/50 text-sm">
+              {getFileIcon(droppedFiles[currentFileIndex].type)}
+              <span className="truncate">
+                {droppedFiles[currentFileIndex].name}
+              </span>
+              <Badge variant="secondary" className="text-[10px] px-1 py-0">
+                {getFileTypeBadge(droppedFiles[currentFileIndex].type)}
+              </Badge>
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-4 pt-2">
             <Button
               variant="outline"
