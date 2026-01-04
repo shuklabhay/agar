@@ -25,6 +25,28 @@ function getClient(): GoogleGenAI {
   return new GoogleGenAI({ apiKey });
 }
 
+const MAX_RETRIES = 3;
+const RETRY_DELAY_MS = 1000;
+
+async function withRetry<T>(
+  fn: () => Promise<T>,
+  context: string,
+): Promise<T> {
+  let lastError: Error | null = null;
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+      if (attempt < MAX_RETRIES) {
+        console.warn(`${context} failed (attempt ${attempt}/${MAX_RETRIES}): ${lastError.message}. Retrying...`);
+        await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS * attempt));
+      }
+    }
+  }
+  throw new Error(`${context} failed after ${MAX_RETRIES} attempts: ${lastError?.message}`);
+}
+
 function cleanJsonResponse(text: string): string {
   let cleaned = text
     .replace(/```json\n?/g, "")
@@ -53,77 +75,25 @@ function cleanJsonResponse(text: string): string {
 
 const EXTRACTION_PROMPT = `Extract ALL questions from this assignment document.
 
-For each question, provide:
-1. questionNumber: The question number as shown in the document
-2. questionText: The COMPLETE question including both the instruction AND the problem. See QUESTION TEXT RULES below.
-3. questionType: One of "multiple_choice", "single_number", "short_answer", "free_response", "skipped"
-4. answerOptionsMCQ: Array of choices if multiple choice, otherwise omit
-5. additionalInstructionsForAnswer: Instructions about the ANSWER itself - corrections to answer choices, what format to accept
-   (e.g., "replace option B with 'fortnite'", "accept equivalent forms", "answer must be in fraction form")
-6. additionalInstructionsForWork: Instructions about HOW TO SOLVE the problem - required methods or approaches
-   (e.g., "must use quadratic formula", "solve using Bernoulli's equation only", "show work using integration by parts")
+OUTPUT FIELDS:
+- questionNumber: as shown in document
+- questionText: FULL question with instruction (e.g., "Solve for x: 3x + 5 = 20", not just "3x + 5 = 20"). If no instruction given, add one (Solve/Simplify/Factor/etc). If it references a passage/figure, include that reference.
+- questionType: "multiple_choice" | "single_number" | "short_answer" | "free_response" | "skipped"
+- answerOptionsMCQ: array of choices (MCQ only)
+- additionalInstructionsForAnswer: answer format requirements (e.g., "must be decimal")
+- additionalInstructionsForWork: method requirements (e.g., "use quadratic formula")
 
-QUESTION TEXT RULES:
-- ALWAYS include the instruction with the problem, not just the equation/expression alone
-  - Good: "Solve for x: 3x + 5 = 20"
-  - Good: "Simplify the expression: 4(2x + 3) - 2x"
-  - Bad: "3x + 5 = 20" (missing instruction)
-  - Bad: "4(2x + 3) - 2x" (missing instruction)
-
-- If no instruction is given in the document, ADD a concise one based on question type:
-  - For equations → "Solve for x: ..." or "Solve for the variable: ..."
-  - For expressions → "Simplify to lowest terms: ..." or "Simplify completely: ..."
-  - For fractions → "Reduce to lowest terms: ..."
-  - For factoring → "Factor completely: ..."
-  - For word problems → keep as-is (instruction is implicit)
-  - For calculations → "Calculate the value of: ..." or "Find: ..."
-  - For evaluations → "Evaluate when x = ...: ..."
-
-- If question references a PASSAGE, TABLE, GRAPH, or FIGURE:
-  - Include a reference like: "(Refer to Passage A above)" or "(See Figure 1)" or "(Use the table on page 2)"
-  - If the passage/figure has a name/label, use it: "(Refer to 'The Water Cycle' passage)"
-  - If no label, describe location: "(Refer to the graph at the top of the page)"
-
-- Apply any corrections/rewording from ADDITIONAL INFO directly to questionText
-
-HANDLING ADDITIONAL INFO FROM TEACHER:
-Additional info is the OVERRIDING AUTHORITY - when the teacher says to do something, DO IT. It takes precedence over default behavior.
-
-The teacher may refer to questions by number, section, module, or description. Match flexibly (e.g., "question 6 in english" or "module 1 question 6" both refer to question 6).
-
-- QUESTION MODIFICATIONS (apply directly to questionText):
-  - "reword question X to be harder" → modify the questionText to be harder
-  - "question X has an error, change Y to Z" → fix the number/text in questionText
-  - "make question X more challenging" → rewrite questionText
-
-- MCQ ANSWER OPTION MODIFICATIONS:
-  - "replace option B with something about fortnite" → modify answerOptionsMCQ
-  - "change option A to say XYZ" → modify answerOptionsMCQ
-  - "make option C about basketball" → modify answerOptionsMCQ
-  - CRITICAL: Before replacing an option, FIRST identify which option is the CORRECT answer by analyzing the question. Then replace a WRONG option, NOT the correct one.
-  - Example: If teacher says "replace an option with fortnite" and you determine option C is correct, replace A, B, or D instead.
-  - If teacher explicitly specifies which option to replace (e.g., "replace option B"), check if B is correct. If it is, replace a different wrong option instead and note this in additionalInstructionsForAnswer.
-
-- ANSWER FORMAT REQUIREMENTS (put in additionalInstructionsForAnswer):
-  - "accept simplified form only" → store in additionalInstructionsForAnswer
-  - "answer must be a decimal, not fraction" → store in additionalInstructionsForAnswer
-
-- METHOD/WORK REQUIREMENTS (put in additionalInstructionsForWork):
-  - "only accept if using quadratic formula" → store in additionalInstructionsForWork
-  - "must solve using Bernoulli's equation" → store in additionalInstructionsForWork
-  - "require showing work with integration" → store in additionalInstructionsForWork
-
-- SKIP INSTRUCTIONS:
-  - "skip question X" → set questionType to "skipped"
-
-IMPORTANT:
-- For math expressions, preserve them exactly as written (e.g., "3(x + 9) =")
-- Mark as "short_answer" for simplification problems where the answer is an expression
-
-ADDITIONAL INFO FROM TEACHER:
+TEACHER'S ADDITIONAL INFO (OVERRIDES DEFAULTS - do what it says):
 {additionalInfo}
 
-Respond with ONLY valid JSON array, no markdown:
+When teacher provides additional info:
+- Question modifications → apply directly to questionText
+- MCQ option changes → modify answerOptionsMCQ, but NEVER replace the correct answer. Identify which option is correct first, then replace a wrong one.
+- Answer format requirements → put in additionalInstructionsForAnswer
+- Method requirements → put in additionalInstructionsForWork
+- "skip question X" → set questionType to "skipped"
+
+Preserve math expressions exactly. Respond with ONLY valid JSON array:
 [{"questionNumber": 1, "questionText": "...", "questionType": "...", ...}, ...]`;
 
 // Import and re-export from shared types
@@ -153,45 +123,38 @@ export async function extractQuestionsFromFiles(
     additionalInfo || "None",
   );
 
-  const response = await client.models.generateContent({
-    model: MODELS.extraction,
-    contents: [{ role: "user", parts: [{ text: prompt }, ...fileParts] }],
-  });
+  return withRetry(async () => {
+    const response = await client.models.generateContent({
+      model: MODELS.extraction,
+      contents: [{ role: "user", parts: [{ text: prompt }, ...fileParts] }],
+    });
 
-  const responseText = response.text ?? "";
-  const cleaned = cleanJsonResponse(responseText);
-
-  return JSON.parse(cleaned) as ExtractedQuestion[];
+    const responseText = response.text ?? "";
+    const cleaned = cleanJsonResponse(responseText);
+    return JSON.parse(cleaned) as ExtractedQuestion[];
+  }, "Question extraction");
 }
 
-const ANSWER_PROMPT = `
-QUESTION #{questionNumber}: {questionText}
-QUESTION TYPE: {questionType}
+const ANSWER_PROMPT = `QUESTION #{questionNumber}: {questionText}
+TYPE: {questionType}
 {mcqOptionsSection}
-ANSWER FORMAT INSTRUCTIONS: {additionalInstructionsForAnswer}
-REQUIRED METHOD/APPROACH: {additionalInstructionsForWork}
+FORMAT: {additionalInstructionsForAnswer}
+METHOD: {additionalInstructionsForWork}
 
-TASK: Answer THIS SPECIFIC QUESTION using the notes provided. Use Google Search if notes don't cover the topic.
+Answer using the notes provided. Use Google Search if notes don't cover the topic.
 
-ANSWER FORMAT by question type:
-- "short_answer": simplified expression (e.g., "3x + 27")
-- "single_number": just the number (e.g., "42" or "3.14")
-- "multiple_choice": EXACTLY one letter: A, B, C, or D (nothing else!)
-- "free_response": array of key points as strings
+ANSWER FORMAT:
+- short_answer: expression (e.g., "3x + 27")
+- single_number: just the number
+- multiple_choice: ONE letter only (A/B/C/D)
+- free_response: array of key points
 
-KEY_POINTS RULES (CRITICAL - must be relevant to THIS question):
-- If answered from NOTES: Extract 1-2 brief quotes/facts from the notes that directly support your answer to THIS question
-- If answered from WEB SEARCH: Provide 1-2 brief explanations of WHY your answer is correct (e.g., "The word 'trace' means 'evidence' in this context because...")
-- Key points must be SPECIFIC to the question asked - NOT random facts from notes
-- Each key point should be under 15 words
-- For vocabulary questions: explain the meaning in context
-- For reading comprehension: cite the relevant text evidence
-- For math: show the key formula or step used
+KEY_POINTS: 1-2 brief facts (<15 words each) that directly support YOUR answer to THIS question. Cite notes or explain reasoning.
 
-SOURCE: "notes" if answered from notes, or array of search result URLs if web search was used.
+SOURCE: "notes" or array of search URLs used.
 
-CRITICAL: Your response must be ONLY this JSON object, no other text:
-{"answer": "<your answer>", "key_points": ["relevant point about THIS question"], "source": "notes"}`;
+Respond with ONLY this JSON:
+{"answer": "...", "key_points": ["..."], "source": "notes"}`;
 
 // GeneratedAnswer type is imported from lib/types
 
@@ -235,50 +198,30 @@ export async function generateAnswerForQuestion(
       additionalInstructionsForWork || "None",
     );
 
-  const maxRetries = 3;
-  let lastResponse = "";
+  try {
+    return await withRetry(async () => {
+      const response = await client.models.generateContent({
+        model: MODELS.answerGeneration,
+        contents: [{ role: "user", parts: [{ text: prompt }, ...notesParts] }],
+        config: {
+          tools: [{ googleSearch: {} }],
+          responseMimeType: "application/json",
+        },
+      });
 
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    const response = await client.models.generateContent({
-      model: MODELS.answerGeneration,
-      contents: [{ role: "user", parts: [{ text: prompt }, ...notesParts] }],
-      config: {
-        tools: [{ googleSearch: {} }],
-        responseMimeType: "application/json",
-      },
-    });
-
-    const responseText = response.text ?? "";
-    lastResponse = responseText;
-    const cleaned = cleanJsonResponse(responseText);
-
-    try {
+      const responseText = response.text ?? "";
+      const cleaned = cleanJsonResponse(responseText);
       const parsed = JSON.parse(cleaned);
       return {
         answer: parsed.answer ?? "",
         keyPoints: parsed.key_points || parsed.keyPoints || [],
         source: parsed.source ?? "notes",
       } as GeneratedAnswer;
-    } catch {
-      if (attempt === maxRetries) {
-        console.warn(
-          `JSON parse failed for Q${questionNumber} after ${maxRetries} attempts. Attempting fallback extraction...`,
-        );
-        // Fallback: try to extract answer from plain text response
-        return extractAnswerFromText(
-          responseText,
-          questionType,
-          answerOptionsMCQ,
-        );
-      }
-      console.warn(
-        `JSON parse failed for Q${questionNumber} (attempt ${attempt}/${maxRetries}), retrying...`,
-      );
-    }
+    }, `Answer generation for Q${questionNumber}`);
+  } catch (error) {
+    console.warn(`Q${questionNumber} failed after retries, using fallback extraction`);
+    return extractAnswerFromText("", questionType, answerOptionsMCQ);
   }
-
-  // Should not reach here, but provide fallback
-  return extractAnswerFromText(lastResponse, questionType, answerOptionsMCQ);
 }
 
 // Fallback function to extract answer from non-JSON text
