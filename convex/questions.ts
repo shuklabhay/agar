@@ -50,6 +50,7 @@ export const insertQuestions = internalMutation({
       v.object({
         assignmentId: v.id("assignments"),
         questionNumber: v.number(),
+        extractionOrder: v.number(),
         questionText: v.string(),
         questionType: v.union(
           v.literal("multiple_choice"),

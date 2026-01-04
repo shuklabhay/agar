@@ -168,7 +168,7 @@ export function QuestionPanel({
         {/* Question header */}
         <div className="flex items-center justify-between mb-2">
           <span className="text-sm text-muted-foreground font-medium">
-            Question {questionIndex + 1} of {totalQuestions}
+            Question {question.questionNumber} ({questionIndex + 1} of {totalQuestions})
           </span>
           {isCorrect && (
             <Badge className="bg-green-500 text-white">

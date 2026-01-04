@@ -42,6 +42,7 @@ import { cn } from "@/lib/utils";
 type Question = {
   _id: Id<"questions">;
   questionNumber: number;
+  extractionOrder: number;
   questionText: string;
   questionType: string;
   answer?: string | string[];
@@ -90,7 +91,7 @@ export function QuestionsReviewPanel({
   const regenerateAnswer = useAction(api.answerGeneration.regenerateAnswer);
 
   const sortedQuestions = [...questions].sort(
-    (a, b) => a.questionNumber - b.questionNumber,
+    (a, b) => a.extractionOrder - b.extractionOrder,
   );
   const selectedQuestion =
     sortedQuestions.find((q) => q._id === selectedQuestionId) || null;

@@ -50,9 +50,10 @@ export const extractQuestions = action({
         "skipped",
       ] as const;
 
-      const questionsToInsert = extractedQuestions.map((q) => ({
+      const questionsToInsert = extractedQuestions.map((q, index) => ({
         assignmentId: args.assignmentId,
         questionNumber: q.questionNumber,
+        extractionOrder: index, // Preserve PDF order for sorting
         questionText: q.questionText,
         questionType: validTypes.includes(q.questionType as typeof validTypes[number])
           ? (q.questionType as typeof validTypes[number])

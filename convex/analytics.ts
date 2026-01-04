@@ -3,7 +3,6 @@ import { query } from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { Id } from "./_generated/dataModel";
 
-// Helper: Calculate statistical measures for box plots
 function calculateStats(values: number[]) {
   if (values.length === 0) return null;
   const sorted = [...values].sort((a, b) => a - b);
@@ -30,7 +29,7 @@ function calculateStats(values: number[]) {
 // Helper: Calculate understanding level based on completion and messages
 function getUnderstandingLevel(
   completionRate: number,
-  avgMessages: number
+  avgMessages: number,
 ): "low" | "medium" | "high" {
   // High: completed most questions with few messages needed
   if (completionRate >= 0.8 && avgMessages <= 5) return "high";
@@ -93,13 +92,13 @@ export const getClassAnalytics = query({
       const questions = await ctx.db
         .query("questions")
         .withIndex("by_assignmentId", (q) =>
-          q.eq("assignmentId", assignment._id)
+          q.eq("assignmentId", assignment._id),
         )
         .filter((q) => q.eq(q.field("status"), "approved"))
         .collect();
 
       const validQuestions = questions.filter(
-        (q) => q.questionType !== "skipped"
+        (q) => q.questionType !== "skipped",
       );
       const questionCount = validQuestions.length;
       const questionIds = new Set(validQuestions.map((q) => q._id));
@@ -108,7 +107,7 @@ export const getClassAnalytics = query({
       const sessions = await ctx.db
         .query("studentSessions")
         .withIndex("by_assignmentId", (q) =>
-          q.eq("assignmentId", assignment._id)
+          q.eq("assignmentId", assignment._id),
         )
         .collect();
 
@@ -223,18 +222,22 @@ export const getAssignmentAnalytics = query({
     // Get questions
     const questions = await ctx.db
       .query("questions")
-      .withIndex("by_assignmentId", (q) => q.eq("assignmentId", args.assignmentId))
+      .withIndex("by_assignmentId", (q) =>
+        q.eq("assignmentId", args.assignmentId),
+      )
       .filter((q) => q.eq(q.field("status"), "approved"))
       .collect();
 
     const validQuestions = questions
       .filter((q) => q.questionType !== "skipped")
-      .sort((a, b) => a.questionNumber - b.questionNumber);
+      .sort((a, b) => a.extractionOrder - b.extractionOrder);
 
     // Get all sessions
     const sessions = await ctx.db
       .query("studentSessions")
-      .withIndex("by_assignmentId", (q) => q.eq("assignmentId", args.assignmentId))
+      .withIndex("by_assignmentId", (q) =>
+        q.eq("assignmentId", args.assignmentId),
+      )
       .collect();
 
     if (sessions.length === 0) {
@@ -321,7 +324,7 @@ export const getAssignmentAnalytics = query({
 
       // Student's completion rate
       studentCompletionRates.push(
-        validQuestions.length > 0 ? studentCorrect / validQuestions.length : 0
+        validQuestions.length > 0 ? studentCorrect / validQuestions.length : 0,
       );
     }
 
@@ -399,12 +402,14 @@ export const getStudentPerformance = query({
     // Get questions count
     const questions = await ctx.db
       .query("questions")
-      .withIndex("by_assignmentId", (q) => q.eq("assignmentId", args.assignmentId))
+      .withIndex("by_assignmentId", (q) =>
+        q.eq("assignmentId", args.assignmentId),
+      )
       .filter((q) => q.eq(q.field("status"), "approved"))
       .collect();
 
     const validQuestions = questions.filter(
-      (q) => q.questionType !== "skipped"
+      (q) => q.questionType !== "skipped",
     );
     const totalQuestions = validQuestions.length;
     const questionIds = new Set(validQuestions.map((q) => q._id));
@@ -412,7 +417,9 @@ export const getStudentPerformance = query({
     // Get all sessions
     const sessions = await ctx.db
       .query("studentSessions")
-      .withIndex("by_assignmentId", (q) => q.eq("assignmentId", args.assignmentId))
+      .withIndex("by_assignmentId", (q) =>
+        q.eq("assignmentId", args.assignmentId),
+      )
       .collect();
 
     const studentRecords = [];
@@ -431,14 +438,14 @@ export const getStudentPerformance = query({
 
       // Count student messages
       const totalMessages = chatMessages.filter(
-        (m) => m.role === "student"
+        (m) => m.role === "student",
       ).length;
 
       // Count questions with messages
       const questionsWithMessages = new Set(
         chatMessages
           .filter((m) => m.role === "student")
-          .map((m) => m.questionId)
+          .map((m) => m.questionId),
       ).size;
 
       let questionsCompleted = 0;
@@ -511,7 +518,9 @@ export const getAssignmentComparisonBoxPlots = query({
     for (const assignment of publishedAssignments) {
       const sessions = await ctx.db
         .query("studentSessions")
-        .withIndex("by_assignmentId", (q) => q.eq("assignmentId", assignment._id))
+        .withIndex("by_assignmentId", (q) =>
+          q.eq("assignmentId", assignment._id),
+        )
         .collect();
 
       const allMessages: number[] = [];
@@ -580,22 +589,29 @@ export const getQuestionBoxPlots = query({
     // Get questions
     const questions = await ctx.db
       .query("questions")
-      .withIndex("by_assignmentId", (q) => q.eq("assignmentId", args.assignmentId))
+      .withIndex("by_assignmentId", (q) =>
+        q.eq("assignmentId", args.assignmentId),
+      )
       .filter((q) => q.eq(q.field("status"), "approved"))
       .collect();
 
     const validQuestions = questions
       .filter((q) => q.questionType !== "skipped")
-      .sort((a, b) => a.questionNumber - b.questionNumber);
+      .sort((a, b) => a.extractionOrder - b.extractionOrder);
 
     // Get all sessions
     const sessions = await ctx.db
       .query("studentSessions")
-      .withIndex("by_assignmentId", (q) => q.eq("assignmentId", args.assignmentId))
+      .withIndex("by_assignmentId", (q) =>
+        q.eq("assignmentId", args.assignmentId),
+      )
       .collect();
 
     // Collect per-question data
-    const questionDataMap = new Map<string, { messages: number[]; times: number[] }>();
+    const questionDataMap = new Map<
+      string,
+      { messages: number[]; times: number[] }
+    >();
     for (const q of validQuestions) {
       questionDataMap.set(q._id, { messages: [], times: [] });
     }
@@ -700,7 +716,9 @@ export const getAllStudentsInClass = query({
       // Get questions count
       const questions = await ctx.db
         .query("questions")
-        .withIndex("by_assignmentId", (q) => q.eq("assignmentId", assignment._id))
+        .withIndex("by_assignmentId", (q) =>
+          q.eq("assignmentId", assignment._id),
+        )
         .filter((q) => q.eq(q.field("status"), "approved"))
         .collect();
       const totalQuestions = questions.length;
@@ -709,7 +727,9 @@ export const getAllStudentsInClass = query({
       // Get all sessions for this assignment
       const sessions = await ctx.db
         .query("studentSessions")
-        .withIndex("by_assignmentId", (q) => q.eq("assignmentId", assignment._id))
+        .withIndex("by_assignmentId", (q) =>
+          q.eq("assignmentId", assignment._id),
+        )
         .collect();
 
       for (const session of sessions) {
@@ -726,9 +746,15 @@ export const getAllStudentsInClass = query({
           .filter((q) => q.eq(q.field("role"), "student"))
           .collect();
 
-        const questionsCompleted = progress.filter((p) => p.status === "correct").length;
-        const totalTimeMs = progress.reduce((sum, p) => sum + (p.timeSpentMs ?? 0), 0);
-        const avgMessages = progress.length > 0 ? messages.length / progress.length : 0;
+        const questionsCompleted = progress.filter(
+          (p) => p.status === "correct",
+        ).length;
+        const totalTimeMs = progress.reduce(
+          (sum, p) => sum + (p.timeSpentMs ?? 0),
+          0,
+        );
+        const avgMessages =
+          progress.length > 0 ? messages.length / progress.length : 0;
 
         const assignmentPerf = {
           assignmentId: assignment._id,
@@ -736,7 +762,8 @@ export const getAllStudentsInClass = query({
           sessionId: session._id,
           questionsCompleted,
           totalQuestions,
-          completionRate: totalQuestions > 0 ? questionsCompleted / totalQuestions : 0,
+          completionRate:
+            totalQuestions > 0 ? questionsCompleted / totalQuestions : 0,
           avgMessages,
           totalTimeMs,
           lastActiveAt: session.lastActiveAt,
@@ -756,16 +783,21 @@ export const getAllStudentsInClass = query({
             existing.totalQuestions > 0
               ? existing.totalMessageCount / existing.totalQuestions
               : 0;
-          existing.lastActiveAt = Math.max(existing.lastActiveAt, session.lastActiveAt);
+          existing.lastActiveAt = Math.max(
+            existing.lastActiveAt,
+            session.lastActiveAt,
+          );
         } else {
           studentMap.set(session.name, {
             name: session.name,
             assignments: [assignmentPerf],
             totalQuestionsCompleted: questionsCompleted,
             totalQuestions,
-            overallCompletionRate: totalQuestions > 0 ? questionsCompleted / totalQuestions : 0,
+            overallCompletionRate:
+              totalQuestions > 0 ? questionsCompleted / totalQuestions : 0,
             totalMessageCount: messages.length,
-            overallAvgMessages: totalQuestions > 0 ? messages.length / totalQuestions : 0,
+            overallAvgMessages:
+              totalQuestions > 0 ? messages.length / totalQuestions : 0,
             lastActiveAt: session.lastActiveAt,
           });
         }
@@ -774,7 +806,7 @@ export const getAllStudentsInClass = query({
 
     // Convert to array and sort by last active
     const students = Array.from(studentMap.values()).sort(
-      (a, b) => b.lastActiveAt - a.lastActiveAt
+      (a, b) => b.lastActiveAt - a.lastActiveAt,
     );
 
     return students;
@@ -801,7 +833,9 @@ export const getStudentQuestionDetails = query({
     // Get questions for this assignment
     const questions = await ctx.db
       .query("questions")
-      .withIndex("by_assignmentId", (q) => q.eq("assignmentId", session.assignmentId))
+      .withIndex("by_assignmentId", (q) =>
+        q.eq("assignmentId", session.assignmentId),
+      )
       .filter((q) => q.eq(q.field("status"), "approved"))
       .collect();
 
@@ -826,7 +860,7 @@ export const getStudentQuestionDetails = query({
 
     // Build result
     const result = questions
-      .sort((a, b) => a.questionNumber - b.questionNumber)
+      .sort((a, b) => a.extractionOrder - b.extractionOrder)
       .map((q) => {
         const p = progress.find((pr) => pr.questionId === q._id);
         return {

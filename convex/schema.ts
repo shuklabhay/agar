@@ -51,6 +51,7 @@ export default defineSchema({
   questions: defineTable({
     assignmentId: v.id("assignments"),
     questionNumber: v.number(),
+    extractionOrder: v.number(), // Order question appears in PDF (for sorting)
     questionText: v.string(),
     questionType: v.union(
       v.literal("multiple_choice"),

@@ -33,6 +33,7 @@ export interface GeneratedAnswer {
 export interface StudentQuestion {
   _id: string;
   questionNumber: number;
+  extractionOrder: number;
   questionText: string;
   questionType: QuestionType;
   answerOptionsMCQ?: string[];

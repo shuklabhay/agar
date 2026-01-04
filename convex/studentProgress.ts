@@ -12,16 +12,18 @@ export const getQuestionsForStudent = query({
       .collect();
 
     // Return without answer/keyPoints fields (hidden from student)
+    // Sort by extractionOrder to preserve PDF order (not questionNumber which may be non-sequential)
     return questions
       .filter((q) => q.questionType !== "skipped")
       .map((q) => ({
         _id: q._id,
         questionNumber: q.questionNumber,
+        extractionOrder: q.extractionOrder,
         questionText: q.questionText,
         questionType: q.questionType,
         answerOptionsMCQ: q.answerOptionsMCQ,
       }))
-      .sort((a, b) => a.questionNumber - b.questionNumber);
+      .sort((a, b) => a.extractionOrder - b.extractionOrder);
   },
 });
 
