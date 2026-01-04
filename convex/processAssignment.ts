@@ -41,16 +41,18 @@ export const processAssignment = action({
       };
     } catch (error) {
       console.error("Process assignment error:", error);
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
 
-      // Update status to error
+      // Update status to error with message
       await ctx.runMutation(internal.questions.updateAssignmentStatus, {
         assignmentId: args.assignmentId,
         status: "error",
+        error: errorMessage,
       });
 
       return {
         success: false,
-        error: error instanceof Error ? error.message : "Unknown error",
+        error: errorMessage,
       };
     }
   },

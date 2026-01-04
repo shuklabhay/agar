@@ -283,10 +283,10 @@ export function QuestionsReviewPanel({
   const hasUnapprovedWebSources = unapprovedWebSourced.length > 0;
 
   return (
-    <div className="space-y-4 min-w-0 w-full overflow-hidden">
+    <div className="space-y-4 min-w-0 w-full max-w-full overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold">
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <h2 className="text-xl font-semibold shrink-0">
           Questions ({sortedQuestions.length})
         </h2>
         <div className="flex items-center gap-3">
@@ -401,9 +401,9 @@ export function QuestionsReviewPanel({
       </div>
 
       {/* Split Panel with Card wrapper */}
-      <Card className="!py-0 overflow-hidden w-full">
-        <CardContent className="!p-0 overflow-hidden w-full">
-          <div ref={containerRef} className="flex h-[500px] overflow-hidden w-full">
+      <Card className="!py-0 overflow-hidden w-full max-w-full">
+        <CardContent className="!p-0 overflow-hidden w-full max-w-full">
+          <div ref={containerRef} className="flex h-[500px] overflow-hidden w-full max-w-full">
             {/* Left: Question List */}
             <div
               className="overflow-hidden min-w-0"
@@ -649,14 +649,18 @@ export function QuestionsReviewPanel({
                       </div>
                     )}
 
-                    {/* Answer - hide for MCQ since we highlight the correct option above */}
+                    {/* Answer - show for all types, but for MCQ only if answer isn't a valid option letter */}
                     {!isPending &&
                       !isSkipped &&
-                      !(
-                        selectedQuestion.questionType === "multiple_choice" &&
-                        selectedQuestion.answerOptionsMCQ &&
-                        selectedQuestion.answerOptionsMCQ.length > 0
-                      ) && (
+                      (() => {
+                        // For MCQ, check if the answer is a valid option letter
+                        const isMCQ = selectedQuestion.questionType === "multiple_choice";
+                        const hasOptions = selectedQuestion.answerOptionsMCQ && selectedQuestion.answerOptionsMCQ.length > 0;
+                        const answer = typeof selectedQuestion.answer === "string" ? selectedQuestion.answer.toUpperCase().trim() : "";
+                        const isValidLetter = hasOptions && /^[A-D]$/.test(answer);
+                        // Show answer box if NOT (MCQ with options AND valid letter answer)
+                        return !(isMCQ && hasOptions && isValidLetter);
+                      })() && (
                         <div
                           className={cn(
                             "rounded-lg px-4 py-3 overflow-hidden",

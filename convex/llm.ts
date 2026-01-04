@@ -53,22 +53,66 @@ function cleanJsonResponse(text: string): string {
     .replace(/```\n?/g, "")
     .trim();
 
-  // Try to extract JSON object if it's embedded in other text
-  const jsonObjMatch = cleaned.match(/\{[\s\S]*\}/);
-  if (jsonObjMatch) {
-    cleaned = jsonObjMatch[0];
-  } else {
-    // Try to extract JSON array if no object found
-    const jsonArrMatch = cleaned.match(/\[[\s\S]*\]/);
-    if (jsonArrMatch) {
-      cleaned = jsonArrMatch[0];
+  // Find the first JSON structure (array or object)
+  const arrayIdx = cleaned.indexOf("[");
+  const objIdx = cleaned.indexOf("{");
+
+  // Determine which comes first (ignoring -1 values)
+  let startIdx = -1;
+  let startChar = "{";
+  let endChar = "}";
+
+  if (arrayIdx !== -1 && (objIdx === -1 || arrayIdx < objIdx)) {
+    startIdx = arrayIdx;
+    startChar = "[";
+    endChar = "]";
+  } else if (objIdx !== -1) {
+    startIdx = objIdx;
+    startChar = "{";
+    endChar = "}";
+  }
+
+  if (startIdx !== -1) {
+    let depth = 0;
+    let inString = false;
+    let escaped = false;
+
+    for (let i = startIdx; i < cleaned.length; i++) {
+      const char = cleaned[i];
+
+      if (escaped) {
+        escaped = false;
+        continue;
+      }
+
+      if (char === "\\") {
+        escaped = true;
+        continue;
+      }
+
+      if (char === '"') {
+        inString = !inString;
+        continue;
+      }
+
+      if (inString) continue;
+
+      if (char === "{" || char === "[") {
+        depth++;
+      } else if (char === "}" || char === "]") {
+        depth--;
+        if (depth === 0) {
+          cleaned = cleaned.substring(startIdx, i + 1);
+          break;
+        }
+      }
     }
   }
 
-  // Handle common JSON issues (conservative fixes only)
+  // Handle common JSON issues
   cleaned = cleaned
-    .replace(/,\s*}/g, "}") // Remove trailing commas before }
-    .replace(/,\s*]/g, "]"); // Remove trailing commas before ]
+    .replace(/,\s*}/g, "}")
+    .replace(/,\s*]/g, "]");
 
   return cleaned;
 }
@@ -205,7 +249,6 @@ export async function generateAnswerForQuestion(
         contents: [{ role: "user", parts: [{ text: prompt }, ...notesParts] }],
         config: {
           tools: [{ googleSearch: {} }],
-          responseMimeType: "application/json",
         },
       });
 

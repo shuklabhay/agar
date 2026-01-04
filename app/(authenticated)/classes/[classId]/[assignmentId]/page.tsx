@@ -1109,6 +1109,7 @@ function ReviewAssignmentView({
     }>;
     additionalInfo?: string;
     processingStatus?: string;
+    processingError?: string;
   };
   questions: Array<{
     _id: Id<"questions">;
@@ -1123,6 +1124,8 @@ function ReviewAssignmentView({
   }>;
 }) {
   const [copied, setCopied] = useState(false);
+  const [isRetrying, setIsRetrying] = useState(false);
+  const processAssignment = useAction(api.processAssignment.processAssignment);
   const [editingQuestion, setEditingQuestion] = useState<{
     _id: Id<"questions">;
     questionNumber: number;
@@ -1241,6 +1244,54 @@ function ReviewAssignmentView({
           )}
         </CardContent>
       </Card>
+
+      {/* Error State */}
+      {assignment.processingStatus === "error" && (
+        <Card className="border-destructive bg-destructive/5">
+          <CardContent className="py-4">
+            <div className="flex items-start gap-3">
+              <div className="rounded-full bg-destructive/10 p-2">
+                <X className="h-4 w-4 text-destructive" />
+              </div>
+              <div className="flex-1 space-y-1">
+                <p className="font-medium text-destructive">Processing Failed</p>
+                <p className="text-sm text-muted-foreground">
+                  {assignment.processingError || "An error occurred while processing the assignment."}
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={isRetrying}
+                onClick={async () => {
+                  setIsRetrying(true);
+                  try {
+                    const result = await processAssignment({ assignmentId });
+                    if (result.success) {
+                      toast.success(`Processed ${result.questionsExtracted} questions`);
+                    } else {
+                      toast.error(result.error || "Processing failed");
+                    }
+                  } catch (err) {
+                    toast.error("Failed to retry processing");
+                  } finally {
+                    setIsRetrying(false);
+                  }
+                }}
+              >
+                {isRetrying ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                    Retrying...
+                  </>
+                ) : (
+                  "Retry"
+                )}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Questions Review Section */}
       {(() => {

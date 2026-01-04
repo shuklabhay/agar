@@ -79,15 +79,17 @@ export const extractQuestions = action({
       return { success: true, count: questionsToInsert.length };
     } catch (error) {
       console.error("Extraction error:", error);
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
 
       await ctx.runMutation(internal.questions.updateAssignmentStatus, {
         assignmentId: args.assignmentId,
         status: "error",
+        error: errorMessage,
       });
 
       return {
         success: false,
-        error: error instanceof Error ? error.message : "Unknown error",
+        error: errorMessage,
       };
     }
   },

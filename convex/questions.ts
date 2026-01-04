@@ -35,10 +35,12 @@ export const updateAssignmentStatus = internalMutation({
       v.literal("ready"),
       v.literal("error"),
     ),
+    error: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     await ctx.db.patch(args.assignmentId, {
       processingStatus: args.status,
+      processingError: args.status === "error" ? args.error : undefined,
     });
   },
 });

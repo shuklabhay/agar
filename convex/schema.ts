@@ -57,6 +57,7 @@ export default defineSchema({
         v.literal("error"),
       ),
     ),
+    processingError: v.optional(v.string()),
   }).index("by_classId", ["classId"]),
   questions: defineTable({
     assignmentId: v.id("assignments"),
