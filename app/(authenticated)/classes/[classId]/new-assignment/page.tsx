@@ -1045,10 +1045,10 @@ export default function NewAssignmentPage() {
               </div>
             )}
 
-            <div className="bg-blue-50 dark:bg-blue-950/30 rounded-lg p-3 text-sm mt-8">
+            <div className="bg-blue-50 dark:bg-blue-950/30 rounded-lg p-3 text-sm mt-5">
               <p className="text-blue-800 dark:text-blue-200">
-                After creating, the system will automatically extract questions
-                and generate answers using AI. This may take a few minutes.
+                After creating, your questions will be extracted and proceessed
+                using AI. This may take a few minutes.
               </p>
             </div>
           </div>
