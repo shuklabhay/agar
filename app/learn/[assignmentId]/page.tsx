@@ -46,6 +46,7 @@ export default function LearnPage() {
   // Question navigation
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const lastCorrectQuestionRef = useRef<string | null>(null);
+  const questionScrollRef = useRef<HTMLDivElement | null>(null);
 
   // Resizable panels
   const { containerRef, leftPanelWidth, handleMouseDown } = useResizablePanel({
@@ -164,6 +165,11 @@ export default function LearnPage() {
       // All questions answered - stay on current
     }
   }, [questions, progress, currentQuestionIndex]);
+
+  // Reset scroll position when changing questions
+  useEffect(() => {
+    questionScrollRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+  }, [currentQuestionIndex]);
 
   // Record time spent when switching questions or leaving page
   useEffect(() => {
@@ -407,6 +413,7 @@ export default function LearnPage() {
         {/* Left Panel - Question */}
         <div
           className="overflow-y-auto bg-background"
+          ref={questionScrollRef}
           style={{ width: `${leftPanelWidth}%` }}
         >
           <QuestionPanel
