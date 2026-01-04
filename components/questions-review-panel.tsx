@@ -38,25 +38,14 @@ import {
 import { useResizablePanel } from "@/hooks/use-resizable-panel";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-
-type Question = {
-  _id: Id<"questions">;
-  questionNumber: number;
-  extractionOrder: number;
-  questionText: string;
-  questionType: string;
-  answer?: string | string[];
-  keyPoints?: string[];
-  source?: "notes" | string[];
-  status: "pending" | "processing" | "ready" | "approved";
-};
+import { ReviewQuestion } from "@/lib/types";
 
 interface QuestionsReviewPanelProps {
-  questions: Question[];
+  questions: ReviewQuestion[];
   assignmentId: Id<"assignments">;
   isProcessing: boolean;
   processingStatus?: string;
-  onEdit: (question: Question) => void;
+  onEdit: (question: ReviewQuestion) => void;
 }
 
 export function QuestionsReviewPanel({
@@ -103,7 +92,9 @@ export function QuestionsReviewPanel({
   const skippedCount = skippedQuestions.length;
   // Exclude skipped from completed questions count
   const completedQuestions = sortedQuestions.filter(
-    (q) => (q.status === "ready" || q.status === "approved") && q.questionType !== "skipped",
+    (q) =>
+      (q.status === "ready" || q.status === "approved") &&
+      q.questionType !== "skipped",
   );
   const readyNotesOnly = completedQuestions.filter(
     (q) => q.status === "ready" && q.source === "notes",
@@ -122,7 +113,7 @@ export function QuestionsReviewPanel({
     setSelectedQuestionId(sortedQuestions[0]._id);
   }
 
-  const getQuestionStatus = (question: Question) => {
+  const getQuestionStatus = (question: ReviewQuestion) => {
     if (question.questionType === "skipped") return "skipped";
     if (question.status === "approved") return "approved";
     if (question.status === "pending" || question.status === "processing")
@@ -327,7 +318,8 @@ export function QuestionsReviewPanel({
                     }
                     className={cn(
                       "rounded-r-none",
-                      hasUnapprovedWebSources && "bg-amber-500 hover:bg-amber-600",
+                      hasUnapprovedWebSources &&
+                        "bg-amber-500 hover:bg-amber-600",
                     )}
                   >
                     {isApprovingAll ? (
@@ -365,7 +357,9 @@ export function QuestionsReviewPanel({
                         className="gap-2"
                       >
                         <CheckCheck className="h-4 w-4" />
-                        <span>Approve from Notes ({readyNotesOnly.length})</span>
+                        <span>
+                          Approve from Notes ({readyNotesOnly.length})
+                        </span>
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         onClick={handleApproveAll}
@@ -424,7 +418,11 @@ export function QuestionsReviewPanel({
                             <AlertTriangle className="h-4 w-4 text-amber-500" />
                           )}
                           {status === "skipped" && (
-                            <FastForward className="h-4 w-4 text-slate-400" fill="currentColor" strokeWidth={0} />
+                            <FastForward
+                              className="h-4 w-4 text-slate-400"
+                              fill="currentColor"
+                              strokeWidth={0}
+                            />
                           )}
                           {status === "processing" && (
                             <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
@@ -557,7 +555,9 @@ export function QuestionsReviewPanel({
                     {/* Source - shown above answer */}
                     {selectedQuestion.source && !isPending && !isSkipped && (
                       <div className="flex items-start gap-2 text-sm">
-                        <span className="text-muted-foreground shrink-0">Source:</span>
+                        <span className="text-muted-foreground shrink-0">
+                          Source:
+                        </span>
                         {selectedQuestion.source === "notes" ? (
                           <span className="text-green-600 dark:text-green-400 font-medium">
                             Notes

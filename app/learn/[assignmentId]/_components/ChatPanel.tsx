@@ -6,24 +6,30 @@ import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Send, Loader2, Paperclip, X, FileText, Image as ImageIcon } from "lucide-react";
+import {
+  Send,
+  Loader2,
+  Paperclip,
+  X,
+  FileText,
+  Image as ImageIcon,
+} from "lucide-react";
 import { ChatMessage } from "./ChatMessage";
-
-interface Question {
-  _id: Id<"questions">;
-  questionNumber: number;
-  questionText: string;
-  questionType: string;
-}
+import { ChatQuestion } from "@/lib/types";
 
 interface ChatPanelProps {
   sessionId: Id<"studentSessions"> | null;
   questionId: Id<"questions"> | undefined;
-  question: Question | undefined;
-  questions: Question[];
+  question: ChatQuestion | undefined;
+  questions: ChatQuestion[];
 }
 
-export function ChatPanel({ sessionId, questionId, question, questions }: ChatPanelProps) {
+export function ChatPanel({
+  sessionId,
+  questionId,
+  question,
+  questions,
+}: ChatPanelProps) {
   const [input, setInput] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
@@ -39,7 +45,7 @@ export function ChatPanel({ sessionId, questionId, question, questions }: ChatPa
   // Get all chat history for the session (persists across questions)
   const chatHistory = useQuery(
     api.chat.getSessionChatHistory,
-    sessionId ? { sessionId } : "skip"
+    sessionId ? { sessionId } : "skip",
   );
 
   const sendMessage = useAction(api.chat.sendMessageToTutor);
@@ -49,7 +55,7 @@ export function ChatPanel({ sessionId, questionId, question, questions }: ChatPa
   useEffect(() => {
     const timer = setTimeout(() => {
       messagesEndRef.current?.scrollIntoView({
-        behavior: isInitialMount.current ? "instant" : "smooth"
+        behavior: isInitialMount.current ? "instant" : "smooth",
       });
       isInitialMount.current = false;
     }, 150);
@@ -84,7 +90,13 @@ export function ChatPanel({ sessionId, questionId, question, questions }: ChatPa
   };
 
   const handleSend = async () => {
-    if ((!input.trim() && attachedFiles.length === 0) || !sessionId || !questionId || isSending) return;
+    if (
+      (!input.trim() && attachedFiles.length === 0) ||
+      !sessionId ||
+      !questionId ||
+      isSending
+    )
+      return;
 
     const message = input.trim();
     setInput("");
@@ -97,7 +109,7 @@ export function ChatPanel({ sessionId, questionId, question, questions }: ChatPa
           name: file.name,
           type: file.type,
           data: await fileToBase64(file),
-        }))
+        })),
       );
 
       setAttachedFiles([]);
@@ -137,13 +149,15 @@ export function ChatPanel({ sessionId, questionId, question, questions }: ChatPa
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {chatHistory?.map((msg, index) => {
           const prevMsg = index > 0 ? chatHistory[index - 1] : null;
-          const nextMsg = index < chatHistory.length - 1 ? chatHistory[index + 1] : null;
+          const nextMsg =
+            index < chatHistory.length - 1 ? chatHistory[index + 1] : null;
           const showDivider = prevMsg && prevMsg.questionId !== msg.questionId;
           const questionNum = getQuestionNumber(msg.questionId);
 
           // Show Rio only on the last tutor message
-          const isLastTutorMessage = msg.role === "tutor" &&
-            !chatHistory.slice(index + 1).some(m => m.role === "tutor");
+          const isLastTutorMessage =
+            msg.role === "tutor" &&
+            !chatHistory.slice(index + 1).some((m) => m.role === "tutor");
 
           // Check if this is the last message from this sender (next message is different role or doesn't exist)
           const isLastFromSender = !nextMsg || nextMsg.role !== msg.role;
@@ -170,19 +184,18 @@ export function ChatPanel({ sessionId, questionId, question, questions }: ChatPa
         })}
 
         {/* Show divider for current question if no messages yet or different from last message */}
-        {question && chatHistory && (
-          chatHistory.length === 0 ||
-          chatHistory[chatHistory.length - 1]?.questionId !== questionId
-        ) && (
-          <div className="flex items-center gap-3 py-2">
-            <div className="flex-1 h-px bg-border" />
-            <span className="text-xs text-muted-foreground font-medium px-2">
-              Question {question.questionNumber}
-            </span>
-            <div className="flex-1 h-px bg-border" />
-          </div>
-        )}
-
+        {question &&
+          chatHistory &&
+          (chatHistory.length === 0 ||
+            chatHistory[chatHistory.length - 1]?.questionId !== questionId) && (
+            <div className="flex items-center gap-3 py-2">
+              <div className="flex-1 h-px bg-border" />
+              <span className="text-xs text-muted-foreground font-medium px-2">
+                Question {question.questionNumber}
+              </span>
+              <div className="flex-1 h-px bg-border" />
+            </div>
+          )}
 
         <div ref={messagesEndRef} />
       </div>
@@ -243,7 +256,9 @@ export function ChatPanel({ sessionId, questionId, question, questions }: ChatPa
           />
           <Button
             onClick={handleSend}
-            disabled={(!input.trim() && attachedFiles.length === 0) || isSending}
+            disabled={
+              (!input.trim() && attachedFiles.length === 0) || isSending
+            }
             size="icon"
             className="h-10 w-10 shrink-0"
           >

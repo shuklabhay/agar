@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { Id } from "@/convex/_generated/dataModel";
 import {
   Dialog,
   DialogContent,
@@ -16,18 +15,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
-
-type Question = {
-  _id: Id<"questions">;
-  questionNumber: number;
-  questionText: string;
-  questionType: string;
-  answer?: string | string[];
-  keyPoints?: string[];
-};
+import { EditableQuestion } from "@/lib/types";
 
 interface EditAnswerDialogProps {
-  question: Question | null;
+  question: EditableQuestion | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }

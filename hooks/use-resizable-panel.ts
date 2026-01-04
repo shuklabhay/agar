@@ -1,12 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect } from "react";
-
-interface UseResizablePanelOptions {
-  defaultSize?: number;
-  minSize?: number;
-  maxSize?: number;
-}
+import { UseResizablePanelOptions } from "@/lib/types";
 
 export function useResizablePanel(options: UseResizablePanelOptions = {}) {
   const { defaultSize = 50, minSize = 25, maxSize = 75 } = options;
@@ -35,7 +30,7 @@ export function useResizablePanel(options: UseResizablePanelOptions = {}) {
         ((e.clientX - containerRect.left) / containerRect.width) * 100;
       setLeftPanelWidth(Math.min(maxSize, Math.max(minSize, newWidth)));
     },
-    [minSize, maxSize]
+    [minSize, maxSize],
   );
 
   useEffect(() => {

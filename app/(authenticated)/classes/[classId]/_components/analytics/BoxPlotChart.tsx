@@ -1,20 +1,12 @@
 "use client";
 
 import { useState } from "react";
-
-interface BoxPlotData {
-  min: number;
-  q1: number;
-  median: number;
-  q3: number;
-  max: number;
-  mean?: number;
-}
-
-interface BoxPlotItem {
-  name: string;
-  boxPlot: BoxPlotData | null;
-}
+import {
+  BoxPlotData,
+  BoxPlotItem,
+  BoxPlotElementType,
+  BoxPlotHoveredElement,
+} from "@/lib/types";
 
 interface HorizontalBoxPlotProps {
   title: string;
@@ -22,15 +14,8 @@ interface HorizontalBoxPlotProps {
   formatValue?: (value: number) => string;
   color?: string;
   unit?: string;
-  showOutliers?: boolean; // defaults to false (hides outliers and scales to IQR range)
+  showOutliers?: boolean;
 }
-
-type ElementType = "min" | "q1" | "median" | "q3" | "max" | "mean" | "lowerOutlier" | "upperOutlier";
-
-type HoveredElement = {
-  index: number;
-  type: ElementType;
-} | null;
 
 export function HorizontalBoxPlot({
   title,
@@ -40,7 +25,8 @@ export function HorizontalBoxPlot({
   unit = "",
   showOutliers = false,
 }: HorizontalBoxPlotProps) {
-  const [hoveredElement, setHoveredElement] = useState<HoveredElement>(null);
+  const [hoveredElement, setHoveredElement] =
+    useState<BoxPlotHoveredElement>(null);
 
   const validData = data.filter((d) => d.boxPlot !== null);
 
@@ -84,33 +70,57 @@ export function HorizontalBoxPlot({
     return ((value - scaleMin) / scaleRange) * 100;
   };
 
-  const getTooltipLabel = (type: ElementType): string => {
+  const getTooltipLabel = (type: BoxPlotElementType): string => {
     switch (type) {
-      case "min": return "Min";
-      case "q1": return "Q1";
-      case "median": return "Median";
-      case "q3": return "Q3";
-      case "max": return "Max";
-      case "mean": return "Mean";
-      case "lowerOutlier": return "Outlier";
-      case "upperOutlier": return "Outlier";
+      case "min":
+        return "Min";
+      case "q1":
+        return "Q1";
+      case "median":
+        return "Median";
+      case "q3":
+        return "Q3";
+      case "max":
+        return "Max";
+      case "mean":
+        return "Mean";
+      case "lowerOutlier":
+        return "Outlier";
+      case "upperOutlier":
+        return "Outlier";
     }
   };
 
-  const getTooltipValue = (bp: BoxPlotData, type: ElementType): string => {
+  const getTooltipValue = (
+    bp: BoxPlotData,
+    type: BoxPlotElementType,
+  ): string => {
     switch (type) {
-      case "min": return `${formatValue(bp.min)}${unit}`;
-      case "q1": return `${formatValue(bp.q1)}${unit}`;
-      case "median": return `${formatValue(bp.median)}${unit}`;
-      case "q3": return `${formatValue(bp.q3)}${unit}`;
-      case "max": return `${formatValue(bp.max)}${unit}`;
-      case "mean": return bp.mean !== undefined ? `${formatValue(bp.mean)}${unit}` : "";
-      case "lowerOutlier": return `${formatValue(bp.min)}${unit}`;
-      case "upperOutlier": return `${formatValue(bp.max)}${unit}`;
+      case "min":
+        return `${formatValue(bp.min)}${unit}`;
+      case "q1":
+        return `${formatValue(bp.q1)}${unit}`;
+      case "median":
+        return `${formatValue(bp.median)}${unit}`;
+      case "q3":
+        return `${formatValue(bp.q3)}${unit}`;
+      case "max":
+        return `${formatValue(bp.max)}${unit}`;
+      case "mean":
+        return bp.mean !== undefined ? `${formatValue(bp.mean)}${unit}` : "";
+      case "lowerOutlier":
+        return `${formatValue(bp.min)}${unit}`;
+      case "upperOutlier":
+        return `${formatValue(bp.max)}${unit}`;
     }
   };
 
-  const getTooltipPosition = (bp: BoxPlotData, type: ElementType, whiskerMinPos: number, whiskerMaxPos: number): number => {
+  const getTooltipPosition = (
+    bp: BoxPlotData,
+    type: BoxPlotElementType,
+    whiskerMinPos: number,
+    whiskerMaxPos: number,
+  ): number => {
     switch (type) {
       case "lowerOutlier":
         return getPosition(bp.min);
@@ -157,256 +167,289 @@ export function HorizontalBoxPlot({
 
           {/* Box plots */}
           {validData.map((item, index) => {
-          const bp = item.boxPlot!;
-          const minPos = getPosition(bp.min);
-          const q1Pos = getPosition(bp.q1);
-          const medianPos = getPosition(bp.median);
-          const q3Pos = getPosition(bp.q3);
-          const maxPos = getPosition(bp.max);
-          const isRowHovered = hoveredElement?.index === index;
+            const bp = item.boxPlot!;
+            const minPos = getPosition(bp.min);
+            const q1Pos = getPosition(bp.q1);
+            const medianPos = getPosition(bp.median);
+            const q3Pos = getPosition(bp.q3);
+            const maxPos = getPosition(bp.max);
+            const isRowHovered = hoveredElement?.index === index;
 
-          // Calculate IQR for outlier detection
-          const iqr = bp.q3 - bp.q1;
-          const lowerFence = bp.q1 - 1.5 * iqr;
-          const upperFence = bp.q3 + 1.5 * iqr;
+            // Calculate IQR for outlier detection
+            const iqr = bp.q3 - bp.q1;
+            const lowerFence = bp.q1 - 1.5 * iqr;
+            const upperFence = bp.q3 + 1.5 * iqr;
 
-          // Check if min/max are outliers
-          const hasLowerOutlier = bp.min < lowerFence;
-          const hasUpperOutlier = bp.max > upperFence;
+            // Check if min/max are outliers
+            const hasLowerOutlier = bp.min < lowerFence;
+            const hasUpperOutlier = bp.max > upperFence;
 
-          // Whisker endpoints (capped at fences if there are outliers)
-          const whiskerMin = hasLowerOutlier ? Math.max(bp.min, lowerFence) : bp.min;
-          const whiskerMax = hasUpperOutlier ? Math.min(bp.max, upperFence) : bp.max;
-          const whiskerMinPos = getPosition(Math.max(whiskerMin, bp.q1 - 1.5 * iqr));
-          const whiskerMaxPos = getPosition(Math.min(whiskerMax, bp.q3 + 1.5 * iqr));
+            // Whisker endpoints (capped at fences if there are outliers)
+            const whiskerMin = hasLowerOutlier
+              ? Math.max(bp.min, lowerFence)
+              : bp.min;
+            const whiskerMax = hasUpperOutlier
+              ? Math.min(bp.max, upperFence)
+              : bp.max;
+            const whiskerMinPos = getPosition(
+              Math.max(whiskerMin, bp.q1 - 1.5 * iqr),
+            );
+            const whiskerMaxPos = getPosition(
+              Math.min(whiskerMax, bp.q3 + 1.5 * iqr),
+            );
 
-          // Only show mean if it's within the visible range when outliers are hidden
-          const meanWithinRange = bp.mean !== undefined && (showOutliers || (bp.mean >= lowerFence && bp.mean <= upperFence));
-          const meanPos = meanWithinRange ? getPosition(bp.mean!) : null;
+            // Only show mean if it's within the visible range when outliers are hidden
+            const meanWithinRange =
+              bp.mean !== undefined &&
+              (showOutliers ||
+                (bp.mean >= lowerFence && bp.mean <= upperFence));
+            const meanPos = meanWithinRange ? getPosition(bp.mean!) : null;
 
-          return (
-            <div key={index} className="relative h-[60px]">
-              {/* Whisker line (to fence or min/max if no outliers) */}
-              <div
-                className="absolute top-1/2 h-0.5 transition-opacity"
-                style={{
-                  left: `${whiskerMinPos}%`,
-                  width: `${whiskerMaxPos - whiskerMinPos}%`,
-                  backgroundColor: color,
-                  opacity: isRowHovered ? 1 : 0.8,
-                  transform: "translateY(-50%)",
-                }}
-              />
-
-              {/* Min whisker cap - visual */}
-              <div
-                className="absolute top-1/2 w-0.5 h-8 transition-all pointer-events-none"
-                style={{
-                  left: `${whiskerMinPos}%`,
-                  backgroundColor: color,
-                  opacity: isRowHovered ? 1 : 0.8,
-                  transform: "translateY(-50%) translateX(-50%)",
-                }}
-              />
-              {/* Min whisker cap - hover zone */}
-              <div
-                className="absolute top-0 w-6 h-full cursor-pointer z-10"
-                style={{
-                  left: `${whiskerMinPos}%`,
-                  transform: "translateX(-50%)",
-                }}
-                onMouseEnter={() => setHoveredElement({ index, type: "min" })}
-                onMouseLeave={() => setHoveredElement(null)}
-              />
-
-              {/* Max whisker cap - visual */}
-              <div
-                className="absolute top-1/2 w-0.5 h-8 transition-all pointer-events-none"
-                style={{
-                  left: `${whiskerMaxPos}%`,
-                  backgroundColor: color,
-                  opacity: isRowHovered ? 1 : 0.8,
-                  transform: "translateY(-50%) translateX(-50%)",
-                }}
-              />
-              {/* Max whisker cap - hover zone */}
-              <div
-                className="absolute top-0 w-6 h-full cursor-pointer z-10"
-                style={{
-                  left: `${whiskerMaxPos}%`,
-                  transform: "translateX(-50%)",
-                }}
-                onMouseEnter={() => setHoveredElement({ index, type: "max" })}
-                onMouseLeave={() => setHoveredElement(null)}
-              />
-
-              {/* Lower outlier dot */}
-              {showOutliers && hasLowerOutlier && (
-                <>
-                  {/* Visual */}
-                  <div
-                    className="absolute w-2.5 h-2.5 rounded-full transition-transform pointer-events-none"
-                    style={{
-                      left: `${minPos}%`,
-                      top: "50%",
-                      backgroundColor: color,
-                      transform: `translate(-50%, -50%) ${hoveredElement?.index === index && hoveredElement?.type === "lowerOutlier" ? "scale(1.4)" : "scale(1)"}`,
-                    }}
-                  />
-                  {/* Hover zone */}
-                  <div
-                    className="absolute top-0 w-6 h-full cursor-pointer z-10"
-                    style={{
-                      left: `${minPos}%`,
-                      transform: "translateX(-50%)",
-                    }}
-                    onMouseEnter={() => setHoveredElement({ index, type: "lowerOutlier" })}
-                    onMouseLeave={() => setHoveredElement(null)}
-                  />
-                </>
-              )}
-
-              {/* Upper outlier dot */}
-              {showOutliers && hasUpperOutlier && (
-                <>
-                  {/* Visual */}
-                  <div
-                    className="absolute w-2.5 h-2.5 rounded-full transition-transform pointer-events-none"
-                    style={{
-                      left: `${maxPos}%`,
-                      top: "50%",
-                      backgroundColor: color,
-                      transform: `translate(-50%, -50%) ${hoveredElement?.index === index && hoveredElement?.type === "upperOutlier" ? "scale(1.4)" : "scale(1)"}`,
-                    }}
-                  />
-                  {/* Hover zone */}
-                  <div
-                    className="absolute top-0 w-6 h-full cursor-pointer z-10"
-                    style={{
-                      left: `${maxPos}%`,
-                      transform: "translateX(-50%)",
-                    }}
-                    onMouseEnter={() => setHoveredElement({ index, type: "upperOutlier" })}
-                    onMouseLeave={() => setHoveredElement(null)}
-                  />
-                </>
-              )}
-
-              {/* Box (Q1 to Q3) */}
-              <div
-                className="absolute top-1/2 h-12 rounded-[2px] border-2 transition-all"
-                style={{
-                  left: `${q1Pos}%`,
-                  width: `${Math.max(q3Pos - q1Pos, 0.5)}%`,
-                  backgroundColor: isRowHovered ? `${color}40` : `${color}25`,
-                  borderColor: color,
-                  transform: "translateY(-50%)",
-                }}
-              />
-
-              {/* Q1 hover zone (left edge of box) */}
-              <div
-                className="absolute top-0 w-6 h-full cursor-pointer z-10"
-                style={{
-                  left: `${q1Pos}%`,
-                  transform: "translateX(-50%)",
-                }}
-                onMouseEnter={() => setHoveredElement({ index, type: "q1" })}
-                onMouseLeave={() => setHoveredElement(null)}
-              />
-
-              {/* Q3 hover zone (right edge of box) */}
-              <div
-                className="absolute top-0 w-6 h-full cursor-pointer z-10"
-                style={{
-                  left: `${q3Pos}%`,
-                  transform: "translateX(-50%)",
-                }}
-                onMouseEnter={() => setHoveredElement({ index, type: "q3" })}
-                onMouseLeave={() => setHoveredElement(null)}
-              />
-
-              {/* Median line - visual */}
-              <div
-                className="absolute top-1/2 h-12 transition-all pointer-events-none"
-                style={{
-                  left: `${medianPos}%`,
-                  backgroundColor: color,
-                  width: hoveredElement?.index === index && hoveredElement?.type === "median" ? 4 : 2,
-                  transform: "translateY(-50%) translateX(-50%)",
-                }}
-              />
-              {/* Median line - hover zone */}
-              <div
-                className="absolute top-0 w-6 h-full cursor-pointer z-20"
-                style={{
-                  left: `${medianPos}%`,
-                  transform: "translateX(-50%)",
-                }}
-                onMouseEnter={() => setHoveredElement({ index, type: "median" })}
-                onMouseLeave={() => setHoveredElement(null)}
-              />
-
-              {/* Mean marker (diamond) */}
-              {meanPos !== null && (
-                <>
-                  {/* Visual */}
-                  <div
-                    className="absolute pointer-events-none"
-                    style={{
-                      left: `${meanPos}%`,
-                      top: "50%",
-                      transform: "translate(-50%, -50%)",
-                    }}
-                  >
-                    <div
-                      className="w-3 h-3 border-2 transition-transform"
-                      style={{
-                        borderColor: color,
-                        backgroundColor: "white",
-                        transform: `rotate(45deg) ${hoveredElement?.index === index && hoveredElement?.type === "mean" ? "scale(1.3)" : "scale(1)"}`,
-                      }}
-                    />
-                  </div>
-                  {/* Hover zone */}
-                  <div
-                    className="absolute top-0 w-6 h-full cursor-pointer z-20"
-                    style={{
-                      left: `${meanPos}%`,
-                      transform: "translateX(-50%)",
-                    }}
-                    onMouseEnter={() => setHoveredElement({ index, type: "mean" })}
-                    onMouseLeave={() => setHoveredElement(null)}
-                  />
-                </>
-              )}
-
-              {/* Tooltip for hovered element */}
-              {hoveredElement?.index === index && (
+            return (
+              <div key={index} className="relative h-[60px]">
+                {/* Whisker line (to fence or min/max if no outliers) */}
                 <div
-                  className="absolute bottom-full mb-2 z-50 bg-popover border rounded-md shadow-lg px-2.5 py-1.5 whitespace-nowrap pointer-events-none"
+                  className="absolute top-1/2 h-0.5 transition-opacity"
                   style={{
-                    left: `${getTooltipPosition(bp, hoveredElement.type, whiskerMinPos, whiskerMaxPos)}%`,
+                    left: `${whiskerMinPos}%`,
+                    width: `${whiskerMaxPos - whiskerMinPos}%`,
+                    backgroundColor: color,
+                    opacity: isRowHovered ? 1 : 0.8,
+                    transform: "translateY(-50%)",
+                  }}
+                />
+
+                {/* Min whisker cap - visual */}
+                <div
+                  className="absolute top-1/2 w-0.5 h-8 transition-all pointer-events-none"
+                  style={{
+                    left: `${whiskerMinPos}%`,
+                    backgroundColor: color,
+                    opacity: isRowHovered ? 1 : 0.8,
+                    transform: "translateY(-50%) translateX(-50%)",
+                  }}
+                />
+                {/* Min whisker cap - hover zone */}
+                <div
+                  className="absolute top-0 w-6 h-full cursor-pointer z-10"
+                  style={{
+                    left: `${whiskerMinPos}%`,
                     transform: "translateX(-50%)",
                   }}
-                >
-                  <div className="text-xs">
-                    <span className="text-muted-foreground">{getTooltipLabel(hoveredElement.type)}: </span>
-                    <span className="font-medium" style={{ color }}>{getTooltipValue(bp, hoveredElement.type)}</span>
+                  onMouseEnter={() => setHoveredElement({ index, type: "min" })}
+                  onMouseLeave={() => setHoveredElement(null)}
+                />
+
+                {/* Max whisker cap - visual */}
+                <div
+                  className="absolute top-1/2 w-0.5 h-8 transition-all pointer-events-none"
+                  style={{
+                    left: `${whiskerMaxPos}%`,
+                    backgroundColor: color,
+                    opacity: isRowHovered ? 1 : 0.8,
+                    transform: "translateY(-50%) translateX(-50%)",
+                  }}
+                />
+                {/* Max whisker cap - hover zone */}
+                <div
+                  className="absolute top-0 w-6 h-full cursor-pointer z-10"
+                  style={{
+                    left: `${whiskerMaxPos}%`,
+                    transform: "translateX(-50%)",
+                  }}
+                  onMouseEnter={() => setHoveredElement({ index, type: "max" })}
+                  onMouseLeave={() => setHoveredElement(null)}
+                />
+
+                {/* Lower outlier dot */}
+                {showOutliers && hasLowerOutlier && (
+                  <>
+                    {/* Visual */}
+                    <div
+                      className="absolute w-2.5 h-2.5 rounded-full transition-transform pointer-events-none"
+                      style={{
+                        left: `${minPos}%`,
+                        top: "50%",
+                        backgroundColor: color,
+                        transform: `translate(-50%, -50%) ${hoveredElement?.index === index && hoveredElement?.type === "lowerOutlier" ? "scale(1.4)" : "scale(1)"}`,
+                      }}
+                    />
+                    {/* Hover zone */}
+                    <div
+                      className="absolute top-0 w-6 h-full cursor-pointer z-10"
+                      style={{
+                        left: `${minPos}%`,
+                        transform: "translateX(-50%)",
+                      }}
+                      onMouseEnter={() =>
+                        setHoveredElement({ index, type: "lowerOutlier" })
+                      }
+                      onMouseLeave={() => setHoveredElement(null)}
+                    />
+                  </>
+                )}
+
+                {/* Upper outlier dot */}
+                {showOutliers && hasUpperOutlier && (
+                  <>
+                    {/* Visual */}
+                    <div
+                      className="absolute w-2.5 h-2.5 rounded-full transition-transform pointer-events-none"
+                      style={{
+                        left: `${maxPos}%`,
+                        top: "50%",
+                        backgroundColor: color,
+                        transform: `translate(-50%, -50%) ${hoveredElement?.index === index && hoveredElement?.type === "upperOutlier" ? "scale(1.4)" : "scale(1)"}`,
+                      }}
+                    />
+                    {/* Hover zone */}
+                    <div
+                      className="absolute top-0 w-6 h-full cursor-pointer z-10"
+                      style={{
+                        left: `${maxPos}%`,
+                        transform: "translateX(-50%)",
+                      }}
+                      onMouseEnter={() =>
+                        setHoveredElement({ index, type: "upperOutlier" })
+                      }
+                      onMouseLeave={() => setHoveredElement(null)}
+                    />
+                  </>
+                )}
+
+                {/* Box (Q1 to Q3) */}
+                <div
+                  className="absolute top-1/2 h-12 rounded-[2px] border-2 transition-all"
+                  style={{
+                    left: `${q1Pos}%`,
+                    width: `${Math.max(q3Pos - q1Pos, 0.5)}%`,
+                    backgroundColor: isRowHovered ? `${color}40` : `${color}25`,
+                    borderColor: color,
+                    transform: "translateY(-50%)",
+                  }}
+                />
+
+                {/* Q1 hover zone (left edge of box) */}
+                <div
+                  className="absolute top-0 w-6 h-full cursor-pointer z-10"
+                  style={{
+                    left: `${q1Pos}%`,
+                    transform: "translateX(-50%)",
+                  }}
+                  onMouseEnter={() => setHoveredElement({ index, type: "q1" })}
+                  onMouseLeave={() => setHoveredElement(null)}
+                />
+
+                {/* Q3 hover zone (right edge of box) */}
+                <div
+                  className="absolute top-0 w-6 h-full cursor-pointer z-10"
+                  style={{
+                    left: `${q3Pos}%`,
+                    transform: "translateX(-50%)",
+                  }}
+                  onMouseEnter={() => setHoveredElement({ index, type: "q3" })}
+                  onMouseLeave={() => setHoveredElement(null)}
+                />
+
+                {/* Median line - visual */}
+                <div
+                  className="absolute top-1/2 h-12 transition-all pointer-events-none"
+                  style={{
+                    left: `${medianPos}%`,
+                    backgroundColor: color,
+                    width:
+                      hoveredElement?.index === index &&
+                      hoveredElement?.type === "median"
+                        ? 4
+                        : 2,
+                    transform: "translateY(-50%) translateX(-50%)",
+                  }}
+                />
+                {/* Median line - hover zone */}
+                <div
+                  className="absolute top-0 w-6 h-full cursor-pointer z-20"
+                  style={{
+                    left: `${medianPos}%`,
+                    transform: "translateX(-50%)",
+                  }}
+                  onMouseEnter={() =>
+                    setHoveredElement({ index, type: "median" })
+                  }
+                  onMouseLeave={() => setHoveredElement(null)}
+                />
+
+                {/* Mean marker (diamond) */}
+                {meanPos !== null && (
+                  <>
+                    {/* Visual */}
+                    <div
+                      className="absolute pointer-events-none"
+                      style={{
+                        left: `${meanPos}%`,
+                        top: "50%",
+                        transform: "translate(-50%, -50%)",
+                      }}
+                    >
+                      <div
+                        className="w-3 h-3 border-2 transition-transform"
+                        style={{
+                          borderColor: color,
+                          backgroundColor: "white",
+                          transform: `rotate(45deg) ${hoveredElement?.index === index && hoveredElement?.type === "mean" ? "scale(1.3)" : "scale(1)"}`,
+                        }}
+                      />
+                    </div>
+                    {/* Hover zone */}
+                    <div
+                      className="absolute top-0 w-6 h-full cursor-pointer z-20"
+                      style={{
+                        left: `${meanPos}%`,
+                        transform: "translateX(-50%)",
+                      }}
+                      onMouseEnter={() =>
+                        setHoveredElement({ index, type: "mean" })
+                      }
+                      onMouseLeave={() => setHoveredElement(null)}
+                    />
+                  </>
+                )}
+
+                {/* Tooltip for hovered element */}
+                {hoveredElement?.index === index && (
+                  <div
+                    className="absolute bottom-full mb-2 z-50 bg-popover border rounded-md shadow-lg px-2.5 py-1.5 whitespace-nowrap pointer-events-none"
+                    style={{
+                      left: `${getTooltipPosition(bp, hoveredElement.type, whiskerMinPos, whiskerMaxPos)}%`,
+                      transform: "translateX(-50%)",
+                    }}
+                  >
+                    <div className="text-xs">
+                      <span className="text-muted-foreground">
+                        {getTooltipLabel(hoveredElement.type)}:{" "}
+                      </span>
+                      <span className="font-medium" style={{ color }}>
+                        {getTooltipValue(bp, hoveredElement.type)}
+                      </span>
+                    </div>
                   </div>
-                </div>
-              )}
-            </div>
-          );
-        })}
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
 
       {/* Scale labels */}
       <div className="flex items-center mt-2 ml-[calc(7rem+0.75rem)]">
-        <span className="text-xs text-muted-foreground">{formatValue(scaleMin)}{unit}</span>
+        <span className="text-xs text-muted-foreground">
+          {formatValue(scaleMin)}
+          {unit}
+        </span>
         <div className="flex-1" />
-        <span className="text-xs text-muted-foreground">{formatValue(scaleMax)}{unit}</span>
+        <span className="text-xs text-muted-foreground">
+          {formatValue(scaleMax)}
+          {unit}
+        </span>
       </div>
 
       {/* Legend */}

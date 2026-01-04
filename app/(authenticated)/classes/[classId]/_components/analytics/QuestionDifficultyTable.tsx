@@ -6,34 +6,23 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ArrowUp, ArrowDown } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  QuestionStats,
+  QuestionSortField,
+  QuestionSortDirection,
+} from "@/lib/types";
 
-interface QuestionStats {
-  questionId: string;
-  questionNumber: number;
-  questionText: string;
-  questionType: string;
-  successRate: number;
-  avgMessages: number;
-  medianMessages: number;
-  avgTimeMs: number;
-  studentsAttempted: number;
-  struggleScore: number;
-}
-
-export type QuestionSortField =
-  | "questionNumber"
-  | "successRate"
-  | "avgMessages"
-  | "avgTimeMs"
-  | "struggleScore";
-export type QuestionSortDirection = "asc" | "desc";
+export type { QuestionSortField, QuestionSortDirection } from "@/lib/types";
 
 interface QuestionDifficultyTableProps {
   questions: QuestionStats[];
   struggleQuestionIds?: string[];
   sortField?: QuestionSortField;
   sortDirection?: QuestionSortDirection;
-  onSortChange?: (field: QuestionSortField, direction: QuestionSortDirection) => void;
+  onSortChange?: (
+    field: QuestionSortField,
+    direction: QuestionSortDirection,
+  ) => void;
 }
 
 function formatTime(ms: number): string {
@@ -69,7 +58,7 @@ function SortHeader({
     <th
       className={cn(
         "px-3 py-2 text-left text-xs font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors select-none",
-        className
+        className,
       )}
       onClick={() => onSort(field)}
     >
@@ -94,14 +83,20 @@ export function QuestionDifficultyTable({
   onSortChange,
 }: QuestionDifficultyTableProps) {
   // Load from cookies via lazy initialization
-  const [internalSortField, setInternalSortField] = useState<QuestionSortField>(() => {
-    if (typeof window === "undefined") return "questionNumber";
-    return (Cookies.get(SORT_FIELD_COOKIE) as QuestionSortField) || "questionNumber";
-  });
-  const [internalSortDirection, setInternalSortDirection] = useState<QuestionSortDirection>(() => {
-    if (typeof window === "undefined") return "asc";
-    return (Cookies.get(SORT_DIR_COOKIE) as QuestionSortDirection) || "asc";
-  });
+  const [internalSortField, setInternalSortField] = useState<QuestionSortField>(
+    () => {
+      if (typeof window === "undefined") return "questionNumber";
+      return (
+        (Cookies.get(SORT_FIELD_COOKIE) as QuestionSortField) ||
+        "questionNumber"
+      );
+    },
+  );
+  const [internalSortDirection, setInternalSortDirection] =
+    useState<QuestionSortDirection>(() => {
+      if (typeof window === "undefined") return "asc";
+      return (Cookies.get(SORT_DIR_COOKIE) as QuestionSortDirection) || "asc";
+    });
 
   // Use external state if provided, otherwise use internal
   const sortField = externalSortField ?? internalSortField;
@@ -179,20 +174,51 @@ export function QuestionDifficultyTable({
           <table className="w-full border-collapse">
             <thead className="border-b bg-muted/30">
               <tr>
-                <SortHeader field="questionNumber" sortField={sortField} sortDirection={sortDirection} onSort={handleSort}>Q#</SortHeader>
+                <SortHeader
+                  field="questionNumber"
+                  sortField={sortField}
+                  sortDirection={sortDirection}
+                  onSort={handleSort}
+                >
+                  Q#
+                </SortHeader>
                 <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground">
                   Question
                 </th>
-                <SortHeader field="successRate" className="text-center" sortField={sortField} sortDirection={sortDirection} onSort={handleSort}>
+                <SortHeader
+                  field="successRate"
+                  className="text-center"
+                  sortField={sortField}
+                  sortDirection={sortDirection}
+                  onSort={handleSort}
+                >
                   Success Rate
                 </SortHeader>
-                <SortHeader field="avgMessages" className="text-center" sortField={sortField} sortDirection={sortDirection} onSort={handleSort}>
+                <SortHeader
+                  field="avgMessages"
+                  className="text-center"
+                  sortField={sortField}
+                  sortDirection={sortDirection}
+                  onSort={handleSort}
+                >
                   Avg Messages
                 </SortHeader>
-                <SortHeader field="avgTimeMs" className="text-center" sortField={sortField} sortDirection={sortDirection} onSort={handleSort}>
+                <SortHeader
+                  field="avgTimeMs"
+                  className="text-center"
+                  sortField={sortField}
+                  sortDirection={sortDirection}
+                  onSort={handleSort}
+                >
                   Avg Time
                 </SortHeader>
-                <SortHeader field="struggleScore" className="text-center" sortField={sortField} sortDirection={sortDirection} onSort={handleSort}>
+                <SortHeader
+                  field="struggleScore"
+                  className="text-center"
+                  sortField={sortField}
+                  sortDirection={sortDirection}
+                  onSort={handleSort}
+                >
                   Difficulty
                 </SortHeader>
               </tr>
@@ -200,14 +226,14 @@ export function QuestionDifficultyTable({
             <tbody className="divide-y">
               {sortedQuestions.map((question) => {
                 const isStruggle = struggleQuestionIds.includes(
-                  question.questionId
+                  question.questionId,
                 );
                 return (
                   <tr
                     key={question.questionId}
                     className={cn(
                       "hover:bg-muted/20 transition-colors",
-                      isStruggle && "bg-red-50/50"
+                      isStruggle && "bg-red-50/50",
                     )}
                   >
                     <td className="px-3 py-2.5">
@@ -216,7 +242,10 @@ export function QuestionDifficultyTable({
                       </span>
                     </td>
                     <td className="px-3 py-2.5 max-w-[300px]">
-                      <p className="text-sm truncate" title={question.questionText}>
+                      <p
+                        className="text-sm truncate"
+                        title={question.questionText}
+                      >
                         {question.questionText}
                       </p>
                       <span className="text-xs text-muted-foreground capitalize">
@@ -234,7 +263,7 @@ export function QuestionDifficultyTable({
                             question.successRate < 0.8 &&
                             "border-yellow-300 bg-yellow-50 text-yellow-700",
                           question.successRate < 0.5 &&
-                            "border-red-300 bg-red-50 text-red-700"
+                            "border-red-300 bg-red-50 text-red-700",
                         )}
                       >
                         {Math.round(question.successRate * 100)}%
@@ -269,7 +298,13 @@ export function QuestionDifficultyTable({
 function DifficultyIndicator({ score }: { score: number }) {
   // Score typically ranges from 0 (easy) to ~5+ (very hard)
   const level =
-    score < 0.5 ? "easy" : score < 1.5 ? "medium" : score < 3 ? "hard" : "very hard";
+    score < 0.5
+      ? "easy"
+      : score < 1.5
+        ? "medium"
+        : score < 3
+          ? "hard"
+          : "very hard";
   const width = Math.min(100, (score / 4) * 100);
 
   return (
@@ -281,7 +316,7 @@ function DifficultyIndicator({ score }: { score: number }) {
             level === "easy" && "bg-green-500",
             level === "medium" && "bg-yellow-500",
             level === "hard" && "bg-orange-500",
-            level === "very hard" && "bg-red-500"
+            level === "very hard" && "bg-red-500",
           )}
           style={{ width: `${width}%` }}
         />

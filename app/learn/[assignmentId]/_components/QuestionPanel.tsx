@@ -8,34 +8,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import {
-  ChevronLeft,
-  ChevronRight,
-  Check,
-  X,
-  Loader2,
-} from "lucide-react";
+import { ChevronLeft, ChevronRight, Check, X, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-interface Question {
-  _id: Id<"questions">;
-  questionNumber: number;
-  questionText: string;
-  questionType: "multiple_choice" | "single_number" | "short_answer" | "free_response" | "skipped";
-  answerOptionsMCQ?: string[];
-}
-
-interface Progress {
-  _id: Id<"studentProgress">;
-  status: "not_started" | "in_progress" | "correct" | "incorrect";
-  selectedAnswer?: string;
-  submittedText?: string;
-  attempts: number;
-}
+import { LearnQuestion, StudentProgress } from "@/lib/types";
 
 interface QuestionPanelProps {
-  question: Question | undefined;
-  progress: Progress | undefined;
+  question: LearnQuestion | undefined;
+  progress: StudentProgress | undefined;
   questionIndex: number;
   totalQuestions: number;
   onPrevious: () => void;
@@ -95,9 +74,7 @@ export function QuestionPanel({
     if (!sessionId || !question) return;
 
     const answer =
-      question.questionType === "multiple_choice"
-        ? selectedOption
-        : textAnswer;
+      question.questionType === "multiple_choice" ? selectedOption : textAnswer;
 
     if (!answer) return;
 
@@ -168,7 +145,8 @@ export function QuestionPanel({
         {/* Question header */}
         <div className="flex items-center justify-between mb-2">
           <span className="text-sm text-muted-foreground font-medium">
-            Question {question.questionNumber} ({questionIndex + 1} of {totalQuestions})
+            Question {question.questionNumber} ({questionIndex + 1} of{" "}
+            {totalQuestions})
           </span>
           {isCorrect && (
             <Badge className="bg-green-500 text-white">
@@ -190,33 +168,40 @@ export function QuestionPanel({
         {/* Answer Input */}
         <div className="space-y-3 flex-1 flex flex-col">
           {/* MCQ Options */}
-          {question.questionType === "multiple_choice" && question.answerOptionsMCQ && (
-            <div className="space-y-2">
-              {question.answerOptionsMCQ.map((option, i) => {
-                const letter = String.fromCharCode(65 + i);
-                const isSelected = selectedOption === letter;
-                return (
-                  <Button
-                    key={i}
-                    variant={isSelected ? "default" : "outline"}
-                    className={cn(
-                      "w-full justify-start text-left h-auto py-3 px-4",
-                      isCorrect && isSelected && "bg-green-500 hover:bg-green-500",
-                      isIncorrect && isSelected && "bg-red-100 border-red-300 dark:bg-red-900/30"
-                    )}
-                    onClick={() => {
-                      handleInteraction();
-                      setSelectedOption(letter);
-                    }}
-                    disabled={isCorrect}
-                  >
-                    <span className="font-semibold mr-3 shrink-0">{letter}.</span>
-                    <span className="text-left">{option}</span>
-                  </Button>
-                );
-              })}
-            </div>
-          )}
+          {question.questionType === "multiple_choice" &&
+            question.answerOptionsMCQ && (
+              <div className="space-y-2">
+                {question.answerOptionsMCQ.map((option, i) => {
+                  const letter = String.fromCharCode(65 + i);
+                  const isSelected = selectedOption === letter;
+                  return (
+                    <Button
+                      key={i}
+                      variant={isSelected ? "default" : "outline"}
+                      className={cn(
+                        "w-full justify-start text-left h-auto py-3 px-4",
+                        isCorrect &&
+                          isSelected &&
+                          "bg-green-500 hover:bg-green-500",
+                        isIncorrect &&
+                          isSelected &&
+                          "bg-red-100 border-red-300 dark:bg-red-900/30",
+                      )}
+                      onClick={() => {
+                        handleInteraction();
+                        setSelectedOption(letter);
+                      }}
+                      disabled={isCorrect}
+                    >
+                      <span className="font-semibold mr-3 shrink-0">
+                        {letter}.
+                      </span>
+                      <span className="text-left">{option}</span>
+                    </Button>
+                  );
+                })}
+              </div>
+            )}
 
           {/* Number Input */}
           {question.questionType === "single_number" && (
@@ -247,16 +232,13 @@ export function QuestionPanel({
                 disabled={isCorrect}
                 className={cn(
                   "min-h-[200px] resize-none",
-                  !isCorrect && "flex-1"
+                  !isCorrect && "flex-1",
                 )}
               />
               <Button
                 onClick={handleCheckAnswer}
                 disabled={isCorrect || !textAnswer.trim() || isCheckingAnswer}
-                className={cn(
-                  "w-full mt-2",
-                  isCorrect && "invisible"
-                )}
+                className={cn("w-full mt-2", isCorrect && "invisible")}
                 size="lg"
               >
                 {isCheckingAnswer ? (

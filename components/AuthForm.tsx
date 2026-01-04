@@ -14,8 +14,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-
-type AuthMode = "login" | "signup";
+import { AuthMode } from "@/lib/types";
 
 interface AuthFormProps {
   mode: AuthMode;
@@ -80,9 +79,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
                 <span className="w-full border-t" />
               </div>
               <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-card px-2 text-muted-foreground">
-                  or
-                </span>
+                <span className="bg-card px-2 text-muted-foreground">or</span>
               </div>
             </div>
           </div>
@@ -110,14 +107,14 @@ export default function AuthForm({ mode }: AuthFormProps) {
                   setError(
                     isLogin
                       ? "Invalid email or password. Please try again."
-                      : "Could not create account. Please try again."
+                      : "Could not create account. Please try again.",
                   );
                 } else if (
                   message.includes("already") ||
                   message.includes("exists")
                 ) {
                   setError(
-                    "An account with this email already exists. Try signing in instead."
+                    "An account with this email already exists. Try signing in instead.",
                   );
                 } else {
                   setError(message);

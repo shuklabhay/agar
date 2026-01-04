@@ -34,8 +34,8 @@ import Link from "next/link";
 import { toast } from "sonner";
 import { QuestionsReviewPanel } from "@/components/questions-review-panel";
 import { EditAnswerDialog } from "@/components/edit-answer-dialog";
+import { UploadedFile, UploadingFile, FileCategory } from "@/lib/types";
 
-// Global store for pending files (persists across client-side navigation)
 declare global {
   interface Window {
     __pendingDroppedFiles?: {
@@ -57,25 +57,6 @@ const ACCEPTED_FILE_TYPES = {
 
 const ACCEPTED_EXTENSIONS = Object.values(ACCEPTED_FILE_TYPES).flat().join(",");
 const MAX_TOTAL_SIZE_BYTES = 15 * 1024 * 1024; // 15MB
-
-type UploadedFile = {
-  id: string;
-  storageId: Id<"_storage">;
-  fileName: string;
-  contentType: string;
-  size: number;
-  previewUrl: string;
-};
-
-type UploadingFile = {
-  id: string;
-  fileName: string;
-  progress: number;
-  status: "uploading" | "validating" | "error";
-  error?: string;
-};
-
-type FileCategory = "assignment" | "notes";
 
 export default function AssignmentPage() {
   const params = useParams();

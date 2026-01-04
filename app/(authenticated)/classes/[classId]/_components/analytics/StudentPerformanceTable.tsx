@@ -5,32 +5,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ArrowUp, ArrowDown, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-interface StudentRecord {
-  sessionId: string;
-  name: string;
-  startedAt: number;
-  lastActiveAt: number;
-  questionsCompleted: number;
-  totalQuestions: number;
-  completionRate: number;
-  totalMessages: number;
-  avgMessages: number;
-  totalTimeMs: number;
-  understandingLevel: "low" | "medium" | "high";
-}
+import {
+  StudentRecord,
+  StudentTableSortField,
+  SortDirection,
+} from "@/lib/types";
 
 interface StudentPerformanceTableProps {
   students: StudentRecord[];
 }
-
-type SortField =
-  | "name"
-  | "completionRate"
-  | "avgMessages"
-  | "totalTimeMs"
-  | "lastActiveAt";
-type SortDirection = "asc" | "desc";
 
 function formatTime(ms: number): string {
   if (ms === 0) return "—";
@@ -67,18 +50,18 @@ function StudentSortHeader({
   sortDirection,
   onSort,
 }: {
-  field: SortField;
+  field: StudentTableSortField;
   children: React.ReactNode;
   className?: string;
-  sortField: SortField;
+  sortField: StudentTableSortField;
   sortDirection: SortDirection;
-  onSort: (field: SortField) => void;
+  onSort: (field: StudentTableSortField) => void;
 }) {
   return (
     <th
       className={cn(
         "px-3 py-2 text-left text-xs font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors select-none",
-        className
+        className,
       )}
       onClick={() => onSort(field)}
     >
@@ -98,10 +81,11 @@ function StudentSortHeader({
 export function StudentPerformanceTable({
   students,
 }: StudentPerformanceTableProps) {
-  const [sortField, setSortField] = useState<SortField>("lastActiveAt");
+  const [sortField, setSortField] =
+    useState<StudentTableSortField>("lastActiveAt");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
 
-  const handleSort = (field: SortField) => {
+  const handleSort = (field: StudentTableSortField) => {
     if (sortField === field) {
       setSortDirection(sortDirection === "asc" ? "desc" : "asc");
     } else {
@@ -163,20 +147,51 @@ export function StudentPerformanceTable({
           <table className="w-full">
             <thead className="border-b bg-muted/30">
               <tr>
-                <StudentSortHeader field="name" sortField={sortField} sortDirection={sortDirection} onSort={handleSort}>Name</StudentSortHeader>
-                <StudentSortHeader field="completionRate" className="text-center" sortField={sortField} sortDirection={sortDirection} onSort={handleSort}>
+                <StudentSortHeader
+                  field="name"
+                  sortField={sortField}
+                  sortDirection={sortDirection}
+                  onSort={handleSort}
+                >
+                  Name
+                </StudentSortHeader>
+                <StudentSortHeader
+                  field="completionRate"
+                  className="text-center"
+                  sortField={sortField}
+                  sortDirection={sortDirection}
+                  onSort={handleSort}
+                >
                   Completed
                 </StudentSortHeader>
-                <StudentSortHeader field="avgMessages" className="text-center" sortField={sortField} sortDirection={sortDirection} onSort={handleSort}>
+                <StudentSortHeader
+                  field="avgMessages"
+                  className="text-center"
+                  sortField={sortField}
+                  sortDirection={sortDirection}
+                  onSort={handleSort}
+                >
                   Avg Messages
                 </StudentSortHeader>
-                <StudentSortHeader field="totalTimeMs" className="text-center" sortField={sortField} sortDirection={sortDirection} onSort={handleSort}>
+                <StudentSortHeader
+                  field="totalTimeMs"
+                  className="text-center"
+                  sortField={sortField}
+                  sortDirection={sortDirection}
+                  onSort={handleSort}
+                >
                   Time Spent
                 </StudentSortHeader>
                 <th className="px-3 py-2 text-center text-xs font-medium text-muted-foreground">
                   Understanding
                 </th>
-                <StudentSortHeader field="lastActiveAt" className="text-right" sortField={sortField} sortDirection={sortDirection} onSort={handleSort}>
+                <StudentSortHeader
+                  field="lastActiveAt"
+                  className="text-right"
+                  sortField={sortField}
+                  sortDirection={sortDirection}
+                  onSort={handleSort}
+                >
                   Last Active
                 </StudentSortHeader>
               </tr>
@@ -228,7 +243,7 @@ export function StudentPerformanceTable({
                         student.understandingLevel === "medium" &&
                           "bg-yellow-100 text-yellow-800 hover:bg-yellow-100",
                         student.understandingLevel === "low" &&
-                          "bg-red-100 text-red-800 hover:bg-red-100"
+                          "bg-red-100 text-red-800 hover:bg-red-100",
                       )}
                     >
                       {student.understandingLevel.charAt(0).toUpperCase() +

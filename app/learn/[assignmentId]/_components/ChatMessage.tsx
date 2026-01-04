@@ -5,11 +5,7 @@ import { CheckCircle, XCircle } from "lucide-react";
 import { Id } from "@/convex/_generated/dataModel";
 import { RioEyes } from "./RioEyes";
 import { useEffect, useState, useRef } from "react";
-
-interface ToolCall {
-  name: string;
-  args: Record<string, unknown>;
-}
+import { ToolCall } from "@/lib/types";
 
 interface ChatMessageProps {
   message: {
@@ -24,7 +20,12 @@ interface ChatMessageProps {
   isSending?: boolean;
 }
 
-export function ChatMessage({ message, showRio = false, isLastFromSender = true, isSending = false }: ChatMessageProps) {
+export function ChatMessage({
+  message,
+  showRio = false,
+  isLastFromSender = true,
+  isSending = false,
+}: ChatMessageProps) {
   const isStudent = message.role === "student";
   const isTutor = message.role === "tutor";
 
@@ -42,9 +43,11 @@ export function ChatMessage({ message, showRio = false, isLastFromSender = true,
       const timer = setTimeout(() => setIsNew(false), 1500);
 
       // Check if answer was incorrect and trigger shake 10% of the time
-      if (message.toolCall?.name === "evaluate_response" &&
-          !(message.toolCall.args.isCorrect as boolean) &&
-          Math.random() < 0.1) {
+      if (
+        message.toolCall?.name === "evaluate_response" &&
+        !(message.toolCall.args.isCorrect as boolean) &&
+        Math.random() < 0.1
+      ) {
         setTimeout(() => setShouldShake(true), 500);
         setTimeout(() => setShouldShake(false), 1000);
       }
@@ -82,7 +85,6 @@ export function ChatMessage({ message, showRio = false, isLastFromSender = true,
       );
     }
 
-
     if (name === "evaluate_response") {
       const isCorrect = args.isCorrect as boolean;
       return (
@@ -91,7 +93,7 @@ export function ChatMessage({ message, showRio = false, isLastFromSender = true,
             "flex items-center gap-2 text-sm mt-2 rounded-lg px-3 py-2",
             isCorrect
               ? "text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20"
-              : "text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20"
+              : "text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20",
           )}
         >
           {isCorrect ? (
@@ -100,7 +102,9 @@ export function ChatMessage({ message, showRio = false, isLastFromSender = true,
             <XCircle className="h-4 w-4" />
           )}
           <span className="font-medium">
-            {isCorrect ? "Response evaluated: Correct!" : "Response needs revision"}
+            {isCorrect
+              ? "Response evaluated: Correct!"
+              : "Response needs revision"}
           </span>
         </div>
       );
@@ -111,16 +115,13 @@ export function ChatMessage({ message, showRio = false, isLastFromSender = true,
 
   return (
     <div
-      className={cn(
-        "flex flex-col",
-        isStudent ? "items-end" : "items-start"
-      )}
+      className={cn("flex flex-col", isStudent ? "items-end" : "items-start")}
     >
       {/* Message row with Rio */}
       <div
         className={cn(
           "flex w-full",
-          isStudent ? "flex-row-reverse" : "flex-row items-end gap-2"
+          isStudent ? "flex-row-reverse" : "flex-row items-end gap-2",
         )}
       >
         {/* Rio avatar - only for tutor messages */}
@@ -128,12 +129,12 @@ export function ChatMessage({ message, showRio = false, isLastFromSender = true,
           <div
             className={cn(
               "shrink-0 flex items-end self-end overflow-hidden",
-              shouldShowRio ? "w-7 opacity-100" : "w-0 opacity-0"
+              shouldShowRio ? "w-7 opacity-100" : "w-0 opacity-0",
             )}
             style={{
               transition: shouldShowRio
                 ? "width 480ms ease-in-out 320ms, opacity 480ms ease-in-out 320ms"
-                : "width 550ms ease-in-out, opacity 550ms ease-in-out"
+                : "width 550ms ease-in-out, opacity 550ms ease-in-out",
             }}
           >
             <RioEyes mood={getRioMood()} shaking={shouldShake} />
@@ -145,14 +146,19 @@ export function ChatMessage({ message, showRio = false, isLastFromSender = true,
           className={cn(
             "rounded-2xl px-4 py-2.5 max-w-[80%]",
             isStudent
-              ? cn("bg-primary text-primary-foreground", isLastFromSender && "rounded-br-sm")
-              : cn("bg-muted", isLastFromSender && "rounded-bl-sm")
+              ? cn(
+                  "bg-primary text-primary-foreground",
+                  isLastFromSender && "rounded-br-sm",
+                )
+              : cn("bg-muted", isLastFromSender && "rounded-bl-sm"),
           )}
           style={{
-            ...(showRio && isNew && isTutor ? {
-              opacity: 0,
-              animation: "fadeIn 320ms ease-out 100ms forwards"
-            } : {})
+            ...(showRio && isNew && isTutor
+              ? {
+                  opacity: 0,
+                  animation: "fadeIn 320ms ease-out 100ms forwards",
+                }
+              : {}),
           }}
         >
           <p className="text-sm whitespace-pre-wrap leading-relaxed">
@@ -163,19 +169,23 @@ export function ChatMessage({ message, showRio = false, isLastFromSender = true,
 
       {/* Tool call indicator (only for tutor messages) */}
       {isTutor && (
-        <div className={cn(
-          "transition-all duration-500 ease-in-out",
-          shouldShowRio ? "ml-9" : "ml-0"
-        )}>
+        <div
+          className={cn(
+            "transition-all duration-500 ease-in-out",
+            shouldShowRio ? "ml-9" : "ml-0",
+          )}
+        >
           {renderToolIndicator()}
         </div>
       )}
 
       {/* Timestamp */}
-      <span className={cn(
-        "text-xs text-muted-foreground mt-1 px-1 transition-all duration-500 ease-in-out",
-        shouldShowRio ? "ml-9" : "ml-0"
-      )}>
+      <span
+        className={cn(
+          "text-xs text-muted-foreground mt-1 px-1 transition-all duration-500 ease-in-out",
+          shouldShowRio ? "ml-9" : "ml-0",
+        )}
+      >
         {new Date(message.timestamp).toLocaleTimeString([], {
           hour: "2-digit",
           minute: "2-digit",

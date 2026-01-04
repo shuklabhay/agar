@@ -12,12 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { BookOpen, User, Clock } from "lucide-react";
 import { Id } from "@/convex/_generated/dataModel";
-
-interface ExistingStudent {
-  _id: Id<"studentSessions">;
-  name: string;
-  lastActiveAt: number;
-}
+import { ExistingStudent } from "@/lib/types";
 
 interface WelcomeDialogProps {
   open: boolean;
@@ -69,7 +64,9 @@ export function WelcomeDialog({
           </div>
           <DialogTitle className="text-xl">Welcome!</DialogTitle>
           <DialogDescription className="text-center">
-            <span className="font-medium text-foreground">{assignmentName}</span>
+            <span className="font-medium text-foreground">
+              {assignmentName}
+            </span>
             <br />
             <span className="text-muted-foreground">{className}</span>
           </DialogDescription>

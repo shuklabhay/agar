@@ -17,25 +17,20 @@ import {
   Check,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  AnalyticsAssignment,
+  QuestionSortField,
+  QuestionSortDirection,
+} from "@/lib/types";
 import { MetricCard } from "./MetricCard";
 import { HorizontalBoxPlot } from "./BoxPlotChart";
 import { StudentPerformanceTable } from "./StudentPerformanceTable";
-import {
-  QuestionDifficultyTable,
-  QuestionSortField,
-  QuestionSortDirection,
-} from "./QuestionDifficultyTable";
+import { QuestionDifficultyTable } from "./QuestionDifficultyTable";
 import { AllStudentsTable } from "./AllStudentsTable";
-
-interface Assignment {
-  _id: Id<"assignments">;
-  name: string;
-  isDraft?: boolean;
-}
 
 interface ClassAnalyticsDashboardProps {
   classId: Id<"classes">;
-  assignments: Assignment[];
+  assignments: AnalyticsAssignment[];
 }
 
 type Tab = "overview" | "students";
