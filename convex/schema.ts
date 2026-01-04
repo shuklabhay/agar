@@ -59,8 +59,8 @@ export default defineSchema({
       v.literal("free_response"),
       v.literal("skipped"),
     ),
-    options: v.optional(v.array(v.string())),
-    teacherInfo: v.optional(v.string()),
+    answerOptionsMCQ: v.optional(v.array(v.string())),
+    additionalInstructionsForAnswering: v.optional(v.string()),
     answer: v.optional(
       v.union(
         v.string(),

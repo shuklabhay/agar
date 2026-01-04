@@ -19,7 +19,7 @@ export const getQuestionsForStudent = query({
         questionNumber: q.questionNumber,
         questionText: q.questionText,
         questionType: q.questionType,
-        options: q.options,
+        answerOptionsMCQ: q.answerOptionsMCQ,
       }))
       .sort((a, b) => a.questionNumber - b.questionNumber);
   },

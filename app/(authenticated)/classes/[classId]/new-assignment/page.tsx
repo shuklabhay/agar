@@ -758,7 +758,7 @@ export default function NewAssignmentPage() {
           <Label htmlFor="additionalInfo">Additional Information</Label>
           <textarea
             id="additionalInfo"
-            placeholder="e.g., Skip questions 3 and 7, only accept Bernouli's equation for #5, chapter 4 notes have a sign error..."
+            placeholder="e.g., Skip questions 3 and 7 | Reword Q5 to be harder | Q2 has an error: change 15 to 25 | Only accept Bernoulli's equation for #5 | Accept simplified form only for Q8"
             value={additionalInfo}
             onChange={(e) => {
               setAdditionalInfo(e.target.value);

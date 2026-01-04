@@ -58,8 +58,8 @@ export const insertQuestions = internalMutation({
           v.literal("free_response"),
           v.literal("skipped"),
         ),
-        options: v.optional(v.array(v.string())),
-        teacherInfo: v.optional(v.string()),
+        answerOptionsMCQ: v.optional(v.array(v.string())),
+        additionalInstructionsForAnswering: v.optional(v.string()),
         status: v.union(
           v.literal("pending"),
           v.literal("processing"),

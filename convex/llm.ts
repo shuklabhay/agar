@@ -36,15 +36,30 @@ const EXTRACTION_PROMPT = `Extract ALL questions from this assignment document.
 
 For each question, provide:
 1. questionNumber: The question number as shown in the document
-2. questionText: The exact question text (include any expressions/equations)
+2. questionText: The question text - APPLY any corrections/rewording from ADDITIONAL INFO directly here
 3. questionType: One of "multiple_choice", "single_number", "short_answer", "free_response", "skipped"
-4. options: Array of choices if multiple choice, otherwise omit
-5. teacherInfo: Any special instructions found near the question, otherwise omit
+4. answerOptionsMCQ: Array of choices if multiple choice, otherwise omit
+5. additionalInstructionsForAnswering: ONLY include instructions about how to GRADE/ACCEPT answers
+   (e.g., "only accept Bernoulli's equation", "accept equivalent forms")
+   Do NOT put question modifications here - apply those to questionText instead
+
+HANDLING ADDITIONAL INFO FROM TEACHER:
+- QUESTION MODIFICATIONS (apply directly to questionText):
+  - "reword question X to be harder" → modify the questionText to be harder
+  - "question X has an error, change Y to Z" → fix the number/text in questionText
+  - "make question X more challenging" → rewrite questionText
+
+- ANSWER INSTRUCTIONS (put in additionalInstructionsForAnswering):
+  - "only accept Bernoulli's equation for #5" → store in that question's additionalInstructionsForAnswering
+  - "accept simplified form only" → store in additionalInstructionsForAnswering
+  - "partial credit for showing work" → store in additionalInstructionsForAnswering
+
+- SKIP INSTRUCTIONS:
+  - "skip question X" → set questionType to "skipped"
 
 IMPORTANT:
 - For math expressions, preserve them exactly as written (e.g., "3(x + 9) =")
 - Mark as "short_answer" for simplification problems where the answer is an expression
-- If additional info says to skip a question, set questionType to "skipped"
 
 ADDITIONAL INFO FROM TEACHER:
 {additionalInfo}
@@ -52,13 +67,9 @@ ADDITIONAL INFO FROM TEACHER:
 Respond with ONLY valid JSON array, no markdown:
 [{"questionNumber": 1, "questionText": "...", "questionType": "...", ...}, ...]`;
 
-export type ExtractedQuestion = {
-  questionNumber: number;
-  questionText: string;
-  questionType: string;
-  options?: string[];
-  teacherInfo?: string;
-};
+// Import and re-export from shared types
+import type { ExtractedQuestion, GeneratedAnswer } from "../lib/types";
+export type { ExtractedQuestion, GeneratedAnswer };
 
 export async function extractQuestionsFromFiles(
   fileUrls: string[],
@@ -96,7 +107,7 @@ export async function extractQuestionsFromFiles(
 
 const ANSWER_PROMPT = `QUESTION #{questionNumber}: {questionText}
 QUESTION TYPE: {questionType}
-TEACHER SPECIAL INSTRUCTIONS: {teacherInfo}
+TEACHER SPECIAL INSTRUCTIONS: {additionalInstructions}
 
 TASK: Answer the question using the notes. Use Google Search if notes don't cover the topic.
 
@@ -117,17 +128,13 @@ Respond with ONLY valid JSON (no markdown):
   "source": "notes" OR ["https://source.com"]
 }`;
 
-export type GeneratedAnswer = {
-  answer: string | string[];
-  keyPoints: string[];
-  source: "notes" | string[];
-};
+// GeneratedAnswer type is imported from lib/types
 
 export async function generateAnswerForQuestion(
   questionNumber: number,
   questionText: string,
   questionType: string,
-  teacherInfo: string | undefined,
+  additionalInstructions: string | undefined,
   notesParts: Part[],
   client: GoogleGenAI,
 ): Promise<GeneratedAnswer> {
@@ -137,7 +144,7 @@ export async function generateAnswerForQuestion(
   )
     .replace("{questionText}", questionText)
     .replace("{questionType}", questionType)
-    .replace("{teacherInfo}", teacherInfo || "None");
+    .replace("{additionalInstructions}", additionalInstructions || "None");
 
   const response = await client.models.generateContent({
     model: MODELS.answerGeneration,
@@ -165,7 +172,7 @@ export async function generateAnswersForQuestions(
     questionNumber: number;
     questionText: string;
     questionType: string;
-    teacherInfo?: string;
+    additionalInstructionsForAnswering?: string;
   }>,
   notesFileUrls: string[],
 ): Promise<Map<number, GeneratedAnswer>> {
@@ -188,7 +195,7 @@ export async function generateAnswersForQuestions(
         q.questionNumber,
         q.questionText,
         q.questionType,
-        q.teacherInfo,
+        q.additionalInstructionsForAnswering,
         notesParts,
         client,
       );

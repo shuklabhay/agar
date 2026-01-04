@@ -57,8 +57,8 @@ export const extractQuestions = action({
         questionType: validTypes.includes(q.questionType as typeof validTypes[number])
           ? (q.questionType as typeof validTypes[number])
           : ("short_answer" as const),
-        options: q.options,
-        teacherInfo: q.teacherInfo,
+        answerOptionsMCQ: q.answerOptionsMCQ,
+        additionalInstructionsForAnswering: q.additionalInstructionsForAnswering,
         status: "pending" as const,
       }));
 

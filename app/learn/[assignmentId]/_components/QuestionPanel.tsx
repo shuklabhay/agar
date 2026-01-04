@@ -22,7 +22,7 @@ interface Question {
   questionNumber: number;
   questionText: string;
   questionType: "multiple_choice" | "single_number" | "short_answer" | "free_response" | "skipped";
-  options?: string[];
+  answerOptionsMCQ?: string[];
 }
 
 interface Progress {
@@ -190,9 +190,9 @@ export function QuestionPanel({
         {/* Answer Input */}
         <div className="space-y-3 flex-1 flex flex-col">
           {/* MCQ Options */}
-          {question.questionType === "multiple_choice" && question.options && (
+          {question.questionType === "multiple_choice" && question.answerOptionsMCQ && (
             <div className="space-y-2">
-              {question.options.map((option, i) => {
+              {question.answerOptionsMCQ.map((option, i) => {
                 const letter = String.fromCharCode(65 + i);
                 const isSelected = selectedOption === letter;
                 return (

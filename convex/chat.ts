@@ -141,7 +141,7 @@ export const sendMessageToTutor = action({
       question: {
         questionText: question.questionText,
         questionType: question.questionType,
-        options: question.options,
+        answerOptionsMCQ: question.answerOptionsMCQ,
         answer: question.answer,
         // Only include keyPoints on first message - they'll be in history for subsequent calls
         keyPoints: isFirstMessageForQuestion ? question.keyPoints : undefined,

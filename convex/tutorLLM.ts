@@ -84,14 +84,10 @@ const SYSTEM_INSTRUCTION = `You are Rio, a helpful tutor. Be friendly and encour
 - Discuss off-topic things
 - Call tools for partial/incomplete answers`;
 
+import type { TutorQuestion } from "../lib/types";
+
 interface TutorInput {
-  question: {
-    questionText: string;
-    questionType: string;
-    options?: string[];
-    answer?: string | string[];
-    keyPoints?: string[];
-  };
+  question: TutorQuestion;
   history: Array<{ role: string; content: string }>;
   studentMessage: string;
   files?: Array<{ name: string; type: string; data: string }>;
@@ -110,7 +106,7 @@ export async function callTutorLLM(input: TutorInput): Promise<TutorResponse> {
   const questionContext = `
 QUESTION: ${input.question.questionText}
 TYPE: ${input.question.questionType}
-${input.question.options ? `OPTIONS:\n${input.question.options.map((o, i) => `${String.fromCharCode(65 + i)}. ${o}`).join("\n")}` : ""}
+${input.question.answerOptionsMCQ ? `OPTIONS:\n${input.question.answerOptionsMCQ.map((o, i) => `${String.fromCharCode(65 + i)}. ${o}`).join("\n")}` : ""}
 
 [HIDDEN - For guidance only]
 CORRECT ANSWER: ${JSON.stringify(input.question.answer)}
