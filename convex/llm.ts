@@ -3,7 +3,7 @@
 import { GoogleGenAI, Part } from "@google/genai";
 
 const MODELS = {
-  extraction: "gemini-2.0-flash-lite",
+  extraction: "gemini-2.5-flash-lite",
   answerGeneration: "gemini-2.5-flash",
 } as const;
 
@@ -36,12 +36,35 @@ const EXTRACTION_PROMPT = `Extract ALL questions from this assignment document.
 
 For each question, provide:
 1. questionNumber: The question number as shown in the document
-2. questionText: The question text - APPLY any corrections/rewording from ADDITIONAL INFO directly here
+2. questionText: The COMPLETE question including both the instruction AND the problem. See QUESTION TEXT RULES below.
 3. questionType: One of "multiple_choice", "single_number", "short_answer", "free_response", "skipped"
 4. answerOptionsMCQ: Array of choices if multiple choice, otherwise omit
 5. additionalInstructionsForAnswering: ONLY include instructions about how to GRADE/ACCEPT answers
    (e.g., "only accept Bernoulli's equation", "accept equivalent forms")
    Do NOT put question modifications here - apply those to questionText instead
+
+QUESTION TEXT RULES:
+- ALWAYS include the instruction with the problem, not just the equation/expression alone
+  - Good: "Solve for x: 3x + 5 = 20"
+  - Good: "Simplify the expression: 4(2x + 3) - 2x"
+  - Bad: "3x + 5 = 20" (missing instruction)
+  - Bad: "4(2x + 3) - 2x" (missing instruction)
+
+- If no instruction is given in the document, ADD a concise one based on question type:
+  - For equations → "Solve for x: ..." or "Solve for the variable: ..."
+  - For expressions → "Simplify to lowest terms: ..." or "Simplify completely: ..."
+  - For fractions → "Reduce to lowest terms: ..."
+  - For factoring → "Factor completely: ..."
+  - For word problems → keep as-is (instruction is implicit)
+  - For calculations → "Calculate the value of: ..." or "Find: ..."
+  - For evaluations → "Evaluate when x = ...: ..."
+
+- If question references a PASSAGE, TABLE, GRAPH, or FIGURE:
+  - Include a reference like: "(Refer to Passage A above)" or "(See Figure 1)" or "(Use the table on page 2)"
+  - If the passage/figure has a name/label, use it: "(Refer to 'The Water Cycle' passage)"
+  - If no label, describe location: "(Refer to the graph at the top of the page)"
+
+- Apply any corrections/rewording from ADDITIONAL INFO directly to questionText
 
 HANDLING ADDITIONAL INFO FROM TEACHER:
 - QUESTION MODIFICATIONS (apply directly to questionText):
