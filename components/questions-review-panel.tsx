@@ -90,6 +90,13 @@ export function QuestionsReviewPanel({
     (q) => q.questionType === "skipped",
   );
   const skippedCount = skippedQuestions.length;
+  // Questions currently being processed
+  const processingQuestions = sortedQuestions.filter(
+    (q) =>
+      (q.status === "pending" || q.status === "processing") &&
+      q.questionType !== "skipped",
+  );
+  const processingCount = processingQuestions.length;
   // Exclude skipped from completed questions count
   const completedQuestions = sortedQuestions.filter(
     (q) =>
@@ -106,6 +113,10 @@ export function QuestionsReviewPanel({
   );
   const approvedCount = completedQuestions.filter(
     (q) => q.status === "approved",
+  ).length;
+  // Total questions that need answers (excluding skipped)
+  const totalAnswerable = sortedQuestions.filter(
+    (q) => q.questionType !== "skipped",
   ).length;
 
   // Select first question when questions change and none selected
@@ -272,7 +283,7 @@ export function QuestionsReviewPanel({
   const hasUnapprovedWebSources = unapprovedWebSourced.length > 0;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 min-w-0 w-full overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold">
@@ -284,12 +295,23 @@ export function QuestionsReviewPanel({
               <Loader2 className="h-3 w-3 animate-spin mr-1" />
               {processingStatus === "extracting"
                 ? "Extracting questions..."
-                : "Generating answers..."}
+                : processingCount > 0
+                  ? `Generating ${completedQuestions.length}/${totalAnswerable}...`
+                  : "Generating answers..."}
             </Badge>
           )}
           <span className="text-sm text-muted-foreground">
-            {approvedCount}/{completedQuestions.length} approved
-            {skippedCount > 0 && ` (${skippedCount} skipped)`}
+            {processingCount > 0 && !isProcessing ? (
+              <>
+                <Loader2 className="h-3 w-3 animate-spin inline mr-1" />
+                {completedQuestions.length}/{totalAnswerable} generated
+              </>
+            ) : (
+              <>
+                {approvedCount}/{completedQuestions.length} approved
+                {skippedCount > 0 && ` (${skippedCount} skipped)`}
+              </>
+            )}
           </span>
           {completedQuestions.length > 0 && (
             <div className="flex">
@@ -379,12 +401,12 @@ export function QuestionsReviewPanel({
       </div>
 
       {/* Split Panel with Card wrapper */}
-      <Card className="!py-0">
-        <CardContent className="!p-0">
-          <div ref={containerRef} className="flex h-[500px]">
+      <Card className="!py-0 overflow-hidden w-full">
+        <CardContent className="!p-0 overflow-hidden w-full">
+          <div ref={containerRef} className="flex h-[500px] overflow-hidden w-full">
             {/* Left: Question List */}
             <div
-              className="overflow-hidden"
+              className="overflow-hidden min-w-0"
               style={{ width: `${leftPanelWidth}%` }}
             >
               <ScrollArea className="h-full">
@@ -446,12 +468,12 @@ export function QuestionsReviewPanel({
 
             {/* Right: Question Detail */}
             <div
-              className="overflow-hidden"
+              className="overflow-hidden min-w-0"
               style={{ width: `${100 - leftPanelWidth}%` }}
             >
               {selectedQuestion ? (
-                <ScrollArea className="h-full">
-                  <div className="p-4 space-y-4">
+                <ScrollArea className="h-full [&>div>div]:!block">
+                  <div className="p-4 space-y-4 max-w-full overflow-hidden">
                     {/* Question Header with Delete icon top right */}
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex-1">
@@ -540,7 +562,7 @@ export function QuestionsReviewPanel({
                     </div>
 
                     {/* Question Text */}
-                    <p className="text-base">{selectedQuestion.questionText}</p>
+                    <p className="text-base break-words">{selectedQuestion.questionText}</p>
 
                     {/* Answer Choices for Multiple Choice */}
                     {selectedQuestion.questionType === "multiple_choice" &&
@@ -552,14 +574,34 @@ export function QuestionsReviewPanel({
                           </div>
                           <div className="space-y-1">
                             {selectedQuestion.answerOptionsMCQ.map(
-                              (option, i) => (
-                                <div
-                                  key={i}
-                                  className="text-sm text-muted-foreground pl-2 py-0.5"
-                                >
-                                  {String.fromCharCode(65 + i)}. {option}
-                                </div>
-                              ),
+                              (option, i) => {
+                                const optionLetter = String.fromCharCode(65 + i);
+                                const isCorrectAnswer =
+                                  !isPending &&
+                                  selectedQuestion.answer &&
+                                  typeof selectedQuestion.answer === "string" &&
+                                  selectedQuestion.answer.toUpperCase().trim() === optionLetter;
+                                return (
+                                  <div
+                                    key={i}
+                                    className={cn(
+                                      "text-sm pl-2 py-1 rounded-md transition-colors",
+                                      isCorrectAnswer
+                                        ? isApprovedQuestion
+                                          ? "bg-green-100 dark:bg-green-950/50 border border-green-500 text-green-800 dark:text-green-300 font-medium"
+                                          : isWebSource
+                                            ? "bg-amber-100 dark:bg-amber-950/50 border border-amber-500 text-amber-800 dark:text-amber-300 font-medium"
+                                            : "bg-blue-100 dark:bg-blue-950/50 border border-blue-500 text-blue-800 dark:text-blue-300 font-medium"
+                                        : "text-muted-foreground"
+                                    )}
+                                  >
+                                    {optionLetter}. {option}
+                                    {isCorrectAnswer && (
+                                      <Check className="inline-block h-4 w-4 ml-2" />
+                                    )}
+                                  </div>
+                                );
+                              },
                             )}
                           </div>
                         </div>
@@ -577,7 +619,7 @@ export function QuestionsReviewPanel({
 
                     {/* Source - shown above answer */}
                     {selectedQuestion.source && !isPending && !isSkipped && (
-                      <div className="flex items-start gap-2 text-sm">
+                      <div className="flex items-start gap-2 text-sm overflow-hidden">
                         <span className="text-muted-foreground shrink-0">
                           Source:
                         </span>
@@ -586,7 +628,7 @@ export function QuestionsReviewPanel({
                             Notes
                           </span>
                         ) : (
-                          <div className="flex flex-wrap gap-2">
+                          <div className="flex flex-wrap gap-2 min-w-0 overflow-hidden">
                             {(selectedQuestion.source as string[]).map(
                               (url, i) => (
                                 <a
@@ -594,10 +636,11 @@ export function QuestionsReviewPanel({
                                   href={url}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="text-amber-600 hover:underline inline-flex items-center gap-1"
+                                  className="text-amber-600 hover:underline inline-flex items-center gap-1 truncate max-w-[200px]"
+                                  title={url}
                                 >
                                   {new URL(url).hostname}
-                                  <ExternalLink className="h-3 w-3" />
+                                  <ExternalLink className="h-3 w-3 shrink-0" />
                                 </a>
                               ),
                             )}
@@ -606,26 +649,32 @@ export function QuestionsReviewPanel({
                       </div>
                     )}
 
-                    {/* Answer */}
-                    {!isPending && !isSkipped && (
-                      <div
-                        className={cn(
-                          "rounded-lg px-4 py-3",
-                          isWebSource && !isApprovedQuestion
-                            ? "bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900"
-                            : isApprovedQuestion
-                              ? "bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-900"
-                              : "bg-muted/50",
-                        )}
-                      >
-                        <div className="text-xs font-medium text-muted-foreground mb-1">
-                          Answer
+                    {/* Answer - hide for MCQ since we highlight the correct option above */}
+                    {!isPending &&
+                      !isSkipped &&
+                      !(
+                        selectedQuestion.questionType === "multiple_choice" &&
+                        selectedQuestion.answerOptionsMCQ &&
+                        selectedQuestion.answerOptionsMCQ.length > 0
+                      ) && (
+                        <div
+                          className={cn(
+                            "rounded-lg px-4 py-3 overflow-hidden",
+                            isWebSource && !isApprovedQuestion
+                              ? "bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900"
+                              : isApprovedQuestion
+                                ? "bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-900"
+                                : "bg-muted/50",
+                          )}
+                        >
+                          <div className="text-xs font-medium text-muted-foreground mb-1">
+                            Answer
+                          </div>
+                          <div className="whitespace-pre-wrap break-words">
+                            {formatAnswer(selectedQuestion.answer)}
+                          </div>
                         </div>
-                        <div className="whitespace-pre-wrap">
-                          {formatAnswer(selectedQuestion.answer)}
-                        </div>
-                      </div>
-                    )}
+                      )}
 
                     {/* Key Points */}
                     {selectedQuestion.keyPoints &&
@@ -637,11 +686,11 @@ export function QuestionsReviewPanel({
                             <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-0 -rotate-90" />
                             Key Points ({selectedQuestion.keyPoints.length})
                           </summary>
-                          <div className="mt-2 space-y-2 pl-6">
+                          <div className="mt-2 space-y-2 pl-6 overflow-hidden">
                             {selectedQuestion.keyPoints.map((keyPoint, i) => (
                               <div
                                 key={i}
-                                className="text-sm bg-muted rounded-md px-3 py-2 italic border-l-2 border-primary/30"
+                                className="text-sm bg-muted rounded-md px-3 py-2 italic border-l-2 border-primary/30 break-words"
                               >
                                 &ldquo;{keyPoint}&rdquo;
                               </div>

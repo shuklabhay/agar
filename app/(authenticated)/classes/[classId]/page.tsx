@@ -116,6 +116,7 @@ export default function ClassDetailPage() {
   const [isCreatingAssignment, setIsCreatingAssignment] = useState(false);
   const [createdDraftId, setCreatedDraftId] =
     useState<Id<"assignments"> | null>(null);
+  const [isUploadingFile, setIsUploadingFile] = useState(false);
   const uploadedFilesRef = useRef<{
     assignmentFiles: UploadedFileInfo[];
     notesFiles: UploadedFileInfo[];
@@ -158,21 +159,11 @@ export default function ClassDetailPage() {
     ) => {
       const uploadUrl = await generateUploadUrl();
 
-      await new Promise<void>((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-        xhr.addEventListener("load", () => {
-          if (xhr.status >= 200 && xhr.status < 300) {
-            resolve();
-          } else {
-            reject(new Error("Upload failed"));
-          }
-        });
-        xhr.addEventListener("error", () => reject(new Error("Upload failed")));
-        xhr.open("POST", uploadUrl);
-        xhr.send(file);
-      });
-
+      // Upload file using fetch (removed duplicate XHR upload)
       const response = await fetch(uploadUrl, { method: "POST", body: file });
+      if (!response.ok) {
+        throw new Error("Upload failed");
+      }
       const { storageId } = await response.json();
       const validated = await validateUploadedFile({ storageId });
 
@@ -201,21 +192,29 @@ export default function ClassDetailPage() {
   );
 
   const handleCategorySelect = async (category: "assignment" | "notes") => {
-    if (!createdDraftId) return;
+    if (!createdDraftId || isUploadingFile) return;
 
-    const currentFile = droppedFiles[currentFileIndex];
-    uploadFileToCategory(currentFile, category, createdDraftId);
+    setIsUploadingFile(true);
+    try {
+      const currentFile = droppedFiles[currentFileIndex];
+      await uploadFileToCategory(currentFile, category, createdDraftId);
 
-    if (currentFileIndex < droppedFiles.length - 1) {
-      setCurrentFileIndex(currentFileIndex + 1);
-    } else {
-      setShowCategoryDialog(false);
-      setIsDraggingOver(false);
-      const draftId = createdDraftId;
-      setDroppedFiles([]);
-      setCurrentFileIndex(0);
-      setCreatedDraftId(null);
-      router.push(`/classes/${classId}/${draftId}`);
+      if (currentFileIndex < droppedFiles.length - 1) {
+        setCurrentFileIndex(currentFileIndex + 1);
+      } else {
+        setShowCategoryDialog(false);
+        setIsDraggingOver(false);
+        const draftId = createdDraftId;
+        setDroppedFiles([]);
+        setCurrentFileIndex(0);
+        setCreatedDraftId(null);
+        router.push(`/classes/${classId}/${draftId}`);
+      }
+    } catch (error) {
+      console.error("Upload failed:", error);
+      toast.error("Failed to upload file");
+    } finally {
+      setIsUploadingFile(false);
     }
   };
 
@@ -223,8 +222,9 @@ export default function ClassDetailPage() {
     if (!createdDraftId) return;
 
     const remainingFiles = droppedFiles.slice(currentFileIndex);
+    // Upload all remaining files sequentially, waiting for each to complete
     for (const file of remainingFiles) {
-      uploadFileToCategory(file, "notes", createdDraftId);
+      await uploadFileToCategory(file, "notes", createdDraftId);
     }
 
     setShowCategoryDialog(false);
@@ -625,17 +625,27 @@ export default function ClassDetailPage() {
               variant="outline"
               className="h-24 flex flex-col gap-2"
               onClick={() => handleCategorySelect("assignment")}
+              disabled={isUploadingFile}
             >
-              <FileText className="h-8 w-8" />
-              <span>Assignment</span>
+              {isUploadingFile ? (
+                <Loader2 className="h-8 w-8 animate-spin" />
+              ) : (
+                <FileText className="h-8 w-8" />
+              )}
+              <span>{isUploadingFile ? "Uploading..." : "Assignment"}</span>
             </Button>
             <Button
               variant="outline"
               className="h-24 flex flex-col gap-2"
               onClick={() => handleCategorySelect("notes")}
+              disabled={isUploadingFile}
             >
-              <BookOpen className="h-8 w-8" />
-              <span>Notes</span>
+              {isUploadingFile ? (
+                <Loader2 className="h-8 w-8 animate-spin" />
+              ) : (
+                <BookOpen className="h-8 w-8" />
+              )}
+              <span>{isUploadingFile ? "Uploading..." : "Notes"}</span>
             </Button>
           </div>
         </DialogContent>

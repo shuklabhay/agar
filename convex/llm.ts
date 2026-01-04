@@ -26,10 +26,29 @@ function getClient(): GoogleGenAI {
 }
 
 function cleanJsonResponse(text: string): string {
-  return text
+  let cleaned = text
     .replace(/```json\n?/g, "")
     .replace(/```\n?/g, "")
     .trim();
+
+  // Try to extract JSON object if it's embedded in other text
+  const jsonObjMatch = cleaned.match(/\{[\s\S]*\}/);
+  if (jsonObjMatch) {
+    cleaned = jsonObjMatch[0];
+  } else {
+    // Try to extract JSON array if no object found
+    const jsonArrMatch = cleaned.match(/\[[\s\S]*\]/);
+    if (jsonArrMatch) {
+      cleaned = jsonArrMatch[0];
+    }
+  }
+
+  // Handle common JSON issues (conservative fixes only)
+  cleaned = cleaned
+    .replace(/,\s*}/g, "}") // Remove trailing commas before }
+    .replace(/,\s*]/g, "]"); // Remove trailing commas before ]
+
+  return cleaned;
 }
 
 const EXTRACTION_PROMPT = `Extract ALL questions from this assignment document.
@@ -68,13 +87,20 @@ QUESTION TEXT RULES:
 - Apply any corrections/rewording from ADDITIONAL INFO directly to questionText
 
 HANDLING ADDITIONAL INFO FROM TEACHER:
+The teacher may refer to questions by number, section, module, or description. Match flexibly (e.g., "question 6 in english" or "module 1 question 6" both refer to question 6).
+
 - QUESTION MODIFICATIONS (apply directly to questionText):
   - "reword question X to be harder" → modify the questionText to be harder
   - "question X has an error, change Y to Z" → fix the number/text in questionText
   - "make question X more challenging" → rewrite questionText
 
-- ANSWER MODIFICATIONS (put in additionalInstructionsForAnswer):
-  - "replace option B with something about fortnite" → store in additionalInstructionsForAnswer
+- MCQ ANSWER OPTION MODIFICATIONS (modify answerOptionsMCQ array directly!):
+  - "replace option B with something about fortnite" → CHANGE the actual text of option B in answerOptionsMCQ to something fortnite-related
+  - "change option A to say XYZ" → REPLACE option A text in answerOptionsMCQ with "XYZ"
+  - "make option C about basketball" → REPLACE option C text with something basketball-related
+  - IMPORTANT: When told to replace/change an MCQ option, you MUST modify the answerOptionsMCQ array itself, not just store instructions!
+
+- ANSWER FORMAT REQUIREMENTS (put in additionalInstructionsForAnswer):
   - "accept simplified form only" → store in additionalInstructionsForAnswer
   - "answer must be a decimal, not fraction" → store in additionalInstructionsForAnswer
 
@@ -134,29 +160,34 @@ export async function extractQuestionsFromFiles(
   return JSON.parse(cleaned) as ExtractedQuestion[];
 }
 
-const ANSWER_PROMPT = `QUESTION #{questionNumber}: {questionText}
+const ANSWER_PROMPT = `
+QUESTION #{questionNumber}: {questionText}
 QUESTION TYPE: {questionType}
+{mcqOptionsSection}
 ANSWER FORMAT INSTRUCTIONS: {additionalInstructionsForAnswer}
 REQUIRED METHOD/APPROACH: {additionalInstructionsForWork}
 
-TASK: Answer the question using the notes. Use Google Search if notes don't cover the topic.
+TASK: Answer THIS SPECIFIC QUESTION using the notes provided. Use Google Search if notes don't cover the topic.
 
-ANSWER FORMAT by type:
+ANSWER FORMAT by question type:
 - "short_answer": simplified expression (e.g., "3x + 27")
-- "single_number": just the number
-- "multiple_choice": the letter choice
-- "free_response": array of key points
+- "single_number": just the number (e.g., "42" or "3.14")
+- "multiple_choice": EXACTLY one letter: A, B, C, or D (nothing else!)
+- "free_response": array of key points as strings
 
-KEY_POINTS: Extract 1-2 very brief key points (under 15 words each) from notes showing the relevant rule or concept.
+KEY_POINTS RULES (CRITICAL - must be relevant to THIS question):
+- If answered from NOTES: Extract 1-2 brief quotes/facts from the notes that directly support your answer to THIS question
+- If answered from WEB SEARCH: Provide 1-2 brief explanations of WHY your answer is correct (e.g., "The word 'trace' means 'evidence' in this context because...")
+- Key points must be SPECIFIC to the question asked - NOT random facts from notes
+- Each key point should be under 15 words
+- For vocabulary questions: explain the meaning in context
+- For reading comprehension: cite the relevant text evidence
+- For math: show the key formula or step used
 
-SOURCE: Set to "notes" if answered from notes, or array of URLs if web search was used.
+SOURCE: "notes" if answered from notes, or array of search result URLs if web search was used.
 
-Respond with ONLY valid JSON (no markdown):
-{
-  "answer": "answer here",
-  "key_points": ["brief key point"],
-  "source": "notes" OR ["https://source.com"]
-}`;
+CRITICAL: Your response must be ONLY this JSON object, no other text:
+{"answer": "<your answer>", "key_points": ["relevant point about THIS question"], "source": "notes"}`;
 
 // GeneratedAnswer type is imported from lib/types
 
@@ -168,13 +199,29 @@ export async function generateAnswerForQuestion(
   additionalInstructionsForWork: string | undefined,
   notesParts: Part[],
   client: GoogleGenAI,
+  answerOptionsMCQ?: string[],
 ): Promise<GeneratedAnswer> {
+  // Build MCQ options section if this is a multiple choice question
+  let mcqOptionsSection = "";
+  if (
+    questionType === "multiple_choice" &&
+    answerOptionsMCQ &&
+    answerOptionsMCQ.length > 0
+  ) {
+    mcqOptionsSection =
+      "ANSWER OPTIONS (choose ONE letter):\n" +
+      answerOptionsMCQ
+        .map((option, i) => `${String.fromCharCode(65 + i)}. ${option}`)
+        .join("\n");
+  }
+
   const prompt = ANSWER_PROMPT.replace(
     "{questionNumber}",
     String(questionNumber),
   )
     .replace("{questionText}", questionText)
     .replace("{questionType}", questionType)
+    .replace("{mcqOptionsSection}", mcqOptionsSection)
     .replace(
       "{additionalInstructionsForAnswer}",
       additionalInstructionsForAnswer || "None",
@@ -185,31 +232,40 @@ export async function generateAnswerForQuestion(
     );
 
   const maxRetries = 3;
+  let lastResponse = "";
+
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     const response = await client.models.generateContent({
       model: MODELS.answerGeneration,
       contents: [{ role: "user", parts: [{ text: prompt }, ...notesParts] }],
       config: {
         tools: [{ googleSearch: {} }],
+        responseMimeType: "application/json",
       },
     });
 
     const responseText = response.text ?? "";
+    lastResponse = responseText;
     const cleaned = cleanJsonResponse(responseText);
 
     try {
       const parsed = JSON.parse(cleaned);
       return {
-        answer: parsed.answer,
-        keyPoints: parsed.key_points || [],
-        source: parsed.source,
+        answer: parsed.answer ?? "",
+        keyPoints: parsed.key_points || parsed.keyPoints || [],
+        source: parsed.source ?? "notes",
       } as GeneratedAnswer;
     } catch {
       if (attempt === maxRetries) {
-        console.error(
-          `Failed to parse JSON after ${maxRetries} attempts for Q${questionNumber}. Response: ${cleaned.substring(0, 200)}`,
+        console.warn(
+          `JSON parse failed for Q${questionNumber} after ${maxRetries} attempts. Attempting fallback extraction...`,
         );
-        throw new Error(`Invalid JSON response after ${maxRetries} retries`);
+        // Fallback: try to extract answer from plain text response
+        return extractAnswerFromText(
+          responseText,
+          questionType,
+          answerOptionsMCQ,
+        );
       }
       console.warn(
         `JSON parse failed for Q${questionNumber} (attempt ${attempt}/${maxRetries}), retrying...`,
@@ -217,7 +273,77 @@ export async function generateAnswerForQuestion(
     }
   }
 
-  throw new Error("Unreachable");
+  // Should not reach here, but provide fallback
+  return extractAnswerFromText(lastResponse, questionType, answerOptionsMCQ);
+}
+
+// Fallback function to extract answer from non-JSON text
+function extractAnswerFromText(
+  text: string,
+  questionType: string,
+  answerOptionsMCQ?: string[],
+): GeneratedAnswer {
+  let answer: string | string[] = "";
+
+  if (questionType === "multiple_choice") {
+    // Look for letter answer (A, B, C, D)
+    const letterMatch = text.match(/\b([A-D])\b/);
+    if (letterMatch) {
+      answer = letterMatch[1];
+    } else if (answerOptionsMCQ && answerOptionsMCQ.length > 0) {
+      // Try to match option text
+      for (let i = 0; i < answerOptionsMCQ.length; i++) {
+        if (
+          text
+            .toLowerCase()
+            .includes(answerOptionsMCQ[i].toLowerCase().substring(0, 20))
+        ) {
+          answer = String.fromCharCode(65 + i);
+          break;
+        }
+      }
+    }
+  } else if (questionType === "single_number") {
+    // Extract number
+    const numMatch = text.match(/-?\d+\.?\d*/);
+    answer = numMatch ? numMatch[0] : "";
+  } else if (questionType === "free_response") {
+    // Split into key points
+    answer = text
+      .split(/\n|\./)
+      .filter((s) => s.trim().length > 10)
+      .slice(0, 5);
+  } else {
+    // Short answer - take first sentence or meaningful chunk
+    const sentences = text.split(/[.!?]/).filter((s) => s.trim().length > 0);
+    answer = sentences[0]?.trim() || text.substring(0, 100);
+  }
+
+  console.warn(
+    `Fallback extraction for ${questionType}: "${typeof answer === "string" ? answer.substring(0, 50) : answer[0]?.substring(0, 50)}..."`,
+  );
+
+  // Try to extract a useful key point from the text
+  const keyPoints: string[] = [];
+  // Look for explanation patterns
+  const explanationMatch = text.match(/because[^.]*\.|means[^.]*\.|refers to[^.]*\.|indicates[^.]*\./i);
+  if (explanationMatch) {
+    keyPoints.push(explanationMatch[0].trim().substring(0, 80));
+  } else {
+    // Take a relevant sentence that's not too long
+    const sentences = text.split(/[.!?]/).filter(s => s.trim().length > 20 && s.trim().length < 100);
+    if (sentences.length > 0) {
+      keyPoints.push(sentences[0].trim());
+    } else {
+      keyPoints.push("Answer extracted automatically - please verify");
+    }
+  }
+
+  return {
+    answer,
+    keyPoints,
+    source: "notes",
+  };
 }
 
 // Batch process questions with shared notes context
@@ -228,6 +354,7 @@ export async function generateAnswersForQuestions(
     questionType: string;
     additionalInstructionsForAnswer?: string;
     additionalInstructionsForWork?: string;
+    answerOptionsMCQ?: string[];
   }>,
   notesFileUrls: string[],
 ): Promise<Map<number, GeneratedAnswer>> {
@@ -254,6 +381,7 @@ export async function generateAnswersForQuestions(
         q.additionalInstructionsForWork,
         notesParts,
         client,
+        q.answerOptionsMCQ,
       );
       results.set(q.questionNumber, answer);
     } catch (error) {

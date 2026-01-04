@@ -35,55 +35,80 @@ export const generateAnswers = action({
       status: "generating_answers",
     });
 
-    try {
-      // Prepare questions for LLM
-      const questionsForLLM = questions.map((q) => ({
-        questionNumber: q.questionNumber,
-        questionText: q.questionText,
-        questionType: q.questionType,
-        additionalInstructionsForAnswer: q.additionalInstructionsForAnswer,
-        additionalInstructionsForWork: q.additionalInstructionsForWork,
-      }));
+    // Prepare notes files once (reuse across all questions)
+    const notesParts: Part[] = await Promise.all(
+      notesUrls.map(async (url: string) => {
+        const { data, mimeType } = await fetchFileAsBase64(url);
+        return { inlineData: { data, mimeType } };
+      }),
+    );
 
-      // Generate answers
-      const answers = await generateAnswersForQuestions(questionsForLLM, notesUrls);
-
-      // Update each question with its answer
-      let processed = 0;
-      for (const q of questions) {
-        const answer = answers.get(q.questionNumber);
-        if (answer) {
-          await ctx.runMutation(internal.questions.updateQuestionAnswer, {
-            questionId: q._id,
-            answer: answer.answer,
-            keyPoints: answer.keyPoints,
-            source: answer.source,
-            status: "ready",
-          });
-          processed++;
-        }
-      }
-
-      // Update assignment status
-      await ctx.runMutation(internal.questions.updateAssignmentStatus, {
-        assignmentId: args.assignmentId,
-        status: "ready",
-      });
-
-      return { success: true, processed };
-    } catch (error) {
-      console.error("Answer generation error:", error);
-
-      await ctx.runMutation(internal.questions.updateAssignmentStatus, {
-        assignmentId: args.assignmentId,
-        status: "error",
-      });
-
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : "Unknown error",
-      };
+    // Get Gemini client
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      return { success: false, error: "GEMINI_API_KEY not configured" };
     }
+    const client = new GoogleGenAI({ apiKey });
+
+    let processed = 0;
+    let errors = 0;
+
+    // Process questions ONE AT A TIME for real-time progress feedback
+    for (const q of questions) {
+      try {
+        // Mark question as processing (visible in UI immediately)
+        await ctx.runMutation(internal.questions.markQuestionProcessing, {
+          questionId: q._id,
+        });
+
+        // Generate answer for this specific question
+        const answer = await generateAnswerForQuestion(
+          q.questionNumber,
+          q.questionText,
+          q.questionType,
+          q.additionalInstructionsForAnswer,
+          q.additionalInstructionsForWork,
+          notesParts,
+          client,
+          q.answerOptionsMCQ,
+        );
+
+        // Update question with answer (visible in UI immediately)
+        await ctx.runMutation(internal.questions.updateQuestionAnswer, {
+          questionId: q._id,
+          answer: answer.answer,
+          keyPoints: answer.keyPoints,
+          source: answer.source,
+          status: "ready",
+        });
+
+        processed++;
+      } catch (error) {
+        console.error(`Error generating answer for Q${q.questionNumber}:`, error);
+        errors++;
+
+        // Set fallback answer so question shows as ready (not stuck processing)
+        await ctx.runMutation(internal.questions.updateQuestionAnswer, {
+          questionId: q._id,
+          answer: "",
+          keyPoints: ["Error generating answer - please try regenerating"],
+          source: "notes",
+          status: "ready",
+        });
+      }
+    }
+
+    // Update assignment status
+    await ctx.runMutation(internal.questions.updateAssignmentStatus, {
+      assignmentId: args.assignmentId,
+      status: "ready",
+    });
+
+    return {
+      success: errors === 0,
+      processed,
+      error: errors > 0 ? `${errors} question(s) failed to generate` : undefined,
+    };
   },
 });
 
@@ -148,6 +173,7 @@ export const regenerateAnswer = action({
         question.additionalInstructionsForWork,
         notesParts,
         client,
+        question.answerOptionsMCQ,
       );
 
       // Update the question
