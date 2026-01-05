@@ -95,7 +95,10 @@ function deriveCorrectLetters(answer: unknown, options?: string[]): string[] {
 }
 
 async function loadAssignmentContextFile(ctx: ActionCtx, assignmentId: Id<"assignments">) {
-  const assignment = await ctx.db.get(assignmentId);
+  const assignment = await ctx.runQuery(
+    internal.questions.getAssignmentForProcessing,
+    { assignmentId },
+  );
   if (!assignment || assignment.assignmentFiles.length === 0) return;
 
   const primaryFile = assignment.assignmentFiles[0];
