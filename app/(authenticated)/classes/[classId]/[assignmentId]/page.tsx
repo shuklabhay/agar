@@ -26,7 +26,6 @@ import {
   Image as ImageIcon,
   Loader2,
   FileIcon,
-  Download,
   Copy,
   Check,
   ExternalLink,
@@ -54,7 +53,6 @@ const MAX_TOTAL_SIZE_BYTES = 15 * 1024 * 1024; // 15MB
 
 export default function AssignmentPage() {
   const params = useParams();
-  const router = useRouter();
   const classId = params.classId as Id<"classes">;
   const assignmentId = params.assignmentId as Id<"assignments">;
 
@@ -197,7 +195,7 @@ function EditAssignmentView({
   } | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [previewFile, setPreviewFile] = useState<UploadedFile | null>(null);
-  const [dataLoaded, setDataLoaded] = useState(false);
+  const [dataLoaded] = useState(true);
   const saveDraftTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [dialogSize, setDialogSize] = useState({ width: 80, height: 90 });
   const resizeRef = useRef<{
@@ -207,11 +205,6 @@ function EditAssignmentView({
     startHeight: number;
     edge: string;
   } | null>(null);
-
-  // Mark data as loaded after initial render
-  useEffect(() => {
-    setDataLoaded(true);
-  }, []);
 
   const handleResizeStart = useCallback(
     (e: React.MouseEvent, edge: string) => {
@@ -1292,7 +1285,8 @@ function ReviewAssignmentView({
                     } else {
                       toast.error(result.error || "Processing failed");
                     }
-                  } catch (err) {
+                  } catch (error) {
+                    console.error(error);
                     toast.error("Failed to retry processing");
                   } finally {
                     setIsRetrying(false);

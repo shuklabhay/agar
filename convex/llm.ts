@@ -112,17 +112,11 @@ function cleanJsonResponse(text: string): string {
 
   // Determine which comes first (ignoring -1 values)
   let startIdx = -1;
-  let startChar = "{";
-  let endChar = "}";
 
   if (arrayIdx !== -1 && (objIdx === -1 || arrayIdx < objIdx)) {
     startIdx = arrayIdx;
-    startChar = "[";
-    endChar = "]";
   } else if (objIdx !== -1) {
     startIdx = objIdx;
-    startChar = "{";
-    endChar = "}";
   }
 
   if (startIdx !== -1) {
@@ -417,7 +411,10 @@ export async function generateAnswerForQuestion(
       } as GeneratedAnswer;
     }, `Answer generation for Q${questionNumber}`);
   } catch (error) {
-    console.warn(`Q${questionNumber} failed after retries, using fallback extraction`);
+    console.warn(
+      `Q${questionNumber} failed after retries, using fallback extraction`,
+      error,
+    );
     return extractAnswerFromText("", questionType);
   }
 }

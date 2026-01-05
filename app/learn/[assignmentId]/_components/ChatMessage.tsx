@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { CheckCircle, XCircle, Paperclip } from "lucide-react";
+import { CheckCircle, Paperclip } from "lucide-react";
 import { Id } from "@/convex/_generated/dataModel";
 import { RioEyes } from "./RioEyes";
 import { useEffect, useState, useRef } from "react";

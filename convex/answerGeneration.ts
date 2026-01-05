@@ -3,7 +3,7 @@
 import { v } from "convex/values";
 import { action } from "./_generated/server";
 import { internal } from "./_generated/api";
-import { generateAnswersForQuestions, generateAnswerForQuestion, fetchFileAsBase64 } from "./llm";
+import { generateAnswerForQuestion, fetchFileAsBase64 } from "./llm";
 import { GoogleGenAI, Part } from "@google/genai";
 
 export const generateAnswers = action({

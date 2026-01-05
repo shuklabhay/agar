@@ -123,7 +123,9 @@ export function QuestionPanel({
         questionId: question._id,
         message: `${answerText}\n\nPlease check if this is correct and give me feedback.`,
         selectedOption:
-          question.questionType === "multiple_choice" ? selectedOption : undefined,
+          question.questionType === "multiple_choice"
+            ? selectedOption ?? undefined
+            : undefined,
       });
 
       // Optimistic handling for MCQ incorrect answers when LLM doesn't return detectedAnswer

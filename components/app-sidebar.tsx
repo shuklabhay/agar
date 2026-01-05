@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback } from "react";
 import {
   Settings,
   LogOut,
@@ -58,13 +58,8 @@ import {
 } from "@/components/ui/dialog";
 
 export function AppSidebar() {
-  const [mounted, setMounted] = useState(false);
+  const [mounted] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- Hydration pattern for client-only rendering
-  }, []);
   const pathname = usePathname();
   const { signOut } = useAuthActions();
   const router = useRouter();
@@ -74,6 +69,12 @@ export function AppSidebar() {
   const updatePreferences = useMutation(api.myFunctions.updateUserPreferences);
 
   const defaultMetric = userPreferences?.defaultMetric ?? "mean";
+  const fullCommitHash =
+    process.env.NEXT_PUBLIC_COMMIT_SHA ||
+    process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA ||
+    "dev";
+  const shortCommitHash =
+    fullCommitHash === "dev" ? "dev" : fullCommitHash.slice(0, 7);
 
   const handleMetricChange = useCallback((metric: "mean" | "median") => {
     updatePreferences({ defaultMetric: metric });
@@ -239,6 +240,20 @@ export function AppSidebar() {
                             Median
                           </button>
                         </div>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium">Build</p>
+                          <p className="text-xs text-muted-foreground">
+                            Current deploy commit
+                          </p>
+                        </div>
+                        <code
+                          className="text-xs rounded bg-muted px-2 py-1"
+                          title={fullCommitHash}
+                        >
+                          {shortCommitHash}
+                        </code>
                       </div>
                     </div>
                   </DialogContent>
