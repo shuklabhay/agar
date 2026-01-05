@@ -12,6 +12,23 @@ function getClient(): GoogleGenAI {
   return new GoogleGenAI({ apiKey });
 }
 
+function detectMCQGuess(message: string, options?: string[]): string | undefined {
+  if (!options || options.length === 0) return;
+  const lower = message.toLowerCase();
+
+  const letterMatch = lower.match(/\b([a-d])\b/);
+  if (letterMatch) return letterMatch[1].toUpperCase();
+
+  const matches: string[] = [];
+  options.forEach((opt, idx) => {
+    if (lower.includes(opt.toLowerCase())) {
+      matches.push(String.fromCharCode(65 + idx));
+    }
+  });
+
+  return matches.length === 1 ? matches[0] : undefined;
+}
+
 // Tool definitions for the tutor
 const TUTOR_TOOLS: FunctionDeclaration[] = [
   {
@@ -51,6 +68,7 @@ const SYSTEM_INSTRUCTION = `You are Rio, a helpful tutor. Be friendly and encour
 1. Stay on topic - only discuss the current question
 2. Guide, don't give answers - use Socratic method
 3. Keep responses to 1-3 sentences
+4. Ask at most one question per message
 
 ## Tool Usage - ONLY for FINAL answers
 - evaluate_response: The only tool. Use it when the student gives a final answer. Set isCorrect true/false. For MCQ, include detectedAnswer letter to log/gray it out. For other types, include the final answer text in detectedAnswer when helpful.
@@ -58,8 +76,11 @@ Only use this tool—do not invent new ones.
 
 ## CRITICAL: When to call tools
 - Call evaluate_response ONLY when you see the student's final answer (MCQ letter/number or written response)
+- If STUDENT_SELECTED_OPTION_THIS_TURN is set (not "none"), treat it as their MCQ answer this turn and call evaluate_response with that letter before any further guidance.
+- If STUDENT_DETECTED_ANSWER is set (not "none"), treat it as their MCQ answer this turn and call evaluate_response with that letter before any further guidance.
 - After every explicit answer/guess from the student, call evaluate_response. If the student is just chatting or asking a question (no guess), just reply normally.
-- For MCQ, every time the student states or selects a letter/option, call evaluate_response with that letter—even if it's wrong or seems tentative.
+- For MCQ, every time the student states or selects a letter/option, call evaluate_response with that letter—even if it's wrong, hedged, or phrased as a question. If they use the option text instead of the letter, map it to the letter first before responding.
+- For MCQ, if the student message names a single option text (e.g., "is it amount?"), immediately map it to the letter, call evaluate_response first, then give guidance. Do not hint before the tool call.
 - For MCQ, ALWAYS set detectedAnswer to the student's letter (A/B/C/D) exactly. Never omit it; if unsure, echo the letter they typed.
 - If student shows work like "2+2=4, so the answer is 4" - call the tool since "4" is their final answer
 - If student is mid-calculation or exploring, do NOT call tools - wait for their final answer
@@ -91,6 +112,7 @@ interface TutorInput {
   question: TutorQuestion;
   history: Array<{ role: string; content: string }>;
   studentMessage: string;
+  selectedOption?: string;
   files?: Array<{ name: string; type: string; data: string }>;
   attempts?: number;
 }
@@ -103,12 +125,19 @@ interface TutorResponse {
 export async function callTutorLLM(input: TutorInput): Promise<TutorResponse> {
   const client = getClient();
 
+  const detectedAnswerFromMessage =
+    input.question.questionType === "multiple_choice"
+      ? detectMCQGuess(input.studentMessage, input.question.answerOptionsMCQ)
+      : undefined;
+
   // Build question context - only includes keyPoints on first message for this question
   const questionContext = `
 QUESTION: ${input.question.questionText}
 TYPE: ${input.question.questionType}
 ${input.question.answerOptionsMCQ ? `OPTIONS:\n${input.question.answerOptionsMCQ.map((o, i) => `${String.fromCharCode(65 + i)}. ${o}`).join("\n")}` : ""}
 ATTEMPTS_SO_FAR: ${input.attempts ?? 0}
+STUDENT_SELECTED_OPTION_THIS_TURN: ${input.selectedOption ?? "none"}
+STUDENT_DETECTED_ANSWER: ${detectedAnswerFromMessage ?? "none"}
 
 [HIDDEN - For guidance only]
 CORRECT ANSWER: ${JSON.stringify(input.question.answer)}

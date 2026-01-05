@@ -44,6 +44,54 @@ function decodeChar(charCode: number): number {
   return 0;
 }
 
+function detectMCQOption(message: string, options?: string[]): string | undefined {
+  if (!options || options.length === 0) return;
+  const lower = message.toLowerCase();
+
+  // Direct letter mention (e.g., "C", "option C")
+  const letterMatch = lower.match(/\b([a-d])\b/);
+  if (letterMatch) return letterMatch[1].toUpperCase();
+
+  // Option text mention (e.g., "amount")
+  const matches: string[] = [];
+  options.forEach((opt, idx) => {
+    if (lower.includes(opt.toLowerCase())) {
+      matches.push(String.fromCharCode(65 + idx));
+    }
+  });
+
+  return matches.length === 1 ? matches[0] : undefined;
+}
+
+function deriveCorrectLetters(answer: unknown, options?: string[]): string[] {
+  const letters: string[] = [];
+  if (!answer) return letters;
+
+  const pushLetter = (val: string) => {
+    const letter = val.trim().toUpperCase();
+    if (["A", "B", "C", "D"].includes(letter)) {
+      letters.push(letter);
+      return;
+    }
+    if (options && options.length > 0) {
+      const idx = options.findIndex(
+        (opt) => opt.toLowerCase().trim() === val.toLowerCase().trim(),
+      );
+      if (idx >= 0) letters.push(String.fromCharCode(65 + idx));
+    }
+  };
+
+  if (Array.isArray(answer)) {
+    answer.forEach((a) => {
+      if (typeof a === "string") pushLetter(a);
+    });
+  } else if (typeof answer === "string") {
+    pushLetter(answer);
+  }
+
+  return letters;
+}
+
 async function checkRateLimit(
   ctx: ActionCtx,
   sessionId: Id<"studentSessions">,
@@ -343,6 +391,12 @@ export const sendMessageToTutor = action({
       attachments: storedAttachments,
     });
 
+    const parsedSelectedOption =
+      question.questionType === "multiple_choice"
+        ? args.selectedOption ??
+          detectMCQOption(args.message, question.answerOptionsMCQ)
+        : undefined;
+
     // Call the tutor LLM
     const { callTutorLLM } = await import("./tutorLLM");
 
@@ -360,11 +414,13 @@ export const sendMessageToTutor = action({
         content: m.content,
       })),
       studentMessage: args.message,
+      selectedOption: parsedSelectedOption,
       files: args.files,
       attempts: progress?.attempts,
     });
 
     // Handle tool calls (evaluate response)
+    let progressUpdated = false;
     if (response.toolCalls && response.toolCalls.length > 0) {
       for (const toolCall of response.toolCalls) {
         if (toolCall.name === "evaluate_response" && progress) {
@@ -372,7 +428,7 @@ export const sendMessageToTutor = action({
           const detectedAnswer =
             typeof toolCall.args.detectedAnswer === "string"
               ? toolCall.args.detectedAnswer
-              : args.selectedOption;
+              : parsedSelectedOption;
           const isMCQ = question.questionType === "multiple_choice";
 
           await ctx.runMutation(internal.studentProgress.updateProgressStatus, {
@@ -381,7 +437,30 @@ export const sendMessageToTutor = action({
             submittedText: !isMCQ ? detectedAnswer : undefined,
             selectedAnswer: isMCQ ? detectedAnswer : undefined,
           });
+          progressUpdated = true;
         }
+      }
+    }
+
+    // Fallback: if LLM missed the tool call but we parsed an MCQ guess, log it
+    if (
+      !progressUpdated &&
+      question.questionType === "multiple_choice" &&
+      progress &&
+      parsedSelectedOption
+    ) {
+      const correctLetters = deriveCorrectLetters(
+        question.answer,
+        question.answerOptionsMCQ,
+      );
+      if (correctLetters.length > 0) {
+        const isCorrect = correctLetters.includes(parsedSelectedOption);
+        await ctx.runMutation(internal.studentProgress.updateProgressStatus, {
+          progressId: progress._id,
+          status: isCorrect ? "correct" : "incorrect",
+          selectedAnswer: parsedSelectedOption,
+        });
+        progressUpdated = true;
       }
     }
 
