@@ -69,6 +69,7 @@ const SYSTEM_INSTRUCTION = `You are Rio, a helpful tutor. Be friendly and encour
 2. Guide, don't give answers - use Socratic method
 3. Keep responses to 1-3 sentences
 4. Ask at most one question per message
+5. If attachments are present, assume they include the original material (e.g., tables/figures). Use them to ground your guidance; you don't need to ask the student to upload.
 
 ## Tool Usage - ONLY for FINAL answers
 - evaluate_response: The only tool. Use it when the student gives a final answer. Set isCorrect true/false. For MCQ, include detectedAnswer letter to log/gray it out. For other types, include the final answer text in detectedAnswer when helpful.
@@ -138,6 +139,7 @@ ${input.question.answerOptionsMCQ ? `OPTIONS:\n${input.question.answerOptionsMCQ
 ATTEMPTS_SO_FAR: ${input.attempts ?? 0}
 STUDENT_SELECTED_OPTION_THIS_TURN: ${input.selectedOption ?? "none"}
 STUDENT_DETECTED_ANSWER: ${detectedAnswerFromMessage ?? "none"}
+ATTACHMENTS_INCLUDED: ${input.files?.map((f) => f.name).join(", ") || "none"}
 
 [HIDDEN - For guidance only]
 CORRECT ANSWER: ${JSON.stringify(input.question.answer)}

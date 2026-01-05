@@ -9,6 +9,8 @@ const RATE_LIMITS = {
   perDay: 1000,
 };
 
+const MAX_CONTEXT_FILE_BYTES = 5 * 1024 * 1024; // 5MB limit for LLM context attachments
+
 type RateLimitScope = "minute" | "day";
 
 // Lightweight base64 decoder that works in the Convex default runtime
@@ -90,6 +92,28 @@ function deriveCorrectLetters(answer: unknown, options?: string[]): string[] {
   }
 
   return letters;
+}
+
+async function loadAssignmentContextFile(ctx: ActionCtx, assignmentId: Id<"assignments">) {
+  const assignment = await ctx.db.get(assignmentId);
+  if (!assignment || assignment.assignmentFiles.length === 0) return;
+
+  const primaryFile = assignment.assignmentFiles[0];
+  const metadata = await ctx.db.system.get(primaryFile.storageId);
+
+  const size = metadata?.size ?? primaryFile.size ?? 0;
+  if (size > MAX_CONTEXT_FILE_BYTES) return;
+
+  const blob = await ctx.storage.get(primaryFile.storageId);
+  if (!blob) return;
+
+  const base64Data = Buffer.from(blob).toString("base64");
+
+  return {
+    name: primaryFile.fileName,
+    type: primaryFile.contentType ?? metadata?.contentType ?? "application/octet-stream",
+    data: base64Data,
+  };
 }
 
 async function checkRateLimit(
@@ -342,6 +366,17 @@ export const sendMessageToTutor = action({
       throw new Error("Question not found");
     }
 
+    // Only attach the source file on the very first chat turn for this session
+    const hasSessionChat = await ctx.db
+      .query("chatMessages")
+      .withIndex("by_sessionId", (q) => q.eq("sessionId", args.sessionId))
+      .first();
+
+    const contextFile =
+      !hasSessionChat &&
+      question.assignmentId &&
+      (await loadAssignmentContextFile(ctx, question.assignmentId));
+
     // Get chat history
     const history = await ctx.runQuery(api.chat.getChatHistory, {
       sessionId: args.sessionId,
@@ -415,7 +450,7 @@ export const sendMessageToTutor = action({
       })),
       studentMessage: args.message,
       selectedOption: parsedSelectedOption,
-      files: args.files,
+      files: [...(contextFile ? [contextFile] : []), ...(args.files ?? [])],
       attempts: progress?.attempts,
     });
 
