@@ -102,19 +102,18 @@ async function loadAssignmentContextFile(ctx: ActionCtx, assignmentId: Id<"assig
   if (!assignment || assignment.assignmentFiles.length === 0) return;
 
   const primaryFile = assignment.assignmentFiles[0];
-  const metadata = await ctx.db.system.get(primaryFile.storageId);
-
-  const size = metadata?.size ?? primaryFile.size ?? 0;
+  const size = primaryFile.size ?? 0;
   if (size > MAX_CONTEXT_FILE_BYTES) return;
 
   const blob = await ctx.storage.get(primaryFile.storageId);
   if (!blob) return;
 
-  const base64Data = Buffer.from(blob).toString("base64");
+  const buffer = Buffer.from(await blob.arrayBuffer());
+  const base64Data = buffer.toString("base64");
 
   return {
     name: primaryFile.fileName,
-    type: primaryFile.contentType ?? metadata?.contentType ?? "application/octet-stream",
+    type: primaryFile.contentType ?? "application/octet-stream",
     data: base64Data,
   };
 }
@@ -370,10 +369,10 @@ export const sendMessageToTutor = action({
     }
 
     // Only attach the source file on the very first chat turn for this session
-    const hasSessionChat = await ctx.db
-      .query("chatMessages")
-      .withIndex("by_sessionId", (q) => q.eq("sessionId", args.sessionId))
-      .first();
+    const sessionChat = await ctx.runQuery(api.chat.getSessionChatHistory, {
+      sessionId: args.sessionId,
+    });
+    const hasSessionChat = sessionChat.length > 0;
 
     const contextFile =
       !hasSessionChat &&
