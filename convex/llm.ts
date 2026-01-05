@@ -205,6 +205,27 @@ function dedupe<T>(items: T[]): T[] {
   return Array.from(new Set(items));
 }
 
+function normalizeParsedSource(
+  source: string | string[] | undefined,
+  fallbackUrls: string[],
+): string | string[] {
+  if (Array.isArray(source)) {
+    const cleaned = dedupe(
+      source
+        .map((s) => (typeof s === "string" ? cleanGroundingUrl(s.trim()) : null))
+        .filter((s): s is string => Boolean(s)),
+    );
+    if (cleaned.length > 0) return cleaned;
+  } else if (typeof source === "string" && source.trim().length > 0) {
+    const cleaned = cleanGroundingUrl(source.trim());
+    if (cleaned) return cleaned;
+    if (source.trim().toLowerCase() === "notes") return "notes";
+  }
+
+  if (fallbackUrls.length > 0) return fallbackUrls;
+  return "notes";
+}
+
 const EXTRACTION_PROMPT = `Extract ALL questions from this assignment document.
 
 OUTPUT FIELDS:
@@ -384,17 +405,15 @@ export async function generateAnswerForQuestion(
             ? parsed.source.trim()
             : undefined;
 
+      const normalizedSource = normalizeParsedSource(
+        parsedSource,
+        cleanedGroundingUrls,
+      );
+
       return {
         answer: parsed.answer ?? "",
         keyPoints: parsed.key_points || parsed.keyPoints || [],
-        source:
-          Array.isArray(parsedSource) && parsedSource.length > 0
-            ? parsedSource
-            : typeof parsedSource === "string"
-              ? parsedSource
-              : cleanedGroundingUrls.length > 0
-                ? cleanedGroundingUrls
-                : "notes",
+        source: normalizedSource,
       } as GeneratedAnswer;
     }, `Answer generation for Q${questionNumber}`);
   } catch (error) {
