@@ -6,7 +6,6 @@ import {
   LogOut,
   ChevronUp,
   ChevronRight,
-  Sparkles,
   BookOpen,
   Plus,
   BarChart3,
@@ -96,10 +95,7 @@ export function AppSidebar() {
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
               <Link href="/classes">
-                <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-                  <Sparkles className="size-4" />
-                </div>
-                <span className="font-semibold">Agar</span>
+                <span className="text-lg font-semibold leading-none">Agar</span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>

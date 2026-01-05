@@ -69,10 +69,10 @@ export function CompletionCelebration({
         </div>
 
         <div className="flex flex-col md:flex-row items-center gap-6 md:gap-10">
-          <div className="relative">
+          <div className="relative flex items-center justify-center">
             <div className="absolute inset-0 rounded-full bg-primary/20 blur-2xl celebration-pulse" />
-            <div className="relative w-32 h-32 md:w-36 md:h-36 rounded-full bg-gradient-to-br from-primary via-primary/80 to-primary/60 text-white flex items-center justify-center border-4 border-white/50 dark:border-foreground/20 shadow-xl celebration-float">
-              <RioEyes mood="correct" />
+            <div className="relative celebration-float">
+              <RioEyes mood="correct" size="xl" />
             </div>
             <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 rounded-full bg-white/80 dark:bg-foreground/10 text-[11px] font-semibold px-3 py-1 border border-primary/10 backdrop-blur">
               Rio is cheering

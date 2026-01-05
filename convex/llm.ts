@@ -180,12 +180,38 @@ function parseJsonWithCleaning<T>(text: string, context: string): T {
   }
 }
 
+function cleanGroundingUrl(uri: string): string | null {
+  try {
+    const url = new URL(uri);
+    const host = url.hostname.toLowerCase();
+
+    if (host.includes("vertexaisearch.cloud.google")) {
+      return null;
+    }
+
+    if (host === "www.google.com" && url.pathname === "/url") {
+      const target = url.searchParams.get("q");
+      if (target) return target;
+    }
+
+    url.hash = "";
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
+function dedupe<T>(items: T[]): T[] {
+  return Array.from(new Set(items));
+}
+
 const EXTRACTION_PROMPT = `Extract ALL questions from this assignment document.
 
 OUTPUT FIELDS:
 - questionNumber: as shown in document (always a string). If numbering includes letters like "16a/16b/16c", treat each lettered part as its own separate question entry (never merge lettered parts together).
 - questionText: FULL question with instruction (e.g., "Solve for x: 3x + 5 = 20", not just "3x + 5 = 20"). If no instruction given, add one (Solve/Simplify/Factor/etc). If it references a passage/figure, include that reference.
 - Preserve visible formatting cues that matter to the student (blanks like "____", placeholders like "[ ]", line breaks in passage references). If a blank appears in the prompt, keep it in questionText.
+- Do NOT preserve hard line breaks inside a single sentence (PDF wrap). If a sentence is split across two lines, merge it into one sentence without the break. If there are clearly separate sentences or bullet lines, keep those breaks.
 - questionType: "multiple_choice" | "single_value" | "short_answer" | "free_response" | "skipped"
 - answerOptionsMCQ: array of choices (MCQ only)
 - additionalInstructionsForAnswer: answer format requirements (e.g., "must be decimal")
@@ -256,9 +282,10 @@ FORMAT: {additionalInstructionsForAnswer}
 METHOD: {additionalInstructionsForWork}
 
 Answer using the notes provided. If the notes are missing the concept/facts/method you need (e.g., math notes but grammar question), use Google Search to fetch what’s missing, then solve. You can still use notes if any part is relevant; otherwise rely on search results.
+- Default to verifying with Google Search for any fact/definition/date/example that isn't explicitly spelled out in the notes—even if it's basic. When in doubt, run a search tool call before finalizing the answer.
 
 - If you used only notes → set source to "notes" and keep key_points quoted/paraphrased from notes.
-- If you used search (even partially) → set source to an array of the actual URLs you used (not "notes"). Do NOT fabricate note citations.
+- If you used search (even partially) → set source to an array of the actual URLs you used (not "notes"). Do NOT fabricate note citations. Use the real website URLs (e.g., https://example.com/page), never vertexaisearch.cloud.google.com or redirect wrappers.
 
 ANSWER FORMAT:
 - short_answer: expression (e.g., "3x + 27")
@@ -266,9 +293,9 @@ ANSWER FORMAT:
 - multiple_choice: ONE letter only (A/B/C/D)
 - free_response: array of key points
 
-KEY_POINTS: 1-2 brief facts (<15 words each) that directly support YOUR answer to THIS question. Quote or paraphrase from notes if you used notes; if you used web search, briefly cite the relevant fact from the page.
+KEY_POINTS: 1-2 brief facts (<15 words each) taken verbatim from a grounded source. Quote word-for-word from the notes or from the web page you actually used; never paraphrase or invent. Only include statements that appear in the notes or the searched page.
 
-SOURCE: "notes" or array of search URLs used.
+SOURCE: "notes" or array of the actual web page URLs you used (no vertexaisearch or redirect URLs).
 
 Respond with ONLY this JSON:
 {"answer": "...", "key_points": ["..."], "source": "notes"}`;
@@ -340,16 +367,34 @@ export async function generateAnswerForQuestion(
         candidate?.groundingMetadata?.groundingChunks
           ?.map((chunk) => chunk.web?.uri)
           .filter((uri): uri is string => Boolean(uri)) || [];
+      const cleanedGroundingUrls = dedupe(
+        groundingUrls
+          .map((uri) => (uri ? cleanGroundingUrl(uri) : null))
+          .filter((uri): uri is string => Boolean(uri)),
+      );
+
+      const parsedSource =
+        Array.isArray(parsed.source) && parsed.source.length > 0
+          ? dedupe(
+              parsed.source
+                .map((s) => (typeof s === "string" ? s.trim() : ""))
+                .filter((s) => s.length > 0),
+            )
+          : typeof parsed.source === "string" && parsed.source.trim().length > 0
+            ? parsed.source.trim()
+            : undefined;
 
       return {
         answer: parsed.answer ?? "",
         keyPoints: parsed.key_points || parsed.keyPoints || [],
         source:
-          Array.isArray(parsed.source) && parsed.source.length > 0
-            ? parsed.source
-            : groundingUrls.length > 0
-              ? groundingUrls
-              : parsed.source ?? "notes",
+          Array.isArray(parsedSource) && parsedSource.length > 0
+            ? parsedSource
+            : typeof parsedSource === "string"
+              ? parsedSource
+              : cleanedGroundingUrls.length > 0
+                ? cleanedGroundingUrls
+                : "notes",
       } as GeneratedAnswer;
     }, `Answer generation for Q${questionNumber}`);
   } catch (error) {

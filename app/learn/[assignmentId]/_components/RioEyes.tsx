@@ -6,7 +6,7 @@ import { RioMood } from "@/lib/types";
 
 interface RioEyesProps {
   mood?: RioMood;
-  size?: "sm" | "md";
+  size?: "sm" | "md" | "lg" | "xl";
   shaking?: boolean;
 }
 
@@ -54,13 +54,26 @@ export function RioEyes({
     return idleLookDirection;
   }, [mood, idleLookDirection]);
 
-  const containerSize = size === "sm" ? "w-6 h-6" : "w-7 h-7";
+  const sizes = {
+    sm: { container: "w-6 h-6", eyeW: 3, eyeH: 8, eyeBlink: 2, eyeCorrect: 7, gap: 2 },
+    md: { container: "w-7 h-7", eyeW: 3, eyeH: 10, eyeBlink: 2, eyeCorrect: 8, gap: 3 },
+    lg: { container: "w-10 h-10", eyeW: 4, eyeH: 14, eyeBlink: 3, eyeCorrect: 11, gap: 3.5 },
+    xl: { container: "w-16 h-16", eyeW: 6, eyeH: 20, eyeBlink: 4, eyeCorrect: 16, gap: 4 },
+  } as const;
+
+  const sizeSpec = sizes[size] ?? sizes.md;
+  const eyeHeight =
+    mood === "correct"
+      ? sizeSpec.eyeCorrect
+      : isBlinking
+        ? sizeSpec.eyeBlink
+        : sizeSpec.eyeH;
 
   return (
     <div
       className={cn(
         "rounded-full bg-violet-100 dark:bg-violet-900/30 flex items-center justify-center shrink-0",
-        containerSize,
+        sizeSpec.container,
         shaking && "animate-head-shake",
       )}
       style={
@@ -71,28 +84,37 @@ export function RioEyes({
           : undefined
       }
     >
-      <div className="flex items-center gap-[3px]">
+      <div
+        className="flex items-center"
+        style={{
+          gap: sizeSpec.gap,
+        }}
+      >
         {/* Left eye */}
         <div
           className={cn(
-            "w-[3px] rounded-full transition-all duration-300 bg-violet-600 dark:bg-violet-400",
-            isBlinking ? "h-[2px]" : "h-[10px]",
-            mood === "correct" && "rounded-t-none h-[8px]",
+            "rounded-full transition-all duration-300 bg-violet-600 dark:bg-violet-400",
             mood === "incorrect" && "opacity-50",
           )}
           style={{
+            width: sizeSpec.eyeW,
+            height: eyeHeight,
+            borderRadius: sizeSpec.eyeW,
+            ...(mood === "correct" ? { borderTopLeftRadius: 0, borderTopRightRadius: 0 } : {}),
             transform: `translate(${lookDirection.x}px, ${lookDirection.y}px)`,
           }}
         />
         {/* Right eye */}
         <div
           className={cn(
-            "w-[3px] rounded-full transition-all duration-300 bg-violet-600 dark:bg-violet-400",
-            isBlinking ? "h-[2px]" : "h-[10px]",
-            mood === "correct" && "rounded-t-none h-[8px]",
+            "rounded-full transition-all duration-300 bg-violet-600 dark:bg-violet-400",
             mood === "incorrect" && "opacity-50",
           )}
           style={{
+            width: sizeSpec.eyeW,
+            height: eyeHeight,
+            borderRadius: sizeSpec.eyeW,
+            ...(mood === "correct" ? { borderTopLeftRadius: 0, borderTopRightRadius: 0 } : {}),
             transform: `translate(${lookDirection.x}px, ${lookDirection.y}px)`,
           }}
         />

@@ -363,34 +363,22 @@ export const sendMessageToTutor = action({
       attempts: progress?.attempts,
     });
 
-    // Handle tool calls (mark correct, etc.)
+    // Handle tool calls (evaluate response)
     if (response.toolCalls && response.toolCalls.length > 0) {
       for (const toolCall of response.toolCalls) {
-        if (toolCall.name === "mark_answer_correct" && progress) {
-          const detectedAnswer = toolCall.args.detectedAnswer as string | undefined;
-          const isMCQ = question.questionType === "multiple_choice";
-          await ctx.runMutation(internal.studentProgress.updateProgressStatus, {
-            progressId: progress._id,
-            status: "correct",
-            submittedText: !isMCQ ? detectedAnswer : undefined,
-            selectedAnswer: isMCQ ? detectedAnswer : undefined,
-          });
-        }
-        if (toolCall.name === "mark_answer_incorrect" && progress) {
-          const detectedAnswer = toolCall.args.detectedAnswer as string | undefined;
-          const isMCQ = question.questionType === "multiple_choice";
-          await ctx.runMutation(internal.studentProgress.updateProgressStatus, {
-            progressId: progress._id,
-            status: "incorrect",
-            submittedText: !isMCQ ? detectedAnswer : undefined,
-            selectedAnswer: isMCQ ? detectedAnswer : undefined,
-          });
-        }
         if (toolCall.name === "evaluate_response" && progress) {
-          const isCorrect = toolCall.args.isCorrect as boolean;
+          const isCorrect = Boolean(toolCall.args.isCorrect);
+          const detectedAnswer =
+            typeof toolCall.args.detectedAnswer === "string"
+              ? toolCall.args.detectedAnswer
+              : undefined;
+          const isMCQ = question.questionType === "multiple_choice";
+
           await ctx.runMutation(internal.studentProgress.updateProgressStatus, {
             progressId: progress._id,
             status: isCorrect ? "correct" : "incorrect",
+            submittedText: !isMCQ ? detectedAnswer : undefined,
+            selectedAnswer: isMCQ ? detectedAnswer : undefined,
           });
         }
       }

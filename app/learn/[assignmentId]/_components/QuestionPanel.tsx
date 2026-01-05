@@ -246,21 +246,6 @@ export function QuestionPanel({
                   !isCorrect && "flex-1",
                 )}
               />
-              <Button
-                onClick={handleSubmit}
-                disabled={isCorrect || !textAnswer.trim() || isCheckingAnswer}
-                className={cn("w-full mt-2", isCorrect && "invisible")}
-                size="lg"
-              >
-                {isCheckingAnswer ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Checking...
-                  </>
-                ) : (
-                  "Submit Answer"
-                )}
-              </Button>
             </>
           )}
         </div>
