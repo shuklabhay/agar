@@ -45,10 +45,6 @@ const TUTOR_TOOLS: FunctionDeclaration[] = [
           type: Type.BOOLEAN,
           description: "Whether the response is correct",
         },
-        feedback: {
-          type: Type.STRING,
-          description: "Specific feedback about the response",
-        },
         missingPoints: {
           type: Type.ARRAY,
           items: { type: Type.STRING },
@@ -60,7 +56,7 @@ const TUTOR_TOOLS: FunctionDeclaration[] = [
             "Student's final answer (MCQ letter, number, or short phrase) to log/grayout",
         },
       },
-      required: ["isCorrect", "feedback"],
+      required: ["isCorrect"],
     },
   },
 ];
@@ -86,7 +82,7 @@ Mastery check
 - Do only one mastery check per question; skip it if they solved the original unaided.
 
 Tools and logging (only for final answers)
-- Tool: evaluate_response with isCorrect (bool), feedback (string), missingPoints (string[]), detectedAnswer (string for MCQ letters or short text).
+- Tool: evaluate_response with isCorrect (bool), missingPoints (string[]), detectedAnswer (string for MCQ letters or short text).
 - MCQ: only log/mark when the student clearly guesses (letter OR unambiguous option text); map option text to the letter first.
 - Call evaluate_response when the student gives a clear answer/guess (letter/option, number, or written response). If they're just exploring, don't call it. If STUDENT_SELECTED_OPTION_THIS_TURN or STUDENT_DETECTED_ANSWER is provided (not "none"), call evaluate_response with that letter before more guidance.
 - Do not invent tools.
@@ -210,8 +206,9 @@ ${input.question.additionalInstructionsForWork ? `REQUIRED METHOD: Student must 
       const toolCall = toolCalls[0];
       if (toolCall.name === "evaluate_response") {
         const isCorrect = toolCall.args.isCorrect as boolean;
-        const feedback = toolCall.args.feedback as string;
-        message = isCorrect ? `Excellent! ${feedback}` : `${feedback}`;
+        message = isCorrect
+          ? "Excellent! I've marked your answer correct."
+          : "Thanks for your answer. Let's adjust it.";
       }
     }
 
