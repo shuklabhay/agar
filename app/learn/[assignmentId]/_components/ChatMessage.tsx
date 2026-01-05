@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { CheckCircle, XCircle } from "lucide-react";
+import { CheckCircle, XCircle, Paperclip } from "lucide-react";
 import { Id } from "@/convex/_generated/dataModel";
 import { RioEyes } from "./RioEyes";
 import { useEffect, useState, useRef } from "react";
@@ -14,10 +14,21 @@ interface ChatMessageProps {
     content: string;
     timestamp: number;
     toolCall?: ToolCall;
+    attachments?: Array<{
+      name: string;
+      type: string;
+      storageId?: Id<"_storage">;
+      url?: string;
+    }>;
   };
   showRio?: boolean;
   isLastFromSender?: boolean;
   isSending?: boolean;
+  onAttachmentClick?: (att: {
+    name: string;
+    type: string;
+    url?: string;
+  }) => void;
 }
 
 export function ChatMessage({
@@ -25,9 +36,11 @@ export function ChatMessage({
   showRio = false,
   isLastFromSender = true,
   isSending = false,
+  onAttachmentClick,
 }: ChatMessageProps) {
   const isStudent = message.role === "student";
   const isTutor = message.role === "tutor";
+  const attachments = message.attachments ?? [];
 
   // Rio should hide when sending (fade out early)
   const shouldShowRio = showRio && !isSending;
@@ -131,6 +144,21 @@ export function ChatMessage({
     <div
       className={cn("flex flex-col", isStudent ? "items-end" : "items-start")}
     >
+      {attachments.length > 0 && (
+        <div className="flex items-center gap-2 mb-1 text-xs text-muted-foreground">
+          <Paperclip className="h-3 w-3" />
+          {attachments.map((att, idx) => (
+            <button
+              key={`${att.name}-${idx}`}
+              type="button"
+              onClick={() => onAttachmentClick?.(att)}
+              className="underline hover:text-foreground"
+            >
+              {att.name}
+            </button>
+          ))}
+        </div>
+      )}
       {/* Message row with Rio */}
       <div
         className={cn(

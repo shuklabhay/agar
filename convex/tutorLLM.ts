@@ -2,7 +2,7 @@
 
 import { GoogleGenAI, FunctionDeclaration, Type } from "@google/genai";
 
-const TUTOR_MODEL = "gemini-2.0-flash";
+const TUTOR_MODEL = "gemini-2.0-flash-lite";
 
 function getClient(): GoogleGenAI {
   const apiKey = process.env.GEMINI_API_KEY;
@@ -93,6 +93,7 @@ const SYSTEM_INSTRUCTION = `You are Rio, a helpful tutor. Be friendly and encour
 - mark_answer_correct: ONLY when student clearly states the correct FINAL answer
 - evaluate_response: ONLY when student submits a complete written answer
 - mark_answer_incorrect: When the student locks in a clearly wrong MCQ letter/number
+Only use these tools—do not invent new ones.
 
 ## CRITICAL: When to call tools
 - Call mark_answer_correct ONLY when you see the correct answer as the student's final conclusion. If you tell them they're right, you MUST call the tool.
@@ -230,7 +231,11 @@ ${input.question.additionalInstructionsForWork ? `REQUIRED METHOD: Student must 
         const feedback = toolCall.args.feedback as string;
         message = isCorrect ? `Excellent! ${feedback}` : `${feedback}`;
       } else if (toolCall.name === "mark_answer_incorrect") {
-        message = "Not quite—that choice isn't correct. Let's adjust and try a different approach.";
+        const reasoning =
+          (typeof toolCall.args.reasoning === "string"
+            ? toolCall.args.reasoning
+            : "") || "";
+        message = reasoning;
       }
     }
 

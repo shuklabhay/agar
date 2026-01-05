@@ -62,12 +62,13 @@ export function QuestionPanel({
     const isMCQ = questionType === "multiple_choice";
 
     if (isMCQ) {
-      if (progress?.status === "incorrect" && progress.selectedAnswer) {
-        setIncorrectOptions((prev) =>
-          prev.includes(progress.selectedAnswer)
-            ? prev
-            : [...prev, progress.selectedAnswer],
-        );
+      if (progress?.status === "incorrect") {
+        const wrongAnswer = progress.selectedAnswer;
+        if (wrongAnswer) {
+          setIncorrectOptions((prev) =>
+            prev.includes(wrongAnswer) ? prev : [...prev, wrongAnswer],
+          );
+        }
         setSelectedOption(null);
       } else {
         setIncorrectOptions([]);
@@ -246,7 +247,7 @@ export function QuestionPanel({
                 )}
               />
               <Button
-                onClick={handleCheckAnswer}
+                onClick={handleSubmit}
                 disabled={isCorrect || !textAnswer.trim() || isCheckingAnswer}
                 className={cn("w-full mt-2", isCorrect && "invisible")}
                 size="lg"

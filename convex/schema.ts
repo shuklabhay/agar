@@ -149,6 +149,7 @@ export default defineSchema({
           name: v.string(),
           type: v.string(),
           storageId: v.id("_storage"),
+          url: v.optional(v.string()),
         }),
       ),
     ),

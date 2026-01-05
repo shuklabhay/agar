@@ -7,6 +7,12 @@ import { Id } from "@/convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   Send,
   Loader2,
   Paperclip,
@@ -33,9 +39,44 @@ export function ChatPanel({
   const [input, setInput] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
+  const [isDraggingOver, setIsDraggingOver] = useState(false);
+  const [rateLimitInfo, setRateLimitInfo] = useState<{
+    scope: "minute" | "day";
+    retryAfterMs: number;
+    limit: number;
+    retryAt: number;
+  } | null>(null);
+  const [retryCountdownMs, setRetryCountdownMs] = useState(0);
+  const [previewAttachment, setPreviewAttachment] = useState<{
+    name: string;
+    type: string;
+    url?: string;
+  } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  type RateLimitResponse = {
+    rateLimited?: {
+      scope: "minute" | "day";
+      retryAfterMs: number;
+      limit: number;
+    };
+  };
+
+  type AttachmentPreview = {
+    name: string;
+    type: string;
+    url?: string;
+  };
+
+  const addFiles = (files: File[]) => {
+    if (!files.length) return;
+    setAttachedFiles((prev) => {
+      const remainingSlots = Math.max(0, 3 - prev.length);
+      return [...prev, ...files.slice(0, remainingSlots)];
+    });
+  };
 
   // Helper to get question number from questionId
   const getQuestionNumber = (qId: Id<"questions">) => {
@@ -70,14 +111,54 @@ export function ChatPanel({
     }
   }, [input]);
 
+  // Track rate limit countdown
+  useEffect(() => {
+    if (!rateLimitInfo) {
+      setRetryCountdownMs(0);
+      return;
+    }
+    const updateCountdown = () => {
+      const remaining = rateLimitInfo.retryAt - Date.now();
+      setRetryCountdownMs(Math.max(0, remaining));
+    };
+    updateCountdown();
+    const timer = setInterval(updateCountdown, 500);
+    return () => clearInterval(timer);
+  }, [rateLimitInfo]);
+
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
-    setAttachedFiles((prev) => [...prev, ...files].slice(0, 3)); // Max 3 files
+    addFiles(files);
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const removeFile = (index: number) => {
     setAttachedFiles((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    if (!sessionId || !questionId) return;
+    const items = Array.from(e.dataTransfer?.items || []);
+    const hasFiles = items.some((item) => item.kind === "file");
+    if (hasFiles) {
+      e.preventDefault();
+      setIsDraggingOver(true);
+    }
+  };
+
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    if (e.currentTarget === e.target) {
+      setIsDraggingOver(false);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDraggingOver(false);
+    if (!sessionId || !questionId) return;
+    const files = Array.from(e.dataTransfer.files || []);
+    addFiles(files);
   };
 
   const fileToBase64 = (file: File): Promise<string> => {
@@ -94,32 +175,49 @@ export function ChatPanel({
       (!input.trim() && attachedFiles.length === 0) ||
       !sessionId ||
       !questionId ||
-      isSending
+      isSending ||
+      (rateLimitInfo && retryCountdownMs > 0)
     )
       return;
 
-    const message = input.trim();
-    setInput("");
+    const messageToSend = input.trim() || "Here's my work:";
     setIsSending(true);
+    setRateLimitInfo(null);
 
     try {
+      const filesToSend = attachedFiles;
+
       // Convert files to base64 for sending to LLM
       const fileData = await Promise.all(
-        attachedFiles.map(async (file) => ({
+        filesToSend.map(async (file) => ({
           name: file.name,
           type: file.type,
           data: await fileToBase64(file),
         })),
       );
 
+      // Clear bottom-row attachments immediately
       setAttachedFiles([]);
 
-      await sendMessage({
+      const response = (await sendMessage({
         sessionId,
         questionId,
-        message: message || "Here's my work:",
+        message: messageToSend,
         files: fileData.length > 0 ? fileData : undefined,
-      });
+      })) as RateLimitResponse;
+
+      if (response?.rateLimited) {
+        const info = response.rateLimited;
+        setRateLimitInfo({
+          ...info,
+          retryAt: Date.now() + info.retryAfterMs,
+        });
+        // Restore attachments for retry
+        setAttachedFiles(filesToSend);
+        return;
+      }
+
+      setInput("");
     } catch (error) {
       console.error("Failed to send message:", error);
     } finally {
@@ -135,6 +233,42 @@ export function ChatPanel({
     }
   };
 
+  const renderPreviewContent = (att: AttachmentPreview) => {
+    if (!att.url) return null;
+    if (att.type.startsWith("image/")) {
+      return (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={att.url}
+          alt={att.name}
+          className="w-full h-auto rounded-md"
+        />
+      );
+    }
+    if (att.type === "application/pdf") {
+      return (
+        <iframe
+          src={att.url}
+          className="w-full h-full rounded-md"
+          title={att.name}
+        />
+      );
+    }
+    return (
+      <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+        <FileText className="h-10 w-10 mb-3" />
+        <p className="mb-2 text-sm">Preview not available for this file type.</p>
+        <a
+          href={att.url}
+          download={att.name}
+          className="text-primary underline"
+        >
+          Download to view
+        </a>
+      </div>
+    );
+  };
+
   if (!sessionId || !questionId) {
     return (
       <div className="h-full flex items-center justify-center text-muted-foreground p-4">
@@ -144,9 +278,22 @@ export function ChatPanel({
   }
 
   return (
-    <div className="h-full flex flex-col">
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+    <>
+      <div
+        className="h-full flex flex-col relative"
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      >
+        {isDraggingOver && (
+          <div className="absolute inset-0 z-20 m-4 rounded-lg bg-background/90 border-2 border-dashed border-primary flex items-center justify-center pointer-events-none shadow-lg">
+            <span className="text-sm font-medium text-foreground px-4 py-3">
+              Drop files to attach to your message
+            </span>
+          </div>
+        )}
+        {/* Messages */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {chatHistory?.map((msg, index) => {
           const prevMsg = index > 0 ? chatHistory[index - 1] : null;
           const nextMsg =
@@ -178,10 +325,40 @@ export function ChatPanel({
                 showRio={isLastTutorMessage}
                 isLastFromSender={isLastFromSender}
                 isSending={isSending}
+                onAttachmentClick={(att) => setPreviewAttachment(att)}
               />
             </div>
           );
         })}
+
+        {rateLimitInfo && (
+          <div className="flex items-start gap-3 px-2">
+            <div className="rounded-2xl bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-200 px-3 py-2 text-sm shadow-sm">
+              <div className="font-medium">
+                You&apos;re sending messages too quickly (limit {rateLimitInfo.limit} per{" "}
+                {rateLimitInfo.scope === "minute" ? "minute" : "day"}).
+              </div>
+              <div className="flex items-center gap-3 mt-1">
+                <span>
+                  {retryCountdownMs > 0
+                    ? `Try again in ${Math.ceil(retryCountdownMs / 1000)}s.`
+                    : "You can retry now."}
+                </span>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={handleSend}
+                  disabled={isSending || retryCountdownMs > 0}
+                  className="h-8"
+                >
+                  {retryCountdownMs > 0
+                    ? `Retry in ${Math.ceil(retryCountdownMs / 1000)}s`
+                    : "Retry"}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Show divider for current question if no messages yet or different from last message */}
         {question &&
@@ -257,7 +434,9 @@ export function ChatPanel({
           <Button
             onClick={handleSend}
             disabled={
-              (!input.trim() && attachedFiles.length === 0) || isSending
+              (!input.trim() && attachedFiles.length === 0) ||
+              isSending ||
+              (!!rateLimitInfo && retryCountdownMs > 0)
             }
             size="icon"
             className="h-10 w-10 shrink-0"
@@ -270,6 +449,30 @@ export function ChatPanel({
           </Button>
         </div>
       </div>
-    </div>
+
+      {/* Close chat container */}
+      </div>
+
+      <Dialog
+        open={!!previewAttachment}
+        onOpenChange={(open) => {
+          if (!open) setPreviewAttachment(null);
+        }}
+      >
+        <DialogContent
+          className="!max-w-none flex flex-col"
+          style={{ width: "80vw", height: "85vh" }}
+        >
+          <DialogHeader>
+            <DialogTitle className="truncate pr-8">
+              {previewAttachment?.name}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 min-h-0 overflow-auto">
+            {previewAttachment && renderPreviewContent(previewAttachment)}
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
