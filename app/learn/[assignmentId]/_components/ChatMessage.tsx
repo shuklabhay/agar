@@ -87,51 +87,21 @@ export function ChatMessage({
     if (!message.toolCall) return null;
 
     const { name, args } = message.toolCall;
-
-    if (name === "mark_answer_correct") {
-      const questionNumber = args.questionNumber as string | undefined;
-      return (
-        <div className="flex items-center gap-2 text-green-600 dark:text-green-400 text-sm mt-2 bg-green-50 dark:bg-green-900/20 rounded-lg px-3 py-2">
-          <CheckCircle className="h-4 w-4" />
-          <span className="font-medium">
-            Question {questionNumber ?? "?"} marked correct!
-          </span>
-        </div>
-      );
-    }
-
-    if (name === "mark_answer_incorrect") {
-      const questionNumber = args.questionNumber as string | undefined;
-      return (
-        <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400 text-sm mt-2 bg-amber-50 dark:bg-amber-900/20 rounded-lg px-3 py-2">
-          <XCircle className="h-4 w-4" />
-          <span className="font-medium">
-            Marked incorrect on Question {questionNumber ?? "?"}. Try another approach.
-          </span>
-        </div>
-      );
-    }
-
     if (name === "evaluate_response") {
       const isCorrect = args.isCorrect as boolean;
+      const questionNumber = args.questionNumber as string | undefined;
+      if (!isCorrect) return null;
+
       return (
         <div
           className={cn(
             "flex items-center gap-2 text-sm mt-2 rounded-lg px-3 py-2",
-            isCorrect
-              ? "text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20"
-              : "text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20",
+            "text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20",
           )}
         >
-          {isCorrect ? (
-            <CheckCircle className="h-4 w-4" />
-          ) : (
-            <XCircle className="h-4 w-4" />
-          )}
+          <CheckCircle className="h-4 w-4" />
           <span className="font-medium">
-            {isCorrect
-              ? "Response evaluated: Correct!"
-              : "Response needs revision"}
+            Question {questionNumber ?? "?"} marked correct!
           </span>
         </div>
       );

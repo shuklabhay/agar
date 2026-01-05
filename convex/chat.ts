@@ -255,6 +255,7 @@ export const sendMessageToTutor = action({
     sessionId: v.id("studentSessions"),
     questionId: v.id("questions"),
     message: v.string(),
+    selectedOption: v.optional(v.string()),
     files: v.optional(
       v.array(
         v.object({
@@ -371,7 +372,7 @@ export const sendMessageToTutor = action({
           const detectedAnswer =
             typeof toolCall.args.detectedAnswer === "string"
               ? toolCall.args.detectedAnswer
-              : undefined;
+              : args.selectedOption;
           const isMCQ = question.questionType === "multiple_choice";
 
           await ctx.runMutation(internal.studentProgress.updateProgressStatus, {

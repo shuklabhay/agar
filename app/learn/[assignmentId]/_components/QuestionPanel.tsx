@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useMutation, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
@@ -50,48 +50,51 @@ export function QuestionPanel({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId, question?._id, initProgress]);
 
-  // Sync selected option with progress
+  // Track question changes to avoid clobbering user input on status updates
+  const prevQuestionId = useRef<string | null>(null);
+
   useEffect(() => {
     if (!questionId || !questionType) {
       setSelectedOption(null);
       setTextAnswer("");
       setIncorrectOptions([]);
+      prevQuestionId.current = null;
       return;
     }
 
-    const isMCQ = questionType === "multiple_choice";
-
-    if (isMCQ) {
-      if (progress?.status === "incorrect") {
-        const wrongAnswer = progress.selectedAnswer;
-        if (wrongAnswer) {
-          setIncorrectOptions((prev) =>
-            prev.includes(wrongAnswer) ? prev : [...prev, wrongAnswer],
-          );
-        }
-        setSelectedOption(null);
-      } else {
-        setIncorrectOptions([]);
-        setSelectedOption(progress?.selectedAnswer ?? null);
-      }
-      // MCQ does not use text inputs
-      setTextAnswer("");
-    } else {
+    const isNewQuestion = prevQuestionId.current !== questionId;
+    if (isNewQuestion) {
+      prevQuestionId.current = questionId;
       setIncorrectOptions([]);
-      setSelectedOption(null);
-      if (progress?.submittedText) {
-        setTextAnswer(progress.submittedText);
-      } else {
+      if (questionType === "multiple_choice") {
+        setSelectedOption(progress?.selectedAnswer ?? null);
         setTextAnswer("");
+      } else {
+        setSelectedOption(null);
+        setTextAnswer(progress?.submittedText ?? "");
       }
     }
   }, [
-    progress?.selectedAnswer,
-    progress?.submittedText,
-    progress?.status,
     questionId,
     questionType,
+    progress?.selectedAnswer,
+    progress?.submittedText,
   ]);
+
+  // Track incorrect MCQ attempts without clearing user input on in_progress updates
+  useEffect(() => {
+    if (questionType !== "multiple_choice") return;
+    if (progress?.status === "incorrect" && progress.selectedAnswer) {
+      const wrong = progress.selectedAnswer;
+      setIncorrectOptions((prev) =>
+        wrong && !prev.includes(wrong) ? [...prev, wrong] : prev,
+      );
+      setSelectedOption(null);
+    }
+    if (progress?.status === "correct" && progress.selectedAnswer) {
+      setSelectedOption(progress.selectedAnswer);
+    }
+  }, [progress?.status, progress?.selectedAnswer, questionType]);
 
   // Mark as in progress when user starts interacting
   const handleInteraction = () => {
@@ -115,11 +118,39 @@ export function QuestionPanel({
           ? `I choose option ${answer}.`
           : `Here's my answer to the question:\n\n${answer}`;
 
-      await sendMessageToTutor({
+      const response = await sendMessageToTutor({
         sessionId,
         questionId: question._id,
         message: `${answerText}\n\nPlease check if this is correct and give me feedback.`,
+        selectedOption:
+          question.questionType === "multiple_choice" ? selectedOption : undefined,
       });
+
+      // Optimistic handling for MCQ incorrect answers when LLM doesn't return detectedAnswer
+      if (
+        question.questionType === "multiple_choice" &&
+        response?.toolCalls &&
+        Array.isArray(response.toolCalls)
+      ) {
+        const evalCall = response.toolCalls.find(
+          (call) => call.name === "evaluate_response",
+        );
+        if (evalCall) {
+          const isCorrect = Boolean(evalCall.args?.isCorrect);
+          if (!isCorrect) {
+            const detected =
+              typeof evalCall.args?.detectedAnswer === "string"
+                ? evalCall.args.detectedAnswer
+                : selectedOption;
+            if (detected) {
+              setIncorrectOptions((prev) =>
+                prev.includes(detected) ? prev : [...prev, detected],
+              );
+              setSelectedOption(null);
+            }
+          }
+        }
+      }
     } catch (error) {
       console.error("Failed to submit answer:", error);
     } finally {
@@ -184,7 +215,8 @@ export function QuestionPanel({
                 {question.answerOptionsMCQ.map((option, i) => {
                   const letter = String.fromCharCode(65 + i);
                   const isSelected = selectedOption === letter;
-                  const isDisabled = incorrectOptions.includes(letter) || isCorrect;
+                  const isDisabled =
+                    incorrectOptions.includes(letter) || isCorrect;
                   return (
                     <Button
                       key={i}

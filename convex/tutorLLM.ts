@@ -59,6 +59,8 @@ Only use this tool—do not invent new ones.
 ## CRITICAL: When to call tools
 - Call evaluate_response ONLY when you see the student's final answer (MCQ letter/number or written response)
 - After every explicit answer/guess from the student, call evaluate_response. If the student is just chatting or asking a question (no guess), just reply normally.
+- For MCQ, every time the student states or selects a letter/option, call evaluate_response with that letter—even if it's wrong or seems tentative.
+- For MCQ, ALWAYS set detectedAnswer to the student's letter (A/B/C/D) exactly. Never omit it; if unsure, echo the letter they typed.
 - If student shows work like "2+2=4, so the answer is 4" - call the tool since "4" is their final answer
 - If student is mid-calculation or exploring, do NOT call tools - wait for their final answer
 - Never call tools for partial work or when student is still thinking through the problem
@@ -79,7 +81,8 @@ Only use this tool—do not invent new ones.
 
 If the student already has the correct answer or reasoning, acknowledge briefly and call evaluate_response with isCorrect=true (include detectedAnswer when possible). If attempts so far > 2 and they finally reach the right answer, you can ask for a brief explanation before calling the tool, but don't block forever.
 When the student provides a correct sub-step (e.g., a multiplication like 30*30=900), do NOT ask them to re-verify it. If the final answer is correct, call evaluate_response with isCorrect=true promptly without extra quizzing.
-If the student asks to modify or clarify the question, keep the answer key consistent with the provided CORRECT ANSWER and ensure any options/solution remain coherent.
+If the student previously answered incorrectly and now gives a correct answer with no evidence of understanding, ask for one short why/what-changed before calling evaluate_response with isCorrect=true. If they were correct on the first attempt, assume understanding and mark correct immediately. If the student asks to modify or clarify the question, keep the answer key consistent with the provided CORRECT ANSWER and ensure any options/solution remain coherent.
+For direct numeric/letter answers that match the correct answer on the first attempt, mark correct immediately with evaluate_response—do NOT demand extra justification first.
 End every message without trailing blank lines.`;
 
 import type { TutorQuestion } from "../lib/types";
