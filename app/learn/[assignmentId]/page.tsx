@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { useQuery, useMutation } from "convex/react";
+import { useQuery, useMutation, useConvexAuth } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import Cookies from "js-cookie";
@@ -24,7 +24,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { BookOpen, Loader2, AlertCircle } from "lucide-react";
+import { BookOpen, Loader2, AlertCircle, ShieldCheck } from "lucide-react";
 import { useResizablePanel } from "@/hooks/use-resizable-panel";
 
 const COOKIE_PREFIX = "agar_session_";
@@ -33,12 +33,17 @@ export default function LearnPage() {
   const params = useParams();
   const assignmentId = params.assignmentId as Id<"assignments">;
   const router = useRouter();
+  const { isAuthenticated, isLoading: isAuthLoading } = useConvexAuth();
 
   // Session state
   const [sessionToken, setSessionToken] = useState<string | null>(null);
   const [sessionId, setSessionId] = useState<Id<"studentSessions"> | null>(
     null,
   );
+  const [teacherSessionId, setTeacherSessionId] =
+    useState<Id<"studentSessions"> | null>(null);
+  const [isCreatingTeacherSession, setIsCreatingTeacherSession] =
+    useState(false);
   const [showWelcome, setShowWelcome] = useState(true);
   const [isStarting, setIsStarting] = useState(false);
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
@@ -62,20 +67,27 @@ export default function LearnPage() {
   const assignment = useQuery(api.studentSessions.getAssignmentForStudent, {
     assignmentId,
   });
-  const existingStudents = useQuery(api.studentSessions.getExistingStudents, {
-    assignmentId,
-  });
+  const teacherPreview = useQuery(
+    api.studentSessions.getTeacherPreviewSession,
+    isAuthenticated ? { assignmentId } : "skip",
+  );
+  const isTeacherView = Boolean(isAuthenticated && teacherPreview?.isTeacher);
+  const existingStudents = useQuery(
+    api.studentSessions.getExistingStudents,
+    isTeacherView ? "skip" : { assignmentId },
+  );
   const session = useQuery(
     api.studentSessions.getSession,
-    sessionToken ? { sessionToken } : "skip",
+    !isTeacherView && sessionToken ? { sessionToken } : "skip",
   );
+  const activeSessionId = isTeacherView ? teacherSessionId : sessionId;
   const questions = useQuery(
     api.studentProgress.getQuestionsForStudent,
-    sessionId ? { assignmentId } : "skip",
+    activeSessionId ? { assignmentId } : "skip",
   );
   const progress = useQuery(
     api.studentProgress.getProgress,
-    sessionId ? { sessionId } : "skip",
+    activeSessionId ? { sessionId: activeSessionId } : "skip",
   );
 
   const totalQuestions = questions?.length ?? 0;
@@ -87,6 +99,9 @@ export default function LearnPage() {
   // Mutations
   const startSession = useMutation(api.studentSessions.startSession);
   const resumeSession = useMutation(api.studentSessions.resumeSession);
+  const startTeacherPreviewSession = useMutation(
+    api.studentSessions.startTeacherPreviewSession,
+  );
   const recordTimeSpent = useMutation(api.studentProgress.recordTimeSpent);
   const restartTimeTracking = useMutation(
     api.studentProgress.restartTimeTracking,
@@ -94,20 +109,29 @@ export default function LearnPage() {
 
   // Check for existing session cookie on mount
   useEffect(() => {
+    if (isTeacherView) return;
     const token = Cookies.get(`${COOKIE_PREFIX}${assignmentId}`);
     if (token) {
       setSessionToken(token);
     }
-  }, [assignmentId]);
+  }, [assignmentId, isTeacherView]);
 
   // Track if we've set the initial question index
   const hasSetInitialIndex = useRef(false);
+  const teacherSessionRequested = useRef(false);
 
   // Track previous question for time recording
   const previousQuestionId = useRef<Id<"questions"> | null>(null);
 
+  useEffect(() => {
+    hasSetInitialIndex.current = false;
+    lastCorrectQuestionRef.current = null;
+    previousQuestionId.current = null;
+  }, [activeSessionId]);
+
   // Sync session from query result
   useEffect(() => {
+    if (isTeacherView) return;
     if (session) {
       setSessionId(session._id);
       setShowWelcome(false);
@@ -118,7 +142,58 @@ export default function LearnPage() {
       setShowWelcome(true);
       hasSetInitialIndex.current = false;
     }
-  }, [session, sessionToken, assignmentId]);
+  }, [session, sessionToken, assignmentId, isTeacherView]);
+
+  // Start or reuse a teacher preview session when applicable
+  useEffect(() => {
+    if (!isTeacherView) {
+      setTeacherSessionId(null);
+      teacherSessionRequested.current = false;
+      return;
+    }
+
+    if (!assignment || teacherPreview === undefined) return;
+
+    const existingTeacherSessionId =
+      teacherPreview.sessionId ?? teacherSessionId;
+
+    if (existingTeacherSessionId) {
+      setTeacherSessionId(existingTeacherSessionId);
+      setShowWelcome(false);
+      teacherSessionRequested.current = false;
+      return;
+    }
+
+    if (
+      teacherSessionRequested.current ||
+      isCreatingTeacherSession ||
+      teacherSessionId
+    )
+      return;
+
+    teacherSessionRequested.current = true;
+    setIsCreatingTeacherSession(true);
+    startTeacherPreviewSession({ assignmentId })
+      .then((result) => {
+        setTeacherSessionId(result.sessionId);
+        setShowWelcome(false);
+      })
+      .catch((error) => {
+        console.error("Failed to start teacher preview session:", error);
+      })
+      .finally(() => {
+        setIsCreatingTeacherSession(false);
+        teacherSessionRequested.current = false;
+      });
+  }, [
+    assignment,
+    assignmentId,
+    isCreatingTeacherSession,
+    isTeacherView,
+    startTeacherPreviewSession,
+    teacherPreview,
+    teacherSessionId,
+  ]);
 
   // Set initial question to earliest not-correct question
   useEffect(() => {
@@ -209,23 +284,26 @@ export default function LearnPage() {
 
     // Record time for previous question when switching
     if (
-      sessionId &&
+      activeSessionId &&
       previousQuestionId.current &&
       previousQuestionId.current !== currentQId
     ) {
-      recordTimeSpent({ sessionId, questionId: previousQuestionId.current });
+      recordTimeSpent({
+        sessionId: activeSessionId,
+        questionId: previousQuestionId.current,
+      });
     }
 
     // Update ref to current question
     previousQuestionId.current = currentQId ?? null;
-  }, [sessionId, currentQuestionIndex, questions, recordTimeSpent]);
+  }, [activeSessionId, currentQuestionIndex, questions, recordTimeSpent]);
 
   // Record time when leaving the page or switching tabs
   useEffect(() => {
     const recordCurrentTime = () => {
-      if (sessionId && previousQuestionId.current) {
+      if (activeSessionId && previousQuestionId.current) {
         const payload = JSON.stringify({
-          sessionId,
+          sessionId: activeSessionId,
           questionId: previousQuestionId.current,
         });
         // Convex HTTP endpoint URL
@@ -245,12 +323,12 @@ export default function LearnPage() {
         recordCurrentTime();
       } else if (
         document.visibilityState === "visible" &&
-        sessionId &&
+        activeSessionId &&
         previousQuestionId.current
       ) {
         // Tab visible again - restart time tracking
         restartTimeTracking({
-          sessionId,
+          sessionId: activeSessionId,
           questionId: previousQuestionId.current,
         });
       }
@@ -263,7 +341,7 @@ export default function LearnPage() {
       window.removeEventListener("beforeunload", recordCurrentTime);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [sessionId, restartTimeTracking]);
+  }, [activeSessionId, restartTimeTracking]);
 
   // Handle starting a new session
   const handleStartNew = async (name: string) => {
@@ -279,6 +357,7 @@ export default function LearnPage() {
       });
       setSessionToken(result.sessionToken);
       setSessionId(result.sessionId);
+      setTeacherSessionId(null);
       setShowWelcome(false);
     } catch (error) {
       console.error("Failed to start session:", error);
@@ -298,6 +377,7 @@ export default function LearnPage() {
       });
       setSessionToken(result.sessionToken);
       setSessionId(result.sessionId);
+      setTeacherSessionId(null);
       setShowWelcome(false);
     } catch (error) {
       console.error("Failed to resume session:", error);
@@ -311,9 +391,9 @@ export default function LearnPage() {
     setIsLeaving(true);
 
     try {
-      if (sessionId && previousQuestionId.current) {
+      if (activeSessionId && previousQuestionId.current) {
         await recordTimeSpent({
-          sessionId,
+          sessionId: activeSessionId,
           questionId: previousQuestionId.current,
         });
       }
@@ -359,6 +439,34 @@ export default function LearnPage() {
     );
   }
 
+  const waitingForTeacherCheck =
+    (isAuthLoading ||
+      (isAuthenticated && teacherPreview === undefined)) &&
+    !sessionToken &&
+    !activeSessionId;
+
+  if (waitingForTeacherCheck) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <div className="flex items-center gap-2 text-muted-foreground">
+          <Loader2 className="h-5 w-5 animate-spin" />
+          <span>Preparing your view...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (isTeacherView && (!activeSessionId || isCreatingTeacherSession)) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <div className="flex items-center gap-2 text-muted-foreground">
+          <Loader2 className="h-5 w-5 animate-spin" />
+          <span>Loading teacher preview...</span>
+        </div>
+      </div>
+    );
+  }
+
   // Current question data
   const currentQuestion = questions?.[currentQuestionIndex];
   const currentProgress = progress?.find(
@@ -366,7 +474,9 @@ export default function LearnPage() {
   );
 
   // Show welcome dialog if no session
-  if (showWelcome || !sessionId) {
+  const shouldShowWelcome = !isTeacherView && (showWelcome || !activeSessionId);
+
+  if (shouldShowWelcome) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4 bg-muted/30">
         <WelcomeDialog
@@ -386,6 +496,14 @@ export default function LearnPage() {
   return (
     <>
       <div className="h-screen flex flex-col bg-background">
+        {isTeacherView && (
+          <div className="bg-amber-100 border-b border-amber-200 text-amber-900 px-4 py-2">
+            <div className="max-w-7xl mx-auto flex items-center justify-center gap-2 text-sm font-medium text-center">
+              <ShieldCheck className="h-4 w-4" />
+              <span>Teacher mode — actions here don&apos;t affect student data or analytics.</span>
+            </div>
+          </div>
+        )}
         {/* Header */}
         <header className="border-b px-4 py-3 bg-background shrink-0">
           <div className="max-w-7xl mx-auto space-y-2">
@@ -462,7 +580,7 @@ export default function LearnPage() {
                   Math.min((questions?.length ?? 1) - 1, i + 1),
                 )
               }
-              sessionId={sessionId}
+              sessionId={activeSessionId as Id<"studentSessions">}
             />
           </div>
 
@@ -480,7 +598,7 @@ export default function LearnPage() {
             style={{ width: `${100 - leftPanelWidth}%` }}
           >
             <ChatPanel
-              sessionId={sessionId}
+              sessionId={activeSessionId}
               questionId={currentQuestion?._id}
               question={currentQuestion}
               questions={questions ?? []}

@@ -38,6 +38,12 @@ function getUnderstandingLevel(
   return "low";
 }
 
+function getTrackedSessions<T extends { sessionMode?: string }>(
+  sessions: T[],
+): T[] {
+  return sessions.filter((s) => s.sessionMode !== "teacher_preview");
+}
+
 // Get overall class analytics across all assignments
 export const getClassAnalytics = query({
   args: { classId: v.id("classes") },
@@ -111,9 +117,10 @@ export const getClassAnalytics = query({
         )
         .collect();
 
+      const trackedSessions = getTrackedSessions(sessions);
       const assignmentStudentCompletionRates: number[] = [];
 
-      for (const session of sessions) {
+      for (const session of trackedSessions) {
         uniqueStudents.add(session.name);
 
         // Get progress for this session
@@ -174,7 +181,7 @@ export const getClassAnalytics = query({
       assignmentStats.push({
         assignmentId: assignment._id,
         assignmentName: assignment.name,
-        studentCount: sessions.length,
+        studentCount: trackedSessions.length,
         completionRate: avgAssignmentCompletion,
         questionCount,
       });
@@ -240,7 +247,9 @@ export const getAssignmentAnalytics = query({
       )
       .collect();
 
-    if (sessions.length === 0) {
+    const trackedSessions = getTrackedSessions(sessions);
+
+    if (trackedSessions.length === 0) {
       return {
         assignmentId: args.assignmentId,
         assignmentName: assignment.name,
@@ -278,7 +287,7 @@ export const getAssignmentAnalytics = query({
     const allTimes: number[] = [];
     const studentCompletionRates: number[] = [];
 
-    for (const session of sessions) {
+    for (const session of trackedSessions) {
       const progress = await ctx.db
         .query("studentProgress")
         .withIndex("by_sessionId", (q) => q.eq("sessionId", session._id))
@@ -373,7 +382,7 @@ export const getAssignmentAnalytics = query({
     return {
       assignmentId: args.assignmentId,
       assignmentName: assignment.name,
-      totalStudents: sessions.length,
+      totalStudents: trackedSessions.length,
       totalQuestions: validQuestions.length,
       completionRate,
       messagesBoxPlot: calculateStats(allMessages),
@@ -422,9 +431,10 @@ export const getStudentPerformance = query({
       )
       .collect();
 
+    const trackedSessions = getTrackedSessions(sessions);
     const studentRecords = [];
 
-    for (const session of sessions) {
+    for (const session of trackedSessions) {
       const progress = await ctx.db
         .query("studentProgress")
         .withIndex("by_sessionId", (q) => q.eq("sessionId", session._id))
@@ -523,10 +533,11 @@ export const getAssignmentComparisonBoxPlots = query({
         )
         .collect();
 
+      const trackedSessions = getTrackedSessions(sessions);
       const allMessages: number[] = [];
       const allTimes: number[] = [];
 
-      for (const session of sessions) {
+      for (const session of trackedSessions) {
         const progress = await ctx.db
           .query("studentProgress")
           .withIndex("by_sessionId", (q) => q.eq("sessionId", session._id))
@@ -607,6 +618,8 @@ export const getQuestionBoxPlots = query({
       )
       .collect();
 
+    const trackedSessions = getTrackedSessions(sessions);
+
     // Collect per-question data
     const questionDataMap = new Map<
       string,
@@ -616,7 +629,7 @@ export const getQuestionBoxPlots = query({
       questionDataMap.set(q._id, { messages: [], times: [] });
     }
 
-    for (const session of sessions) {
+    for (const session of trackedSessions) {
       const progress = await ctx.db
         .query("studentProgress")
         .withIndex("by_sessionId", (q) => q.eq("sessionId", session._id))
@@ -732,7 +745,9 @@ export const getAllStudentsInClass = query({
         )
         .collect();
 
-      for (const session of sessions) {
+      const trackedSessions = getTrackedSessions(sessions);
+
+      for (const session of trackedSessions) {
         // Get progress
         const progress = await ctx.db
           .query("studentProgress")
@@ -822,7 +837,7 @@ export const getStudentQuestionDetails = query({
 
     // Get session and verify teacher access
     const session = await ctx.db.get(args.sessionId);
-    if (!session) return [];
+    if (!session || session.sessionMode === "teacher_preview") return [];
 
     const assignment = await ctx.db.get(session.assignmentId);
     if (!assignment) return [];

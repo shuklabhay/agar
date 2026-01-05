@@ -100,6 +100,10 @@ export default defineSchema({
     startedAt: v.number(),
     lastActiveAt: v.number(),
     lastQuestionIndex: v.optional(v.number()),
+    sessionMode: v.optional(
+      v.union(v.literal("student"), v.literal("teacher_preview")),
+    ),
+    userId: v.optional(v.id("users")),
   })
     .index("by_sessionToken", ["sessionToken"])
     .index("by_assignmentId", ["assignmentId"]),
