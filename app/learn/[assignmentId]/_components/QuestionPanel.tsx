@@ -124,7 +124,7 @@ export function QuestionPanel({
         message: `${answerText}\n\nPlease check if this is correct and give me feedback.`,
         selectedOption:
           question.questionType === "multiple_choice"
-            ? selectedOption ?? undefined
+            ? (selectedOption ?? undefined)
             : undefined,
       });
 
@@ -204,7 +204,7 @@ export function QuestionPanel({
         </div>
 
         {/* Question text */}
-        <p className="text-lg leading-relaxed whitespace-pre-wrap mb-6">
+        <p className="text-base text-md leading-relaxed whitespace-pre-wrap mb-6">
           {question.questionText}
         </p>
 

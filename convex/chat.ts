@@ -490,18 +490,38 @@ export const sendMessageToTutor = action({
     if (response.toolCalls && response.toolCalls.length > 0) {
       for (const toolCall of response.toolCalls) {
         if (toolCall.name === "evaluate_response" && progress) {
-          const isCorrect = Boolean(toolCall.args.isCorrect);
+          const reportedIsCorrect = Boolean(toolCall.args.isCorrect);
           const detectedAnswer =
             typeof toolCall.args.detectedAnswer === "string"
               ? toolCall.args.detectedAnswer
               : parsedSelectedOption;
           const isMCQ = question.questionType === "multiple_choice";
 
+          const correctLetters = deriveCorrectLetters(
+            question.answer,
+            question.answerOptionsMCQ,
+          );
+          const answerLetter = isMCQ
+            ? detectedAnswer ?? parsedSelectedOption
+            : undefined;
+
+          // Only log MCQ attempts when a letter guess is present
+          if (isMCQ && !answerLetter) {
+            continue;
+          }
+
+          // Do not mark the correct letter as incorrect
+          const computedCorrect =
+            isMCQ && answerLetter
+              ? correctLetters.includes(answerLetter)
+              : reportedIsCorrect;
+          const isCorrect = reportedIsCorrect || computedCorrect;
+
           await ctx.runMutation(internal.studentProgress.updateProgressStatus, {
             progressId: progress._id,
             status: isCorrect ? "correct" : "incorrect",
             submittedText: !isMCQ ? detectedAnswer : undefined,
-            selectedAnswer: isMCQ ? detectedAnswer : undefined,
+            selectedAnswer: isMCQ ? answerLetter : undefined,
           });
           progressUpdated = true;
         }

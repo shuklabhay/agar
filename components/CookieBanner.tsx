@@ -13,14 +13,14 @@ export function CookieBanner() {
   const [isOpen, setIsOpen] = useState(false);
 
   const getStoredConsent = () => {
+    if (typeof window === "undefined") return undefined;
     try {
-      return Cookies.get(CONSENT_COOKIE_NAME);
+      const cookieConsent = Cookies.get(CONSENT_COOKIE_NAME);
+      if (cookieConsent) return cookieConsent;
     } catch {
-      if (typeof window !== "undefined") {
-        return window.localStorage.getItem(CONSENT_COOKIE_NAME) || undefined;
-      }
-      return undefined;
+      // Ignore and fall back to localStorage
     }
+    return window.localStorage.getItem(CONSENT_COOKIE_NAME) || undefined;
   };
 
   useEffect(() => {
@@ -29,6 +29,9 @@ export function CookieBanner() {
   }, []);
 
   const setConsent = (value: ConsentChoice) => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(CONSENT_COOKIE_NAME, value);
+    }
     try {
       Cookies.set(CONSENT_COOKIE_NAME, value, {
         expires: CONSENT_MAX_AGE_DAYS,
@@ -37,10 +40,7 @@ export function CookieBanner() {
         secure: typeof window !== "undefined" && window.location.protocol === "https:",
       });
     } catch {
-      // Fall back to localStorage if cookies are blocked
-      if (typeof window !== "undefined") {
-        window.localStorage.setItem(CONSENT_COOKIE_NAME, value);
-      }
+      // localStorage already set; ignore cookie errors
     }
     setIsOpen(false);
   };
