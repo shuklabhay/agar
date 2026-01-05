@@ -244,6 +244,34 @@ export const unapproveQuestion = mutation({
   },
 });
 
+// Mark a question as skipped/rejected by the teacher
+export const skipQuestion = mutation({
+  args: { questionId: v.id("questions") },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Not authenticated");
+
+    const question = await ctx.db.get(args.questionId);
+    if (!question) throw new Error("Question not found");
+
+    const assignment = await ctx.db.get(question.assignmentId);
+    if (!assignment) throw new Error("Assignment not found");
+
+    const classDoc = await ctx.db.get(assignment.classId);
+    if (!classDoc || classDoc.teacherId !== userId) {
+      throw new Error("Not authorized");
+    }
+
+    await ctx.db.patch(args.questionId, {
+      questionType: "skipped",
+      status: "ready",
+      answer: undefined,
+      keyPoints: undefined,
+      source: undefined,
+    });
+  },
+});
+
 // Approve all ready questions for an assignment
 export const approveAllQuestions = mutation({
   args: {

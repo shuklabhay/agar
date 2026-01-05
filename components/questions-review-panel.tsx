@@ -34,6 +34,7 @@ import {
   AlertTriangle,
   AlertCircle,
   Undo2,
+  XCircle,
 } from "lucide-react";
 import { useResizablePanel } from "@/hooks/use-resizable-panel";
 import { toast } from "sonner";
@@ -63,6 +64,7 @@ export function QuestionsReviewPanel({
   const [isApprovingAll, setIsApprovingAll] = useState(false);
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [isRemoving, setIsRemoving] = useState(false);
+  const [isRejecting, setIsRejecting] = useState(false);
   const [changeRequest, setChangeRequest] = useState("");
   const [changePopoverOpen, setChangePopoverOpen] = useState(false);
 
@@ -77,6 +79,7 @@ export function QuestionsReviewPanel({
   const unapproveQuestion = useMutation(api.questions.unapproveQuestion);
   const approveAllQuestions = useMutation(api.questions.approveAllQuestions);
   const removeQuestion = useMutation(api.questions.removeQuestion);
+  const skipQuestion = useMutation(api.questions.skipQuestion);
   const regenerateAnswer = useAction(api.answerGeneration.regenerateAnswer);
 
   const sortedQuestions = [...questions].sort(
@@ -229,6 +232,19 @@ export function QuestionsReviewPanel({
       toast.error("Failed to remove question");
     } finally {
       setIsRemoving(false);
+    }
+  };
+
+  const handleReject = async () => {
+    if (!selectedQuestion) return;
+    setIsRejecting(true);
+    try {
+      await skipQuestion({ questionId: selectedQuestion._id });
+      toast.success("Question marked as skipped");
+    } catch {
+      toast.error("Failed to skip question");
+    } finally {
+      setIsRejecting(false);
     }
   };
 
@@ -705,7 +721,50 @@ export function QuestionsReviewPanel({
 
                     {/* Actions - show for all non-pending questions including skipped */}
                     {!isPending && (
-                      <div className="flex items-center gap-2 pt-2 border-t">
+                      <div className="flex flex-wrap items-center gap-2 pt-2 border-t">
+                        {!isSkipped && (
+                          <Button
+                            size="sm"
+                            onClick={handleApprove}
+                            disabled={isApproving || isApprovedQuestion}
+                            className="gap-1"
+                          >
+                            {isApproving ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : isApprovedQuestion ? (
+                              <>
+                                <Check className="h-4 w-4" />
+                                Approved
+                              </>
+                            ) : (
+                              <>
+                                <Check className="h-4 w-4" />
+                                Approve
+                              </>
+                            )}
+                          </Button>
+                        )}
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={handleReject}
+                          disabled={isRejecting || isSkipped}
+                          className="gap-1"
+                        >
+                          {isRejecting ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : isSkipped ? (
+                            <>
+                              <XCircle className="h-4 w-4" />
+                              Rejected
+                            </>
+                          ) : (
+                            <>
+                              <XCircle className="h-4 w-4" />
+                              Reject
+                            </>
+                          )}
+                        </Button>
                         <Button
                           size="sm"
                           variant="outline"

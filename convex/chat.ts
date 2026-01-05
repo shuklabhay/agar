@@ -13,6 +13,8 @@ const MAX_CONTEXT_FILE_BYTES = 5 * 1024 * 1024; // 5MB limit for LLM context att
 
 type RateLimitScope = "minute" | "day";
 
+const BASE64_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
 // Lightweight base64 decoder that works in the Convex default runtime
 function base64ToUint8Array(base64: string): Uint8Array {
   const clean = base64.replace(/[^A-Za-z0-9+/]/g, "");
@@ -44,6 +46,33 @@ function decodeChar(charCode: number): number {
   if (charCode === 47) return 63; // /
   if (charCode === 61) return 0; // =
   return 0;
+}
+
+// Encode Uint8Array to base64 without Buffer (Convex default runtime safe)
+function uint8ArrayToBase64(bytes: Uint8Array): string {
+  let output = "";
+  let i = 0;
+
+  for (; i + 2 < bytes.length; i += 3) {
+    output += BASE64_CHARS[bytes[i] >> 2];
+    output += BASE64_CHARS[((bytes[i] & 0x03) << 4) | (bytes[i + 1] >> 4)];
+    output += BASE64_CHARS[((bytes[i + 1] & 0x0f) << 2) | (bytes[i + 2] >> 6)];
+    output += BASE64_CHARS[bytes[i + 2] & 0x3f];
+  }
+
+  const remaining = bytes.length - i;
+  if (remaining === 1) {
+    output += BASE64_CHARS[bytes[i] >> 2];
+    output += BASE64_CHARS[(bytes[i] & 0x03) << 4];
+    output += "==";
+  } else if (remaining === 2) {
+    output += BASE64_CHARS[bytes[i] >> 2];
+    output += BASE64_CHARS[((bytes[i] & 0x03) << 4) | (bytes[i + 1] >> 4)];
+    output += BASE64_CHARS[(bytes[i + 1] & 0x0f) << 2];
+    output += "=";
+  }
+
+  return output;
 }
 
 function detectMCQOption(message: string, options?: string[]): string | undefined {
@@ -108,8 +137,8 @@ async function loadAssignmentContextFile(ctx: ActionCtx, assignmentId: Id<"assig
   const blob = await ctx.storage.get(primaryFile.storageId);
   if (!blob) return;
 
-  const buffer = Buffer.from(await blob.arrayBuffer());
-  const base64Data = buffer.toString("base64");
+  const arrayBuffer = await blob.arrayBuffer();
+  const base64Data = uint8ArrayToBase64(new Uint8Array(arrayBuffer));
 
   return {
     name: primaryFile.fileName,

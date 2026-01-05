@@ -12,25 +12,44 @@ import {
 export function CookieBanner() {
   const [isOpen, setIsOpen] = useState(false);
 
+  const getStoredConsent = () => {
+    try {
+      return Cookies.get(CONSENT_COOKIE_NAME);
+    } catch {
+      if (typeof window !== "undefined") {
+        return window.localStorage.getItem(CONSENT_COOKIE_NAME) || undefined;
+      }
+      return undefined;
+    }
+  };
+
   useEffect(() => {
-    const hasConsent = Cookies.get(CONSENT_COOKIE_NAME);
+    const hasConsent = getStoredConsent();
     setIsOpen(!hasConsent);
   }, []);
 
   const setConsent = (value: ConsentChoice) => {
-    Cookies.set(CONSENT_COOKIE_NAME, value, {
-      expires: CONSENT_MAX_AGE_DAYS,
-      sameSite: "Lax",
-      path: "/",
-    });
+    try {
+      Cookies.set(CONSENT_COOKIE_NAME, value, {
+        expires: CONSENT_MAX_AGE_DAYS,
+        sameSite: "Lax",
+        path: "/",
+        secure: typeof window !== "undefined" && window.location.protocol === "https:",
+      });
+    } catch {
+      // Fall back to localStorage if cookies are blocked
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem(CONSENT_COOKIE_NAME, value);
+      }
+    }
     setIsOpen(false);
   };
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-x-4 bottom-4 z-[9999] rounded-lg border bg-card/95 p-4 shadow-lg backdrop-blur">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <div className="fixed bottom-4 left-4 z-[9999] w-[min(420px,calc(100%-2rem))] rounded-lg border bg-card/95 p-4 shadow-lg backdrop-blur">
+      <div className="flex flex-col gap-3">
         <div className="text-sm text-muted-foreground">
           We use cookies to run the site (security, session) and to improve it
           with analytics. Choose whether to allow non-essential cookies.
