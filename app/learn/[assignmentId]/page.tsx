@@ -11,6 +11,7 @@ import { WelcomeDialog } from "./_components/WelcomeDialog";
 import { QuestionPanel } from "./_components/QuestionPanel";
 import { ChatPanel } from "./_components/ChatPanel";
 import { ProgressBar } from "./_components/ProgressBar";
+import { CompletionCelebration } from "./_components/CompletionCelebration";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   AlertDialog,
@@ -42,6 +43,8 @@ export default function LearnPage() {
   const [isStarting, setIsStarting] = useState(false);
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const [isLeaving, setIsLeaving] = useState(false);
+  const [showCelebration, setShowCelebration] = useState(false);
+  const [hasShownCelebration, setHasShownCelebration] = useState(false);
 
   // Question navigation
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -74,6 +77,12 @@ export default function LearnPage() {
     api.studentProgress.getProgress,
     sessionId ? { sessionId } : "skip",
   );
+
+  const totalQuestions = questions?.length ?? 0;
+  const correctCount =
+    progress?.filter((p) => p.status === "correct").length ?? 0;
+  const allQuestionsComplete =
+    totalQuestions > 0 && correctCount === totalQuestions;
 
   // Mutations
   const startSession = useMutation(api.studentSessions.startSession);
@@ -165,6 +174,22 @@ export default function LearnPage() {
       // All questions answered - stay on current
     }
   }, [questions, progress, currentQuestionIndex]);
+
+  // Trigger celebration when everything is completed
+  useEffect(() => {
+    if (allQuestionsComplete && !hasShownCelebration) {
+      setShowCelebration(true);
+      setHasShownCelebration(true);
+    }
+  }, [allQuestionsComplete, hasShownCelebration]);
+
+  // Reset celebration state if new questions appear or progress changes
+  useEffect(() => {
+    if (!allQuestionsComplete) {
+      setShowCelebration(false);
+      setHasShownCelebration(false);
+    }
+  }, [allQuestionsComplete]);
 
   const currentQuestionId = questions?.[currentQuestionIndex]?._id;
 
@@ -359,108 +384,117 @@ export default function LearnPage() {
 
   // Main learning interface
   return (
-    <div className="h-screen flex flex-col bg-background">
-      {/* Header */}
-      <header className="border-b px-4 py-3 bg-background shrink-0">
-        <div className="max-w-7xl mx-auto space-y-2">
-          <div className="flex items-center gap-2">
-            <AlertDialog
-              open={showLeaveConfirm}
-              onOpenChange={setShowLeaveConfirm}
-            >
-              <AlertDialogTrigger asChild>
-                <button
-                  type="button"
-                  onClick={() => setShowLeaveConfirm(true)}
-                  className="rounded-md hover:bg-muted transition-colors"
-                  aria-label="Back to landing"
-                >
-                  <BookOpen className="h-5 w-5 text-primary" />
-                </button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>
-                    Are you sure you want to leave?
-                  </AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Your session will pause and you&apos;ll be taken to the
-                    landing page.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel disabled={isLeaving}>
-                    Stay here
-                  </AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={handleLeavePage}
-                    disabled={isLeaving}
+    <>
+      <div className="h-screen flex flex-col bg-background">
+        {/* Header */}
+        <header className="border-b px-4 py-3 bg-background shrink-0">
+          <div className="max-w-7xl mx-auto space-y-2">
+            <div className="flex items-center gap-2">
+              <AlertDialog
+                open={showLeaveConfirm}
+                onOpenChange={setShowLeaveConfirm}
+              >
+                <AlertDialogTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={() => setShowLeaveConfirm(true)}
+                    className="rounded-md hover:bg-muted transition-colors"
+                    aria-label="Back to landing"
                   >
-                    {isLeaving ? "Leaving..." : "Leave page"}
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-            <h1 className="text-lg font-semibold">{assignment.name}</h1>
-            <span className="text-sm text-muted-foreground">
-              {assignment.className}
-            </span>
+                    <BookOpen className="h-5 w-5 text-primary" />
+                  </button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>
+                      Are you sure you want to leave?
+                    </AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Your session will pause and you&apos;ll be taken to the
+                      landing page.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel disabled={isLeaving}>
+                      Stay here
+                    </AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={handleLeavePage}
+                      disabled={isLeaving}
+                    >
+                      {isLeaving ? "Leaving..." : "Leave page"}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+              <h1 className="text-lg font-semibold">{assignment.name}</h1>
+              <span className="text-sm text-muted-foreground">
+                {assignment.className}
+              </span>
+            </div>
+            <ProgressBar
+              questions={questions ?? []}
+              progress={progress ?? []}
+              currentIndex={currentQuestionIndex}
+              onQuestionClick={setCurrentQuestionIndex}
+            />
           </div>
-          <ProgressBar
-            questions={questions ?? []}
-            progress={progress ?? []}
-            currentIndex={currentQuestionIndex}
-            onQuestionClick={setCurrentQuestionIndex}
-          />
-        </div>
-      </header>
+        </header>
 
-      {/* Main content - split panel */}
-      <main ref={containerRef} className="flex-1 flex overflow-hidden">
-        {/* Left Panel - Question */}
-        <div
-          className="overflow-y-auto bg-background"
-          ref={questionScrollRef}
-          style={{ width: `${leftPanelWidth}%` }}
-        >
-          <QuestionPanel
-            question={currentQuestion}
-            progress={currentProgress}
-            questionIndex={currentQuestionIndex}
-            totalQuestions={questions?.length ?? 0}
-            onPrevious={() =>
-              setCurrentQuestionIndex((i) => Math.max(0, i - 1))
-            }
-            onNext={() =>
-              setCurrentQuestionIndex((i) =>
-                Math.min((questions?.length ?? 1) - 1, i + 1),
-              )
-            }
-            sessionId={sessionId}
-          />
-        </div>
+        {/* Main content - split panel */}
+        <main ref={containerRef} className="flex-1 flex overflow-hidden">
+          {/* Left Panel - Question */}
+          <div
+            className="overflow-y-auto bg-background"
+            ref={questionScrollRef}
+            style={{ width: `${leftPanelWidth}%` }}
+          >
+            <QuestionPanel
+              question={currentQuestion}
+              progress={currentProgress}
+              questionIndex={currentQuestionIndex}
+              totalQuestions={questions?.length ?? 0}
+              onPrevious={() =>
+                setCurrentQuestionIndex((i) => Math.max(0, i - 1))
+              }
+              onNext={() =>
+                setCurrentQuestionIndex((i) =>
+                  Math.min((questions?.length ?? 1) - 1, i + 1),
+                )
+              }
+              sessionId={sessionId}
+            />
+          </div>
 
-        {/* Draggable Divider */}
-        <div
-          onMouseDown={handleMouseDown}
-          className="w-1 bg-border hover:bg-primary/50 cursor-col-resize transition-colors shrink-0 relative group"
-        >
-          <div className="absolute inset-y-0 -left-1 -right-1 group-hover:bg-primary/10" />
-        </div>
+          {/* Draggable Divider */}
+          <div
+            onMouseDown={handleMouseDown}
+            className="w-1 bg-border hover:bg-primary/50 cursor-col-resize transition-colors shrink-0 relative group"
+          >
+            <div className="absolute inset-y-0 -left-1 -right-1 group-hover:bg-primary/10" />
+          </div>
 
-        {/* Right Panel - Chat */}
-        <div
-          className="overflow-hidden bg-background"
-          style={{ width: `${100 - leftPanelWidth}%` }}
-        >
-          <ChatPanel
-            sessionId={sessionId}
-            questionId={currentQuestion?._id}
-            question={currentQuestion}
-            questions={questions ?? []}
-          />
-        </div>
-      </main>
-    </div>
+          {/* Right Panel - Chat */}
+          <div
+            className="overflow-hidden bg-background"
+            style={{ width: `${100 - leftPanelWidth}%` }}
+          >
+            <ChatPanel
+              sessionId={sessionId}
+              questionId={currentQuestion?._id}
+              question={currentQuestion}
+              questions={questions ?? []}
+            />
+          </div>
+        </main>
+      </div>
+
+      {showCelebration && (
+        <CompletionCelebration
+          totalQuestions={totalQuestions}
+          onClose={() => setShowCelebration(false)}
+        />
+      )}
+    </>
   );
 }

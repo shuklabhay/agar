@@ -145,3 +145,75 @@
   75% { transform: translateX(-1px) rotate(-1deg); }
   100% { transform: translateX(0) rotate(0); }
 }
+
+/* Celebration animations */
+@keyframes celebrationFloat {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-12px);
+  }
+}
+
+@keyframes celebrationPulse {
+  0% {
+    opacity: 0.6;
+    transform: scale(0.94);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.03);
+  }
+  100% {
+    opacity: 0.6;
+    transform: scale(0.94);
+  }
+}
+
+@keyframes celebrationConfetti {
+  0% {
+    transform: translate3d(0, -12%, 0) rotate(0deg);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  60% {
+    opacity: 0.9;
+  }
+  100% {
+    transform: translate3d(0, 105vh, 0) rotate(360deg);
+    opacity: 0;
+  }
+}
+
+@keyframes celebrationSparkle {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.4;
+  }
+  50% {
+    transform: scale(1.15);
+    opacity: 0.85;
+  }
+}
+
+.celebration-float {
+  animation: celebrationFloat 6s ease-in-out infinite;
+}
+
+.celebration-pulse {
+  animation: celebrationPulse 3.6s ease-in-out infinite;
+}
+
+.celebration-confetti {
+  animation-name: celebrationConfetti;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  will-change: transform, opacity;
+}
+
+.celebration-sparkle {
+  animation: celebrationSparkle 4.5s ease-in-out infinite;
+}
