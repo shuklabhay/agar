@@ -17,6 +17,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   ArrowLeft,
   Upload,
@@ -29,6 +30,7 @@ import {
   Copy,
   Check,
   ExternalLink,
+  Info,
 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -846,7 +848,25 @@ function EditAssignmentView({
 
         {/* Additional Information */}
         <div className="space-y-2">
-          <Label htmlFor="additionalInfo">Additional Information</Label>
+          <div className="flex items-center gap-2">
+            <Label htmlFor="additionalInfo">Additional Information</Label>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  aria-label="Additional information examples"
+                  className="text-muted-foreground hover:text-foreground transition"
+                >
+                  <Info className="h-4 w-4" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="max-w-xs">
+                Examples: which questions to skip or rename, tweak MCQ options,
+                required methods (e.g., show work, use graphing), answer formats
+                (units/decimals), or extra context students should consider.
+              </TooltipContent>
+            </Tooltip>
+          </div>
           <textarea
             id="additionalInfo"
             placeholder="e.g., Skip questions 3 and 7, Reword Q5 to be harder"

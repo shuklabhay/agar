@@ -39,22 +39,19 @@ export function HorizontalBoxPlot({
     );
   }
 
-  // Calculate global min/max for scaling
-  // When showOutliers is false, use whisker endpoints (capped at IQR fences) for scaling
+  // Calculate global min/max for scaling across all rows.
+  // When outliers are hidden, scale by whisker endpoints (fence-capped).
   const allValues = validData.flatMap((d) => {
     const bp = d.boxPlot!;
     if (showOutliers) {
       return [bp.min, bp.max];
-    } else {
-      // Calculate IQR fences
-      const iqr = bp.q3 - bp.q1;
-      const lowerFence = bp.q1 - 1.5 * iqr;
-      const upperFence = bp.q3 + 1.5 * iqr;
-      // Use fence-limited values for scaling
-      const whiskerMin = Math.max(bp.min, lowerFence);
-      const whiskerMax = Math.min(bp.max, upperFence);
-      return [whiskerMin, whiskerMax];
     }
+    const iqr = bp.q3 - bp.q1;
+    const lowerFence = bp.q1 - 1.5 * iqr;
+    const upperFence = bp.q3 + 1.5 * iqr;
+    const whiskerMin = Math.max(bp.min, lowerFence);
+    const whiskerMax = Math.min(bp.max, upperFence);
+    return [whiskerMin, whiskerMax];
   });
   const globalMin = Math.min(...allValues);
   const globalMax = Math.max(...allValues);
@@ -94,24 +91,27 @@ export function HorizontalBoxPlot({
   const getTooltipValue = (
     bp: BoxPlotData,
     type: BoxPlotElementType,
+    whiskerMin: number,
+    whiskerMax: number,
   ): string => {
+    const render = (val: number) => formatValue(val);
     switch (type) {
       case "min":
-        return `${formatValue(bp.min)}${unit}`;
+        return `${render(whiskerMin)}${unit}`;
       case "q1":
-        return `${formatValue(bp.q1)}${unit}`;
+        return `${render(bp.q1)}${unit}`;
       case "median":
-        return `${formatValue(bp.median)}${unit}`;
+        return `${render(bp.median)}${unit}`;
       case "q3":
-        return `${formatValue(bp.q3)}${unit}`;
+        return `${render(bp.q3)}${unit}`;
       case "max":
-        return `${formatValue(bp.max)}${unit}`;
+        return `${render(whiskerMax)}${unit}`;
       case "mean":
-        return bp.mean !== undefined ? `${formatValue(bp.mean)}${unit}` : "";
+        return bp.mean !== undefined ? `${render(bp.mean)}${unit}` : "";
       case "lowerOutlier":
-        return `${formatValue(bp.min)}${unit}`;
+        return `${render(whiskerMin)}${unit}`;
       case "upperOutlier":
-        return `${formatValue(bp.max)}${unit}`;
+        return `${render(whiskerMax)}${unit}`;
     }
   };
 
@@ -143,7 +143,9 @@ export function HorizontalBoxPlot({
 
   return (
     <div className="py-4">
-      <h3 className="text-sm font-medium mb-4">{title}</h3>
+      {title ? (
+        <h3 className="text-sm font-medium mb-4">{title}</h3>
+      ) : null}
       <div className="flex gap-3">
         {/* Labels column */}
         <div className="w-28 shrink-0 flex flex-col">
@@ -168,13 +170,6 @@ export function HorizontalBoxPlot({
           {/* Box plots */}
           {validData.map((item, index) => {
             const bp = item.boxPlot!;
-            const minPos = getPosition(bp.min);
-            const q1Pos = getPosition(bp.q1);
-            const medianPos = getPosition(bp.median);
-            const q3Pos = getPosition(bp.q3);
-            const maxPos = getPosition(bp.max);
-            const isRowHovered = hoveredElement?.index === index;
-
             // Calculate IQR for outlier detection
             const iqr = bp.q3 - bp.q1;
             const lowerFence = bp.q1 - 1.5 * iqr;
@@ -191,12 +186,16 @@ export function HorizontalBoxPlot({
             const whiskerMax = hasUpperOutlier
               ? Math.min(bp.max, upperFence)
               : bp.max;
-            const whiskerMinPos = getPosition(
-              Math.max(whiskerMin, bp.q1 - 1.5 * iqr),
-            );
-            const whiskerMaxPos = getPosition(
-              Math.min(whiskerMax, bp.q3 + 1.5 * iqr),
-            );
+
+            // Positions
+            const whiskerMinPos = getPosition(whiskerMin);
+            const whiskerMaxPos = getPosition(whiskerMax);
+            const minPos = whiskerMinPos;
+            const q1Pos = getPosition(bp.q1);
+            const medianPos = getPosition(bp.median);
+            const q3Pos = getPosition(bp.q3);
+            const maxPos = whiskerMaxPos;
+            const isRowHovered = hoveredElement?.index === index;
 
             // Only show mean if it's within the visible range when outliers are hidden
             const meanWithinRange =
@@ -252,11 +251,11 @@ export function HorizontalBoxPlot({
                 />
                 {/* Max whisker cap - hover zone */}
                 <div
-                  className="absolute top-0 w-6 h-full cursor-pointer z-10"
-                  style={{
-                    left: `${whiskerMaxPos}%`,
-                    transform: "translateX(-50%)",
-                  }}
+                    className="absolute top-0 w-6 h-full cursor-pointer z-10"
+                    style={{
+                      left: `${whiskerMaxPos}%`,
+                      transform: "translateX(-50%)",
+                    }}
                   onMouseEnter={() => setHoveredElement({ index, type: "max" })}
                   onMouseLeave={() => setHoveredElement(null)}
                 />
@@ -266,7 +265,7 @@ export function HorizontalBoxPlot({
                   <>
                     {/* Visual */}
                     <div
-                      className="absolute w-2.5 h-2.5 rounded-full transition-transform pointer-events-none"
+                    className="absolute w-2.5 h-2.5 rounded-full transition-transform pointer-events-none"
                       style={{
                         left: `${minPos}%`,
                         top: "50%",
@@ -428,7 +427,12 @@ export function HorizontalBoxPlot({
                         {getTooltipLabel(hoveredElement.type)}:{" "}
                       </span>
                       <span className="font-medium" style={{ color }}>
-                        {getTooltipValue(bp, hoveredElement.type)}
+                        {getTooltipValue(
+                          bp,
+                          hoveredElement.type,
+                          whiskerMin,
+                          whiskerMax,
+                        )}
                       </span>
                     </div>
                   </div>
