@@ -1,19 +1,24 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Cookies from "js-cookie";
 import { Button } from "@/components/ui/button";
-
-const CONSENT_COOKIE = "agar_cookie_consent";
-const CONSENT_MAX_AGE_DAYS = 365;
+import {
+  CONSENT_COOKIE_NAME,
+  CONSENT_MAX_AGE_DAYS,
+  ConsentChoice,
+} from "@/lib/cookieConsent";
 
 export function CookieBanner() {
-  const [isOpen, setIsOpen] = useState(
-    () => !Cookies.get(CONSENT_COOKIE),
-  );
+  const [isOpen, setIsOpen] = useState(false);
 
-  const setConsent = (value: "accepted" | "declined") => {
-    Cookies.set(CONSENT_COOKIE, value, {
+  useEffect(() => {
+    const hasConsent = Cookies.get(CONSENT_COOKIE_NAME);
+    setIsOpen(!hasConsent);
+  }, []);
+
+  const setConsent = (value: ConsentChoice) => {
+    Cookies.set(CONSENT_COOKIE_NAME, value, {
       expires: CONSENT_MAX_AGE_DAYS,
       sameSite: "Lax",
       path: "/",
