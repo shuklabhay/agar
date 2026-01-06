@@ -8,6 +8,8 @@ const ALLOWED_FILE_TYPES = [
   "application/pdf",
   "application/msword",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.ms-powerpoint",
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
 ];
 const MAX_TOTAL_SIZE_BYTES = 15 * 1024 * 1024; // 15MB
 
@@ -47,7 +49,7 @@ export const validateUploadedFile = mutation({
     ) {
       await ctx.storage.delete(args.storageId);
       throw new Error(
-        "Invalid file type. Only JPEG, PNG, PDF, and Word documents are allowed.",
+        "Invalid file type. Only JPEG, PNG, PDF, Word, and PowerPoint files are allowed.",
       );
     }
 

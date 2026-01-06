@@ -408,7 +408,7 @@ export function ChatPanel({
           <input
             ref={fileInputRef}
             type="file"
-            accept="image/*,.pdf"
+            accept="image/*,.pdf,.pptx,.ppt"
             multiple
             onChange={handleFileSelect}
             className="hidden"

@@ -46,6 +46,10 @@ const ACCEPTED_FILE_TYPES = {
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [
     ".docx",
   ],
+  "application/vnd.ms-powerpoint": [".ppt"],
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation": [
+    ".pptx",
+  ],
 };
 
 const ACCEPTED_EXTENSIONS = Object.values(ACCEPTED_FILE_TYPES).flat().join(",");
@@ -343,7 +347,7 @@ function EditAssignmentView({
         const allowedTypes = Object.keys(ACCEPTED_FILE_TYPES);
         if (!allowedTypes.includes(file.type)) {
           toast.error(
-            `"${file.name}" is not a supported file type. Only JPEG, PNG, PDF, and Word documents are allowed.`,
+            `"${file.name}" is not a supported file type. Only JPEG, PNG, PDF, Word, and PowerPoint files are allowed.`,
           );
           continue;
         }
