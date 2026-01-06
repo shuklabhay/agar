@@ -96,7 +96,9 @@ export function AppSidebar() {
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
               <Link href="/classes">
-                <span className="text-lg font-semibold leading-none">Agar</span>
+                <span className="text-lg font-semibold leading-tight pb-[1px]">
+                  Agar
+                </span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
