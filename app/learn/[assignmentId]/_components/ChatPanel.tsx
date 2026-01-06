@@ -183,7 +183,9 @@ export function ChatPanel({
     )
       return;
 
-    const messageToSend = input.trim() || "Here's my work:";
+    const rawInput = input;
+    const messageToSend = rawInput.trim() || "Here's my work:";
+    setInput(""); // Clear immediately so the box empties as soon as the user sends
     setIsSending(true);
     setRateLimitInfo(null);
 
@@ -217,13 +219,14 @@ export function ChatPanel({
         });
         // Restore attachments for retry
         setAttachedFiles(filesToSend);
+        setInput(rawInput);
         return;
       }
 
       onToolCalls?.(response?.toolCalls);
-      setInput("");
     } catch (error) {
       console.error("Failed to send message:", error);
+      setInput(rawInput);
     } finally {
       setIsSending(false);
       textareaRef.current?.focus();
