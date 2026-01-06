@@ -357,7 +357,7 @@ const ANSWER_PROMPT = `<prompt>
 
 <response_rules>
 - Answer using the notes provided.
-- If the notes are missing what you need, use Google Search to fetch supporting facts and ground your answer.
+- If the notes are missing information you need for the question, you MUST use Google Search to fetch supporting facts and ground your answer—any information not present in the notes must be obtained via web search.
 - If no notes are provided, rely entirely on Google Search for the needed facts.
 - When you have the final answer, respond ONLY with JSON matching the schema (answer, key_points, source). No prose or markdown.
 - For answers: use a single string for multiple_choice/single_value/short_answer; use an array for free_response when needed.
