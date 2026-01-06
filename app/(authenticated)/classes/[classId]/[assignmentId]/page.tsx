@@ -1142,7 +1142,10 @@ function ReviewAssignmentView({
 }) {
   const [copied, setCopied] = useState(false);
   const [isRetrying, setIsRetrying] = useState(false);
+  const [isStopping, setIsStopping] = useState(false);
+  const [isRegenerating, setIsRegenerating] = useState(false);
   const processAssignment = useAction(api.processAssignment.processAssignment);
+  const stopProcessing = useMutation(api.assignments.stopProcessing);
   const [editingQuestion, setEditingQuestion] = useState<{
     _id: Id<"questions">;
     questionNumber: string;
@@ -1190,6 +1193,79 @@ function ReviewAssignmentView({
           <h1 className="text-3xl font-bold tracking-tight">
             {assignment.name}
           </h1>
+        </div>
+        <div className="flex items-center gap-2">
+          {(() => {
+            const isProcessing =
+              assignment.processingStatus === "extracting" ||
+              assignment.processingStatus === "generating_answers";
+
+            if (isProcessing) {
+              return (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={isStopping}
+                  onClick={async () => {
+                    setIsStopping(true);
+                    try {
+                      await stopProcessing({ assignmentId });
+                      toast.success("Stopped generation");
+                    } catch (error) {
+                      console.error(error);
+                      toast.error("Failed to stop generation");
+                    } finally {
+                      setIsStopping(false);
+                    }
+                  }}
+                >
+                  {isStopping ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                      Stopping...
+                    </>
+                  ) : (
+                    "Stop generating"
+                  )}
+                </Button>
+              );
+            }
+
+            return (
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={isRegenerating}
+                onClick={async () => {
+                  setIsRegenerating(true);
+                  try {
+                    const result = await processAssignment({ assignmentId });
+                    if (result.success) {
+                      toast.success(
+                        `Processed ${result.questionsExtracted} questions with ${result.answersGenerated ?? 0} answers`,
+                      );
+                    } else {
+                      toast.error(result.error || "Regeneration failed");
+                    }
+                  } catch (error) {
+                    console.error(error);
+                    toast.error("Failed to regenerate");
+                  } finally {
+                    setIsRegenerating(false);
+                  }
+                }}
+              >
+                {isRegenerating ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                    Regenerating...
+                  </>
+                ) : (
+                  "Regenerate all"
+                )}
+              </Button>
+            );
+          })()}
         </div>
       </div>
 

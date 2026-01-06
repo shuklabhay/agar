@@ -103,13 +103,9 @@ export const generateAnswers = action({
         console.error(`Error generating answer for Q${q.questionNumber}:`, error);
         errors++;
 
-        // Set fallback answer so question shows as ready (not stuck processing)
-        await ctx.runMutation(internal.questions.updateQuestionAnswer, {
+        // Reset question to pending so it can be retried cleanly
+        await ctx.runMutation(internal.questions.markQuestionPending, {
           questionId: q._id,
-          answer: "",
-          keyPoints: ["Error generating answer - please try regenerating"],
-          source: "notes",
-          status: "ready",
         });
       }
     }
@@ -117,7 +113,8 @@ export const generateAnswers = action({
     // Update assignment status
     await ctx.runMutation(internal.questions.updateAssignmentStatus, {
       assignmentId: args.assignmentId,
-      status: "ready",
+      status: errors > 0 ? "error" : "ready",
+      error: errors > 0 ? `${errors} question(s) failed` : undefined,
     });
 
     return {

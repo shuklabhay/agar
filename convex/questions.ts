@@ -179,6 +179,14 @@ export const markQuestionProcessing = internalMutation({
   },
 });
 
+// Reset a question back to pending (e.g., after generation failure)
+export const markQuestionPending = internalMutation({
+  args: { questionId: v.id("questions") },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.questionId, { status: "pending" });
+  },
+});
+
 // Delete all questions for an assignment (for re-extraction)
 export const deleteQuestionsForAssignment = internalMutation({
   args: { assignmentId: v.id("assignments") },

@@ -1,6 +1,6 @@
 "use node";
 
-import { GoogleGenAI, Part, Schema, Type } from "@google/genai";
+import { GoogleGenAI, Part, Schema, Type, FunctionDeclaration } from "@google/genai";
 
 const MODELS = {
   extraction: "gemini-2.5-flash-lite",
@@ -58,6 +58,44 @@ const ANSWER_RESPONSE_SCHEMA: Schema = {
     },
   },
   required: ["answer", "key_points", "source"],
+};
+
+const SUBMIT_ANSWER_FN: FunctionDeclaration = {
+  name: "submit_answer",
+  description:
+    "Final answer payload. Always call this once you have the answer (after any searches).",
+  parameters: {
+    type: Type.OBJECT,
+    properties: {
+      answerText: {
+        type: Type.STRING,
+        description:
+          "Single answer string (e.g., MCQ letter, value, short phrase). Leave empty if using answerList.",
+      },
+      answerList: {
+        type: Type.ARRAY,
+        items: { type: Type.STRING },
+        description:
+          "Use only if the answer must be an array of strings (free_response). Leave empty otherwise.",
+      },
+      keyPoints: {
+        type: Type.ARRAY,
+        items: { type: Type.STRING },
+        description: "1-2 supporting facts (quoted/paraphrased).",
+      },
+      sourceNotes: {
+        type: Type.BOOLEAN,
+        description: "true if grounded solely in notes.",
+      },
+      sourceUrls: {
+        type: Type.ARRAY,
+        items: { type: Type.STRING },
+        description:
+          "Non-empty URLs if you used web search; leave empty if you only used notes.",
+      },
+    },
+    required: ["keyPoints"],
+  },
 };
 
 export async function fetchFileAsBase64(
@@ -214,13 +252,49 @@ function normalizeParsedSource(
     );
     if (cleaned.length > 0) return cleaned;
   } else if (typeof source === "string" && source.trim().length > 0) {
-    const cleaned = cleanGroundingUrl(source.trim());
-    if (cleaned) return cleaned;
-    if (source.trim().toLowerCase() === "notes") return "notes";
+    const trimmed = source.trim();
+    const cleaned = cleanGroundingUrl(trimmed);
+    if (trimmed.toLowerCase() === "notes") return "notes";
+    if (cleaned) return [cleaned];
+    return [trimmed];
   }
 
   if (fallbackUrls.length > 0) return fallbackUrls;
   return "notes";
+}
+
+function normalizeAnswerValue(
+  answer: unknown,
+  questionType: string,
+): string | string[] {
+  const coerceValue = (val: unknown): string => {
+    if (typeof val === "string") return val.trim();
+    if (Array.isArray(val)) return val.map(coerceValue).join(", ");
+    if (val && typeof val === "object") {
+      return Object.entries(val)
+        .map(([k, v]) => `${k}: ${coerceValue(v)}`)
+        .join("; ");
+    }
+    if (val === null || val === undefined) return "";
+    return String(val);
+  };
+
+  if (typeof answer === "string") {
+    return answer.trim();
+  }
+
+  if (Array.isArray(answer)) {
+    return answer.map(coerceValue).filter((s) => s.length > 0);
+  }
+
+  if (answer && typeof answer === "object") {
+    const entries = Object.entries(answer).map(
+      ([k, v]) => `${k}: ${coerceValue(v)}`,
+    );
+    return questionType === "free_response" ? entries : entries.join("; ");
+  }
+
+  return "";
 }
 
 const EXTRACTION_PROMPT = `Extract ALL questions from this assignment document.
@@ -234,6 +308,7 @@ OUTPUT FIELDS:
 - answerOptionsMCQ: array of choices (MCQ only)
 - additionalInstructionsForAnswer: answer format requirements (e.g., "must be decimal")
 - additionalInstructionsForWork: method requirements (e.g., "use quadratic formula")
+- NEVER include MCQ option text inside questionText. Keep the stem/instruction in questionText and put every visible option only in answerOptionsMCQ. Do not invent or duplicate options.
 
 TEACHER'S ADDITIONAL INFO (OVERRIDES DEFAULTS - do what it says):
 {additionalInfo}
@@ -280,8 +355,8 @@ export async function extractQuestionsFromFiles(
       model: MODELS.extraction,
       contents: [{ role: "user", parts: [{ text: prompt }, ...fileParts] }],
       config: {
-        responseMimeType: "application/json",
         responseSchema: EXTRACTION_RESPONSE_SCHEMA,
+        responseMimeType: "application/json",
       },
     });
 
@@ -302,25 +377,9 @@ METHOD: {additionalInstructionsForWork}
 Answer using the notes provided. If the notes are missing the concept/facts/method you need (e.g., math notes but grammar question), use Google Search to fetch what is missing, then solve. You can still use notes if any part is relevant; otherwise rely ONLY on search results and never your internal knowledge.
 - If the notes do not cover the answer or you feel uncertain, run Google Search before answering. Do not guess—ground every answer in notes or a searched page.
 - Default to verifying with Google Search for any fact/definition/date/example that isn't explicitly spelled out in the notes—even if it's basic. When in doubt, run a search tool call before finalizing the answer.
-
-
-- If you used only notes → set source to "notes" and keep key_points quoted/paraphrased from notes.
-- If you used search (even partially) → set source to an array of the actual URLs you used (not "notes"). Do NOT fabricate note citations. Use the real website URLs (e.g., https://example.com/page), never vertexaisearch.cloud.google.com or redirect wrappers.
-
-ANSWER FORMAT:
-- short_answer: expression (e.g., "3x + 27")
-- single_value: single value (number, word, or phrase as required)
-- multiple_choice: ONE letter only (A/B/C/D)
-- free_response: array of key points
-
-KEY_POINTS: 1-2 brief facts (<15 words each) taken verbatim from a grounded source. Quote word-for-word from the notes or from the web page you actually used; never paraphrase or invent. Only include statements that appear in the notes or the searched page.
-
-SOURCE: "notes" or array of the actual web page URLs you used (no vertexaisearch or redirect URLs).
-
-Respond with ONLY this JSON:
-{"answer": "...", "key_points": ["..."], "source": "notes"}`;
-
-// GeneratedAnswer type is imported from lib/types
+- When you have the final answer, CALL submit_answer with your fields (after any searches). Do not skip the function call. Do not include any freeform text; communicate only via the submit_answer call. If you used search, include the URLs in sourceUrls and set sourceNotes to false.
+- For answers: use answerText for single_value/short_answer/multiple_choice; use answerList (array of strings) only for free_response. Provide 1-2 concise keyPoints (quoted/paraphrased) from notes or searched pages.
+- If you used only notes, set sourceNotes true and leave sourceUrls empty. If you used search, set sourceNotes false and include the real URLs in sourceUrls (no placeholders).`;
 
 export async function generateAnswerForQuestion(
   questionNumber: string,
@@ -358,28 +417,30 @@ export async function generateAnswerForQuestion(
       "{additionalInstructionsForWork}",
       additionalInstructionsForWork || "None",
     );
+  const noNotesHint =
+    notesParts.length === 0
+      ? "\nNO_NOTES_CONTEXT: No notes or source files were provided. Use Google Search to find the needed facts before answering."
+      : "";
 
   try {
     return await withRetry(async () => {
       const response = await client.models.generateContent({
         model: MODELS.answerGeneration,
-        contents: [{ role: "user", parts: [{ text: prompt }, ...notesParts] }],
+        contents: [
+          {
+            role: "user",
+            parts: [{ text: prompt + noNotesHint }, ...notesParts],
+          },
+        ],
         config: {
-          tools: [{ googleSearch: {} }],
-          responseSchema: ANSWER_RESPONSE_SCHEMA,
+          tools: [{ googleSearch: {} }, { functionDeclarations: [SUBMIT_ANSWER_FN] }],
         },
       });
 
-      const responseText = response.text ?? "";
-      const parsed = parseJsonWithCleaning<{
-        answer?: string | string[];
-        key_points?: string[];
-        keyPoints?: string[];
-        source?: string | string[];
-      }>(responseText, `Answer for Q${questionNumber}`);
+      const candidate = response.candidates?.[0];
+      const parts = candidate?.content?.parts || [];
 
       // Extract grounded URLs (if any) from grounding metadata
-      const candidate = response.candidates?.[0];
       const groundingUrls: string[] =
         candidate?.groundingMetadata?.groundingChunks
           ?.map((chunk) => chunk.web?.uri)
@@ -390,61 +451,43 @@ export async function generateAnswerForQuestion(
           .filter((uri): uri is string => Boolean(uri)),
       );
 
-      const parsedSource =
-        Array.isArray(parsed.source) && parsed.source.length > 0
-          ? dedupe(
-              parsed.source
-                .map((s) => (typeof s === "string" ? s.trim() : ""))
-                .filter((s) => s.length > 0),
-            )
-          : typeof parsed.source === "string" && parsed.source.trim().length > 0
-            ? parsed.source.trim()
-            : undefined;
+      const submitCall = parts.find((p) => p.functionCall?.name === "submit_answer")
+        ?.functionCall;
 
-      const normalizedSource = normalizeParsedSource(
-        parsedSource,
-        cleanedGroundingUrls,
+      if (!submitCall) {
+        throw new Error("No submit_answer call returned");
+      }
+
+      const args = submitCall.args as {
+        answerText?: string;
+        answerList?: string[];
+        keyPoints?: string[];
+        sourceNotes?: boolean;
+        sourceUrls?: string[];
+      };
+
+      const normalizedAnswer = normalizeAnswerValue(
+        args.answerList && args.answerList.length > 0 ? args.answerList : args.answerText,
+        questionType,
       );
 
+      const source = args.sourceNotes
+        ? "notes"
+        : normalizeParsedSource(
+            args.sourceUrls && args.sourceUrls.length > 0 ? args.sourceUrls : undefined,
+            cleanedGroundingUrls,
+          );
+
       return {
-        answer: parsed.answer ?? "",
-        keyPoints: parsed.key_points || parsed.keyPoints || [],
-        source: normalizedSource,
+        answer: normalizedAnswer,
+        keyPoints: args.keyPoints || [],
+        source,
       } as GeneratedAnswer;
     }, `Answer generation for Q${questionNumber}`);
   } catch (error) {
-    console.warn(
-      `Q${questionNumber} failed after retries, using fallback extraction`,
-      error,
-    );
-    return extractAnswerFromText("", questionType);
+    // Surface the failure so the caller can mark the question as errored instead of inserting placeholder answers
+    throw error;
   }
-}
-
-// Fallback function to extract answer from non-JSON text
-function extractAnswerFromText(
-  text: string,
-  questionType: string,
-): GeneratedAnswer {
-  const trimmed = text.trim();
-  const answer =
-    questionType === "free_response"
-      ? trimmed
-        ? trimmed.split(/\n+/).slice(0, 5)
-        : []
-      : trimmed || "";
-
-  console.warn(
-    `Fallback extraction for ${questionType}: "${typeof answer === "string" ? answer.substring(0, 50) : answer[0]?.substring(0, 50)}..."`,
-  );
-
-  const keyPoints = ["Answer requires manual review"];
-
-  return {
-    answer,
-    keyPoints,
-    source: "notes",
-  };
 }
 
 // Batch process questions with shared notes context

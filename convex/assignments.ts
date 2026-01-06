@@ -330,6 +330,32 @@ export const deleteDraft = mutation({
   },
 });
 
+// Allow teacher to stop processing (sets status to error)
+export const stopProcessing = mutation({
+  args: { assignmentId: v.id("assignments") },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("Not authenticated");
+    }
+
+    const assignment = await ctx.db.get(args.assignmentId);
+    if (!assignment) {
+      throw new Error("Assignment not found");
+    }
+
+    const classDoc = await ctx.db.get(assignment.classId);
+    if (!classDoc || classDoc.teacherId !== userId) {
+      throw new Error("Access denied");
+    }
+
+    await ctx.db.patch(args.assignmentId, {
+      processingStatus: "error",
+      processingError: "Stopped by teacher",
+    });
+  },
+});
+
 export const getAssignment = query({
   args: { assignmentId: v.id("assignments") },
   returns: v.union(
@@ -359,6 +385,7 @@ export const getAssignment = query({
       additionalInfo: v.optional(v.string()),
       isDraft: v.optional(v.boolean()),
       processingStatus: v.optional(v.string()),
+      processingError: v.optional(v.string()),
     }),
     v.null(),
   ),
