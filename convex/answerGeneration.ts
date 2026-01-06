@@ -35,10 +35,6 @@ export const generateAnswers = action({
       { assignmentId: args.assignmentId },
     );
 
-    if (notesUrls.length === 0) {
-      return { success: false, error: "No notes files found for this assignment" };
-    }
-
     // Update assignment status
     await ctx.runMutation(internal.questions.updateAssignmentStatus, {
       assignmentId: args.assignmentId,
@@ -157,10 +153,6 @@ export const regenerateAnswer = action({
     const notesUrls = await ctx.runQuery(internal.questions.getNotesForAssignment, {
       assignmentId: question.assignmentId,
     });
-
-    if (notesUrls.length === 0) {
-      return { success: false, error: "No notes files found" };
-    }
 
     try {
       // Prepare notes parts
