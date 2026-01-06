@@ -16,6 +16,17 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Progress } from "@/components/ui/progress";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
@@ -1144,6 +1155,8 @@ function ReviewAssignmentView({
   const [isRetrying, setIsRetrying] = useState(false);
   const [isStopping, setIsStopping] = useState(false);
   const [isRegenerating, setIsRegenerating] = useState(false);
+  const [showStopConfirm, setShowStopConfirm] = useState(false);
+  const [showRegenConfirm, setShowRegenConfirm] = useState(false);
   const processAssignment = useAction(api.processAssignment.processAssignment);
   const stopProcessing = useMutation(api.assignments.stopProcessing);
   const [editingQuestion, setEditingQuestion] = useState<{
@@ -1167,6 +1180,131 @@ function ReviewAssignmentView({
     typeof window !== "undefined"
       ? `${window.location.origin}/learn/${assignmentId}`
       : `/learn/${assignmentId}`;
+
+  const isProcessing =
+    assignment.processingStatus === "extracting" ||
+    assignment.processingStatus === "generating_answers";
+
+  const handleStopGeneration = useCallback(async () => {
+    setIsStopping(true);
+    try {
+      await stopProcessing({ assignmentId });
+      toast.success("Stopped generation");
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to stop generation");
+    } finally {
+      setIsStopping(false);
+      setShowStopConfirm(false);
+    }
+  }, [assignmentId, stopProcessing]);
+
+  const handleRegenerateAll = useCallback(async () => {
+    setIsRegenerating(true);
+    try {
+      const result = await processAssignment({ assignmentId });
+      if (result.success) {
+        toast.success(
+          `Processed ${result.questionsExtracted} questions with ${result.answersGenerated ?? 0} answers`,
+        );
+      } else {
+        toast.error(result.error || "Regeneration failed");
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to regenerate");
+    } finally {
+      setIsRegenerating(false);
+      setShowRegenConfirm(false);
+    }
+  }, [assignmentId, processAssignment]);
+
+  const headerActionsNode = isProcessing ? (
+    <AlertDialog open={showStopConfirm} onOpenChange={setShowStopConfirm}>
+      <AlertDialogTrigger asChild>
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={isStopping}
+          onClick={() => setShowStopConfirm(true)}
+        >
+          {isStopping ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin mr-1" />
+              Stopping...
+            </>
+          ) : (
+            "Stop generating"
+          )}
+        </Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Stop generating?</AlertDialogTitle>
+          <AlertDialogDescription>
+            This halts extraction/answering in-progress. You can restart later with Regenerate all.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={isStopping}>Cancel</AlertDialogCancel>
+          <AlertDialogAction onClick={handleStopGeneration} disabled={isStopping}>
+            {isStopping ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                Stopping...
+              </>
+            ) : (
+              "Stop"
+            )}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  ) : (
+    <AlertDialog open={showRegenConfirm} onOpenChange={setShowRegenConfirm}>
+      <AlertDialogTrigger asChild>
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={isRegenerating}
+          onClick={() => setShowRegenConfirm(true)}
+        >
+          {isRegenerating ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin mr-1" />
+              Regenerating...
+            </>
+          ) : (
+            "Regenerate all"
+          )}
+        </Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Regenerate all questions?</AlertDialogTitle>
+          <AlertDialogDescription>
+            This re-extracts questions and regenerates answers using the uploaded files. Existing edits may be overwritten.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={isRegenerating}>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={handleRegenerateAll}
+            disabled={isRegenerating}
+          >
+            {isRegenerating ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                Regenerating...
+              </>
+            ) : (
+              "Confirm"
+            )}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
 
   const handleCopyLink = async () => {
     try {
@@ -1193,79 +1331,6 @@ function ReviewAssignmentView({
           <h1 className="text-3xl font-bold tracking-tight">
             {assignment.name}
           </h1>
-        </div>
-        <div className="flex items-center gap-2">
-          {(() => {
-            const isProcessing =
-              assignment.processingStatus === "extracting" ||
-              assignment.processingStatus === "generating_answers";
-
-            if (isProcessing) {
-              return (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={isStopping}
-                  onClick={async () => {
-                    setIsStopping(true);
-                    try {
-                      await stopProcessing({ assignmentId });
-                      toast.success("Stopped generation");
-                    } catch (error) {
-                      console.error(error);
-                      toast.error("Failed to stop generation");
-                    } finally {
-                      setIsStopping(false);
-                    }
-                  }}
-                >
-                  {isStopping ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin mr-1" />
-                      Stopping...
-                    </>
-                  ) : (
-                    "Stop generating"
-                  )}
-                </Button>
-              );
-            }
-
-            return (
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={isRegenerating}
-                onClick={async () => {
-                  setIsRegenerating(true);
-                  try {
-                    const result = await processAssignment({ assignmentId });
-                    if (result.success) {
-                      toast.success(
-                        `Processed ${result.questionsExtracted} questions with ${result.answersGenerated ?? 0} answers`,
-                      );
-                    } else {
-                      toast.error(result.error || "Regeneration failed");
-                    }
-                  } catch (error) {
-                    console.error(error);
-                    toast.error("Failed to regenerate");
-                  } finally {
-                    setIsRegenerating(false);
-                  }
-                }}
-              >
-                {isRegenerating ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin mr-1" />
-                    Regenerating...
-                  </>
-                ) : (
-                  "Regenerate all"
-                )}
-              </Button>
-            );
-          })()}
         </div>
       </div>
 
@@ -1338,8 +1403,9 @@ function ReviewAssignmentView({
         </CardContent>
       </Card>
 
-      {/* Error State */}
-      {assignment.processingStatus === "error" && (
+      {/* Error State (skip showing banner when teacher intentionally stopped) */}
+      {assignment.processingStatus === "error" &&
+        assignment.processingError !== "Stopped by teacher" && (
         <Card className="border-destructive bg-destructive/5">
           <CardContent className="py-4">
             <div className="flex items-start gap-3">
@@ -1403,6 +1469,7 @@ function ReviewAssignmentView({
             assignmentId={assignmentId}
             isProcessing={isProcessing}
             processingStatus={assignment.processingStatus}
+            headerActions={headerActionsNode}
             onEdit={(q) => setEditingQuestion(q)}
           />
         );

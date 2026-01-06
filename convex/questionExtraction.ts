@@ -70,6 +70,17 @@ export const extractQuestions = action({
         questions: questionsToInsert,
       });
 
+      // If teacher stopped processing mid-run, respect that and avoid resetting status
+      const currentStatus = await ctx.runQuery(internal.questions.getAssignmentStatus, {
+        assignmentId: args.assignmentId,
+      });
+      if (currentStatus?.status === "error") {
+        return {
+          success: false,
+          error: currentStatus.error ?? "Processing stopped",
+        };
+      }
+
       // Update status
       await ctx.runMutation(internal.questions.updateAssignmentStatus, {
         assignmentId: args.assignmentId,

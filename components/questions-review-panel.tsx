@@ -47,6 +47,7 @@ interface QuestionsReviewPanelProps {
   isProcessing: boolean;
   processingStatus?: string;
   onEdit: (question: ReviewQuestion) => void;
+  headerActions?: React.ReactNode;
 }
 
 export function QuestionsReviewPanel({
@@ -55,6 +56,7 @@ export function QuestionsReviewPanel({
   isProcessing,
   processingStatus,
   onEdit,
+  headerActions,
 }: QuestionsReviewPanelProps) {
   const [selectedQuestionId, setSelectedQuestionId] =
     useState<Id<"questions"> | null>(
@@ -99,6 +101,9 @@ export function QuestionsReviewPanel({
       q.questionType !== "skipped",
   );
   const processingCount = processingQuestions.length;
+  const currentProcessingId =
+    isProcessing &&
+    (sortedQuestions.find((q) => q.status === "processing")?._id || null);
   // Exclude skipped from completed questions count
   const completedQuestions = sortedQuestions.filter(
     (q) =>
@@ -127,10 +132,17 @@ export function QuestionsReviewPanel({
   }
 
   const getQuestionStatus = (question: ReviewQuestion) => {
+    const status =
+      !isProcessing && question.status === "processing"
+        ? "ready"
+        : question.status;
+
     if (question.questionType === "skipped") return "skipped";
-    if (question.status === "approved") return "approved";
-    if (question.status === "pending" || question.status === "processing")
-      return "processing";
+    if (status === "approved") return "approved";
+    if (status === "pending" || status === "processing") {
+      // If nothing is processing globally, treat lingering processing as ready
+      return isProcessing ? status : "ready";
+    }
     if (question.source && Array.isArray(question.source))
       return "needs_review";
     return "ready";
@@ -270,36 +282,47 @@ export function QuestionsReviewPanel({
   };
   const statusStyles: Record<
     string,
-    { label: string; badgeClass: string; rowClass?: string }
+    {
+      label: string;
+      badgeClass: string;
+      rowClass?: string;
+    }
   > = {
     approved: {
       label: "Approved",
       badgeClass:
-        "bg-green-50 text-green-700 border border-green-200 dark:bg-green-950/40 dark:text-green-200 dark:border-green-900",
-      rowClass: "bg-green-50/60 dark:bg-green-950/10",
+        "bg-green-100 text-green-800 border border-green-300 dark:bg-green-900/40 dark:text-green-100 dark:border-green-800",
+      rowClass: "bg-green-50 dark:bg-green-900/20 border-l-2 border-green-500/70",
     },
     needs_review: {
       label: "Needs review",
       badgeClass:
-        "bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-950/30 dark:text-amber-200 dark:border-amber-900",
-      rowClass: "bg-amber-50/50 dark:bg-amber-950/10",
+        "bg-amber-100 text-amber-800 border border-amber-300 dark:bg-amber-900/40 dark:text-amber-100 dark:border-amber-800",
+      rowClass: "bg-amber-50 dark:bg-amber-900/20 border-l-2 border-amber-500/80",
     },
     skipped: {
       label: "Skipped",
       badgeClass:
-        "bg-slate-100 text-slate-600 border border-slate-200 dark:bg-slate-900 dark:text-slate-200 dark:border-slate-800",
-      rowClass: "bg-slate-50/60 dark:bg-slate-900/40",
+        "bg-red-100 text-red-800 border border-red-300 dark:bg-red-900/40 dark:text-red-100 dark:border-red-800",
+      rowClass: "bg-red-50 dark:bg-red-900/20 border-l-2 border-red-500/80",
     },
     processing: {
       label: "Processing",
       badgeClass:
-        "bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-950/30 dark:text-blue-200 dark:border-blue-900",
-      rowClass: "bg-blue-50/50 dark:bg-blue-950/10",
+        "bg-slate-200 text-slate-800 border border-slate-400 dark:bg-slate-800/60 dark:text-slate-100 dark:border-slate-700",
+      rowClass: "bg-slate-100 dark:bg-slate-800/40 border-l-2 border-slate-600",
     },
     ready: {
-      label: "Ready",
+      label: "Answer ready",
       badgeClass:
-        "bg-slate-50 text-slate-700 border border-slate-200 dark:bg-slate-950/30 dark:text-slate-200 dark:border-slate-800",
+        "bg-slate-100 text-slate-700 border border-slate-300 dark:bg-slate-800/50 dark:text-slate-100 dark:border-slate-700",
+      rowClass: "bg-slate-50 dark:bg-slate-900/30 border-l-2 border-slate-400",
+    },
+    pending: {
+      label: "Pending",
+      badgeClass:
+        "bg-slate-300 text-slate-900 border border-slate-500 dark:bg-slate-800 dark:text-slate-50 dark:border-slate-700",
+      rowClass: "bg-slate-200 dark:bg-slate-800/60 border-l-2 border-slate-600",
     },
   };
 
@@ -322,9 +345,12 @@ export function QuestionsReviewPanel({
     return null;
   }
 
+  const selectedStatus =
+    !isProcessing && selectedQuestion?.status === "processing"
+      ? "ready"
+      : selectedQuestion?.status;
   const isPending =
-    selectedQuestion?.status === "pending" ||
-    selectedQuestion?.status === "processing";
+    selectedStatus === "pending" || selectedStatus === "processing";
   const isApprovedQuestion = selectedQuestion?.status === "approved";
   const isSkipped = selectedQuestion?.questionType === "skipped";
   const isWebSource =
@@ -338,7 +364,7 @@ export function QuestionsReviewPanel({
         <h2 className="text-xl font-semibold shrink-0">
           Questions ({sortedQuestions.length})
         </h2>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap justify-end">
           {isProcessing && (
             <Badge variant="secondary" className="text-xs">
               <Loader2 className="h-3 w-3 animate-spin mr-1" />
@@ -350,17 +376,8 @@ export function QuestionsReviewPanel({
             </Badge>
           )}
           <span className="text-sm text-muted-foreground">
-            {processingCount > 0 && !isProcessing ? (
-              <>
-                <Loader2 className="h-3 w-3 animate-spin inline mr-1" />
-                {completedQuestions.length}/{totalAnswerable} generated
-              </>
-            ) : (
-              <>
-                {approvedCount}/{completedQuestions.length} approved
-                {skippedCount > 0 && ` (${skippedCount} skipped)`}
-              </>
-            )}
+            {approvedCount}/{completedQuestions.length} approved
+            {skippedCount > 0 && ` (${skippedCount} skipped)`}
           </span>
           {completedQuestions.length > 0 && (
             <div className="flex">
@@ -446,6 +463,7 @@ export function QuestionsReviewPanel({
               )}
             </div>
           )}
+          {headerActions && <div className="flex items-center gap-2">{headerActions}</div>}
         </div>
       </div>
 
@@ -464,15 +482,22 @@ export function QuestionsReviewPanel({
                     const status = getQuestionStatus(question);
                     const isSelected = question._id === selectedQuestionId;
                     const statusStyle = statusStyles[status];
+                    const isActiveProcessing =
+                      isProcessing &&
+                      question.status === "processing" &&
+                      currentProcessingId === question._id;
                     return (
                       <div
                         key={question._id}
                         onClick={() => setSelectedQuestionId(question._id)}
                         className={cn(
-                          "cursor-pointer transition-colors flex items-center justify-between px-3 py-2",
-                          isSelected ? "bg-muted" : statusStyle?.rowClass,
+                          "cursor-pointer transition-colors flex items-center justify-between px-3 py-2 border border-transparent",
+                          isSelected
+                            ? "bg-muted ring-2 ring-primary/50"
+                            : statusStyle?.rowClass,
                           !isSelected && "hover:bg-muted/50",
-                          status === "processing" && "opacity-60",
+                          isActiveProcessing &&
+                            "ring-2 ring-primary/60 bg-primary/5 dark:bg-primary/10",
                         )}
                       >
                         <div className="flex items-center gap-2 min-w-0">
@@ -507,9 +532,7 @@ export function QuestionsReviewPanel({
                               strokeWidth={0}
                             />
                           )}
-                          {status === "processing" && (
-                            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                          )}
+                          {/* No explicit icon for processing */}
                           {/* No icon for "ready" status */}
                         </div>
                       </div>
@@ -548,12 +571,7 @@ export function QuestionsReviewPanel({
                                 selectedQuestion.questionType}
                             </Badge>
                           )}
-                          {isPending && (
-                            <Badge variant="secondary" className="text-xs">
-                              <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                              Processing
-                            </Badge>
-                          )}
+                          {/* Processing badge removed to avoid stale display */}
                           {isApprovedQuestion && (
                             <Badge className="text-xs bg-green-600">
                               <Check className="h-3 w-3 mr-1" />

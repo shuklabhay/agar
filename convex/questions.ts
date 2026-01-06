@@ -45,6 +45,19 @@ export const updateAssignmentStatus = internalMutation({
   },
 });
 
+// Internal query to check assignment processing status (used to honor stop requests)
+export const getAssignmentStatus = internalQuery({
+  args: { assignmentId: v.id("assignments") },
+  handler: async (ctx, args) => {
+    const assignment = await ctx.db.get(args.assignmentId);
+    if (!assignment) return null;
+    return {
+      status: assignment.processingStatus,
+      error: assignment.processingError,
+    };
+  },
+});
+
 // Internal mutation to insert extracted questions
 export const insertQuestions = internalMutation({
   args: {

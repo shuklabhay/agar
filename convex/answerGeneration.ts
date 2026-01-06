@@ -9,6 +9,13 @@ import { GoogleGenAI, Part } from "@google/genai";
 export const generateAnswers = action({
   args: { assignmentId: v.id("assignments") },
   handler: async (ctx, args): Promise<{ success: boolean; processed?: number; error?: string }> => {
+    const currentStatus = await ctx.runQuery(internal.questions.getAssignmentStatus, {
+      assignmentId: args.assignmentId,
+    });
+    if (currentStatus?.status === "error") {
+      return { success: false, error: currentStatus.error ?? "Processing stopped" };
+    }
+
     // Get pending questions
     const questions = await ctx.runQuery(
       internal.questions.getPendingQuestions,
@@ -68,14 +75,36 @@ export const generateAnswers = action({
 
     let processed = 0;
     let errors = 0;
+    let abortedMessage: string | null = null;
 
     // Process questions ONE AT A TIME for real-time progress feedback
     for (const q of questions) {
+      const status = await ctx.runQuery(internal.questions.getAssignmentStatus, {
+        assignmentId: args.assignmentId,
+      });
+      if (status?.status === "error") {
+        abortedMessage = status.error ?? "Processing stopped";
+        break;
+      }
+
       try {
         // Mark question as processing (visible in UI immediately)
         await ctx.runMutation(internal.questions.markQuestionProcessing, {
           questionId: q._id,
         });
+
+        // If a stop was requested after we marked processing, honor it
+        const statusAfterMark = await ctx.runQuery(
+          internal.questions.getAssignmentStatus,
+          { assignmentId: args.assignmentId },
+        );
+        if (statusAfterMark?.status === "error") {
+          await ctx.runMutation(internal.questions.markQuestionPending, {
+            questionId: q._id,
+          });
+          abortedMessage = statusAfterMark.error ?? "Processing stopped";
+          break;
+        }
 
         // Generate answer for this specific question
         const answer = await generateAnswerForQuestion(
@@ -88,6 +117,19 @@ export const generateAnswers = action({
           client,
           q.answerOptionsMCQ,
         );
+
+        // If stopped during LLM call, do not write the answer
+        const statusBeforeWrite = await ctx.runQuery(
+          internal.questions.getAssignmentStatus,
+          { assignmentId: args.assignmentId },
+        );
+        if (statusBeforeWrite?.status === "error") {
+          await ctx.runMutation(internal.questions.markQuestionPending, {
+            questionId: q._id,
+          });
+          abortedMessage = statusBeforeWrite.error ?? "Processing stopped";
+          break;
+        }
 
         // Update question with answer (visible in UI immediately)
         await ctx.runMutation(internal.questions.updateQuestionAnswer, {
@@ -108,6 +150,14 @@ export const generateAnswers = action({
           questionId: q._id,
         });
       }
+    }
+
+    if (abortedMessage) {
+      return {
+        success: false,
+        processed,
+        error: abortedMessage,
+      };
     }
 
     // Update assignment status

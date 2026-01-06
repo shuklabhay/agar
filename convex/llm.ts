@@ -1,10 +1,10 @@
 "use node";
 
-import { GoogleGenAI, Part, Schema, Type, FunctionDeclaration } from "@google/genai";
+import { GoogleGenAI, Part, Schema, Type } from "@google/genai";
 
 const MODELS = {
   extraction: "gemini-2.5-flash-lite",
-  answerGeneration: "gemini-2.5-flash",
+  answerGeneration: "models/gemini-3-flash-preview",
 } as const;
 
 const QUESTION_TYPES = [
@@ -58,44 +58,6 @@ const ANSWER_RESPONSE_SCHEMA: Schema = {
     },
   },
   required: ["answer", "key_points", "source"],
-};
-
-const SUBMIT_ANSWER_FN: FunctionDeclaration = {
-  name: "submit_answer",
-  description:
-    "Final answer payload. Always call this once you have the answer (after any searches).",
-  parameters: {
-    type: Type.OBJECT,
-    properties: {
-      answerText: {
-        type: Type.STRING,
-        description:
-          "Single answer string (e.g., MCQ letter, value, short phrase). Leave empty if using answerList.",
-      },
-      answerList: {
-        type: Type.ARRAY,
-        items: { type: Type.STRING },
-        description:
-          "Use only if the answer must be an array of strings (free_response). Leave empty otherwise.",
-      },
-      keyPoints: {
-        type: Type.ARRAY,
-        items: { type: Type.STRING },
-        description: "1-2 supporting facts (quoted/paraphrased).",
-      },
-      sourceNotes: {
-        type: Type.BOOLEAN,
-        description: "true if grounded solely in notes.",
-      },
-      sourceUrls: {
-        type: Type.ARRAY,
-        items: { type: Type.STRING },
-        description:
-          "Non-empty URLs if you used web search; leave empty if you only used notes.",
-      },
-    },
-    required: ["keyPoints"],
-  },
 };
 
 export async function fetchFileAsBase64(
@@ -374,12 +336,10 @@ TYPE: {questionType}
 FORMAT: {additionalInstructionsForAnswer}
 METHOD: {additionalInstructionsForWork}
 
-Answer using the notes provided. If the notes are missing the concept/facts/method you need (e.g., math notes but grammar question), use Google Search to fetch what is missing, then solve. You can still use notes if any part is relevant; otherwise rely ONLY on search results and never your internal knowledge.
-- If the notes do not cover the answer or you feel uncertain, run Google Search before answering. Do not guess—ground every answer in notes or a searched page.
-- Default to verifying with Google Search for any fact/definition/date/example that isn't explicitly spelled out in the notes—even if it's basic. When in doubt, run a search tool call before finalizing the answer.
-- When you have the final answer, CALL submit_answer with your fields (after any searches). Do not skip the function call. Do not include any freeform text; communicate only via the submit_answer call. If you used search, include the URLs in sourceUrls and set sourceNotes to false.
-- For answers: use answerText for single_value/short_answer/multiple_choice; use answerList (array of strings) only for free_response. Provide 1-2 concise keyPoints (quoted/paraphrased) from notes or searched pages.
-- If you used only notes, set sourceNotes true and leave sourceUrls empty. If you used search, set sourceNotes false and include the real URLs in sourceUrls (no placeholders).`;
+Answer using the notes provided. If the notes are missing what you need, use Google Search to fetch supporting facts and ground your answer.
+- When you have the final answer, respond ONLY with JSON matching the schema (answer, key_points, source). No prose or markdown.
+- For answers: use a single string for multiple_choice/single_value/short_answer; use an array for free_response when needed. Provide 1-2 concise key_points (quoted/paraphrased) from notes or searched pages.
+- If you used only notes, set source to \"notes\". If you used search, set source to the real URLs (no placeholders).`;
 
 export async function generateAnswerForQuestion(
   questionNumber: string,
@@ -423,7 +383,7 @@ export async function generateAnswerForQuestion(
       : "";
 
   try {
-    return await withRetry(async () => {
+    const finalResponse = await withRetry(async () => {
       const response = await client.models.generateContent({
         model: MODELS.answerGeneration,
         contents: [
@@ -433,14 +393,13 @@ export async function generateAnswerForQuestion(
           },
         ],
         config: {
-          tools: [{ googleSearch: {} }, { functionDeclarations: [SUBMIT_ANSWER_FN] }],
+          tools: [{ googleSearch: {} }],
+          responseSchema: ANSWER_RESPONSE_SCHEMA,
+          responseMimeType: "application/json",
         },
       });
 
       const candidate = response.candidates?.[0];
-      const parts = candidate?.content?.parts || [];
-
-      // Extract grounded URLs (if any) from grounding metadata
       const groundingUrls: string[] =
         candidate?.groundingMetadata?.groundingChunks
           ?.map((chunk) => chunk.web?.uri)
@@ -451,46 +410,36 @@ export async function generateAnswerForQuestion(
           .filter((uri): uri is string => Boolean(uri)),
       );
 
-      const submitCall = parts.find((p) => p.functionCall?.name === "submit_answer")
-        ?.functionCall;
+      const responseText = response.text ?? "";
+      const parsed = parseJsonWithCleaning<{
+        answer: string | string[];
+        key_points: string[];
+        source: string | string[];
+      }>(responseText, `Answer generation Q${questionNumber}`);
 
-      if (!submitCall) {
-        throw new Error("No submit_answer call returned");
-      }
-
-      const args = submitCall.args as {
-        answerText?: string;
-        answerList?: string[];
-        keyPoints?: string[];
-        sourceNotes?: boolean;
-        sourceUrls?: string[];
-      };
-
-      const normalizedAnswer = normalizeAnswerValue(
-        args.answerList && args.answerList.length > 0 ? args.answerList : args.answerText,
-        questionType,
-      );
-
-      const source = args.sourceNotes
-        ? "notes"
-        : normalizeParsedSource(
-            args.sourceUrls && args.sourceUrls.length > 0 ? args.sourceUrls : undefined,
-            cleanedGroundingUrls,
-          );
-
-      return {
-        answer: normalizedAnswer,
-        keyPoints: args.keyPoints || [],
-        source,
-      } as GeneratedAnswer;
+      return { parsed, cleanedGroundingUrls };
     }, `Answer generation for Q${questionNumber}`);
+
+    const normalizedAnswer = normalizeAnswerValue(
+      finalResponse.parsed.answer,
+      questionType,
+    );
+
+    const source = normalizeParsedSource(
+      finalResponse.parsed.source,
+      finalResponse.cleanedGroundingUrls,
+    );
+
+    return {
+      answer: normalizedAnswer,
+      keyPoints: finalResponse.parsed.key_points || [],
+      source: source || "notes",
+    } as GeneratedAnswer;
   } catch (error) {
-    // Surface the failure so the caller can mark the question as errored instead of inserting placeholder answers
     throw error;
   }
 }
 
-// Batch process questions with shared notes context
 export async function generateAnswersForQuestions(
   questions: Array<{
     questionNumber: string;

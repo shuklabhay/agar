@@ -9,6 +9,20 @@ export const processAssignment = action({
   args: { assignmentId: v.id("assignments") },
   handler: async (ctx, args): Promise<{ success: boolean; questionsExtracted?: number; answersGenerated?: number; error?: string }> => {
     try {
+      // Bail out if another run is already in progress
+      const currentStatus = await ctx.runQuery(internal.questions.getAssignmentStatus, {
+        assignmentId: args.assignmentId,
+      });
+      if (
+        currentStatus?.status === "extracting" ||
+        currentStatus?.status === "generating_answers"
+      ) {
+        return {
+          success: false,
+          error: "Processing already in progress",
+        };
+      }
+
       // Step 1: Extract questions
       const extractResult = await ctx.runAction(api.questionExtraction.extractQuestions, {
         assignmentId: args.assignmentId,
@@ -18,6 +32,18 @@ export const processAssignment = action({
         return {
           success: false,
           error: `Extraction failed: ${extractResult.error}`,
+        };
+      }
+
+      // If teacher stopped processing during extraction, do not continue
+      const statusAfterExtract = await ctx.runQuery(
+        internal.questions.getAssignmentStatus,
+        { assignmentId: args.assignmentId },
+      );
+      if (statusAfterExtract?.status === "error") {
+        return {
+          success: false,
+          error: statusAfterExtract.error ?? "Processing stopped",
         };
       }
 
