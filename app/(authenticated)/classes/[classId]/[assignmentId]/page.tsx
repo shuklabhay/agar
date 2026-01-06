@@ -41,6 +41,7 @@ import {
   Check,
   ExternalLink,
   Info,
+  RefreshCw,
 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -1223,18 +1224,18 @@ function ReviewAssignmentView({
     <AlertDialog open={showStopConfirm} onOpenChange={setShowStopConfirm}>
       <AlertDialogTrigger asChild>
         <Button
-          variant="outline"
-          size="sm"
+          variant="ghost"
+          size="icon"
           disabled={isStopping}
           onClick={() => setShowStopConfirm(true)}
+          aria-label="Stop generating"
         >
           {isStopping ? (
             <>
-              <Loader2 className="h-4 w-4 animate-spin mr-1" />
-              Stopping...
+              <Loader2 className="h-4 w-4 animate-spin" />
             </>
           ) : (
-            "Stop generating"
+            <X className="h-4 w-4" />
           )}
         </Button>
       </AlertDialogTrigger>
@@ -1264,18 +1265,18 @@ function ReviewAssignmentView({
     <AlertDialog open={showRegenConfirm} onOpenChange={setShowRegenConfirm}>
       <AlertDialogTrigger asChild>
         <Button
-          variant="outline"
-          size="sm"
+          variant="ghost"
+          size="icon"
           disabled={isRegenerating}
           onClick={() => setShowRegenConfirm(true)}
+          aria-label="Regenerate all"
         >
           {isRegenerating ? (
             <>
-              <Loader2 className="h-4 w-4 animate-spin mr-1" />
-              Regenerating...
+              <Loader2 className="h-4 w-4 animate-spin" />
             </>
           ) : (
-            "Regenerate all"
+            <RefreshCw className="h-4 w-4" />
           )}
         </Button>
       </AlertDialogTrigger>

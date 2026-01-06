@@ -202,19 +202,16 @@ export function QuestionsReviewPanel({
   };
 
   const handleRequestChanges = async () => {
-    if (!selectedQuestion || !changeRequest.trim()) {
-      toast.error("Please describe what changes you want");
-      return;
-    }
+    if (!selectedQuestion) return;
     setIsRegenerating(true);
     setChangePopoverOpen(false);
     try {
       const result = await regenerateAnswer({
         questionId: selectedQuestion._id,
-        feedback: changeRequest.trim(),
+        feedback: changeRequest.trim() || undefined,
       });
       if (result.success) {
-        toast.success("Answer updated based on your feedback");
+        toast.success("Answer regenerated");
         setChangeRequest("");
       } else {
         toast.error(result.error || "Failed to update answer");
@@ -292,37 +289,37 @@ export function QuestionsReviewPanel({
       label: "Approved",
       badgeClass:
         "bg-green-100 text-green-800 border border-green-300 dark:bg-green-900/40 dark:text-green-100 dark:border-green-800",
-      rowClass: "bg-green-50 dark:bg-green-900/20 border-l-2 border-green-500/70",
+      rowClass: "bg-green-100/80 dark:bg-green-900/30",
     },
     needs_review: {
       label: "Needs review",
       badgeClass:
         "bg-amber-100 text-amber-800 border border-amber-300 dark:bg-amber-900/40 dark:text-amber-100 dark:border-amber-800",
-      rowClass: "bg-amber-50 dark:bg-amber-900/20 border-l-2 border-amber-500/80",
+      rowClass: "bg-amber-100/80 dark:bg-amber-900/30",
     },
     skipped: {
       label: "Skipped",
       badgeClass:
         "bg-red-100 text-red-800 border border-red-300 dark:bg-red-900/40 dark:text-red-100 dark:border-red-800",
-      rowClass: "bg-red-50 dark:bg-red-900/20 border-l-2 border-red-500/80",
+      rowClass: "bg-red-100/80 dark:bg-red-900/30",
     },
     processing: {
       label: "Processing",
       badgeClass:
-        "bg-slate-200 text-slate-800 border border-slate-400 dark:bg-slate-800/60 dark:text-slate-100 dark:border-slate-700",
-      rowClass: "bg-slate-100 dark:bg-slate-800/40 border-l-2 border-slate-600",
+        "bg-slate-300 text-slate-900 border border-slate-500 dark:bg-slate-800/60 dark:text-slate-100 dark:border-slate-700",
+      rowClass: "bg-slate-200/80 dark:bg-slate-800/40",
     },
     ready: {
       label: "Answer ready",
       badgeClass:
         "bg-slate-100 text-slate-700 border border-slate-300 dark:bg-slate-800/50 dark:text-slate-100 dark:border-slate-700",
-      rowClass: "bg-slate-50 dark:bg-slate-900/30 border-l-2 border-slate-400",
+      rowClass: "bg-slate-100/70 dark:bg-slate-900/30",
     },
     pending: {
       label: "Pending",
       badgeClass:
         "bg-slate-300 text-slate-900 border border-slate-500 dark:bg-slate-800 dark:text-slate-50 dark:border-slate-700",
-      rowClass: "bg-slate-200 dark:bg-slate-800/60 border-l-2 border-slate-600",
+      rowClass: "bg-slate-200/80 dark:bg-slate-800/60",
     },
   };
 
@@ -358,13 +355,18 @@ export function QuestionsReviewPanel({
   const hasUnapprovedWebSources = unapprovedWebSourced.length > 0;
 
   return (
-    <div className="space-y-4 min-w-0 w-full max-w-full overflow-hidden">
-      {/* Header */}
-      <div className="flex items-center justify-between gap-4 flex-wrap">
-        <h2 className="text-xl font-semibold shrink-0">
-          Questions ({sortedQuestions.length})
-        </h2>
-        <div className="flex items-center gap-3 flex-wrap justify-end">
+    <div className="space-y-0.5 min-w-0 w-full max-w-full overflow-hidden">
+      <div className="flex items-center justify-between gap-3 flex-wrap pb-1">
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <h2 className="text-xl font-semibold shrink-0 leading-tight">
+            Questions ({sortedQuestions.length})
+          </h2>
+          <span className="text-sm text-muted-foreground leading-tight">
+            {approvedCount}/{completedQuestions.length} Accepted
+            {skippedCount > 0 && ` (${skippedCount} skipped)`}
+          </span>
+        </div>
+        <div className="flex items-center gap-2 flex-wrap justify-end">
           {isProcessing && (
             <Badge variant="secondary" className="text-xs">
               <Loader2 className="h-3 w-3 animate-spin mr-1" />
@@ -375,10 +377,10 @@ export function QuestionsReviewPanel({
                   : "Generating answers..."}
             </Badge>
           )}
-          <span className="text-sm text-muted-foreground">
-            {approvedCount}/{completedQuestions.length} approved
-            {skippedCount > 0 && ` (${skippedCount} skipped)`}
-          </span>
+          {headerActions && (
+            <div className="flex items-center gap-2">{headerActions}</div>
+          )}
+
           {completedQuestions.length > 0 && (
             <div className="flex">
               {readyAll.length === 0 && !hasUnapprovedWebSources ? (
@@ -463,21 +465,24 @@ export function QuestionsReviewPanel({
               )}
             </div>
           )}
-          {headerActions && <div className="flex items-center gap-2">{headerActions}</div>}
         </div>
       </div>
+      <div className="pt-0" />
 
       {/* Split Panel with Card wrapper */}
-      <Card className="!py-0 overflow-hidden w-full max-w-full">
-        <CardContent className="!p-0 overflow-hidden w-full max-w-full">
-          <div ref={containerRef} className="flex h-[500px] overflow-hidden w-full max-w-full">
+      <Card className="!py-0 overflow-hidden w-full max-w-full border-0 shadow-none !rounded-none !ring-0 !ring-offset-0">
+        <CardContent className="!p-0 overflow-hidden w-full max-w-full !rounded-none">
+          <div
+            ref={containerRef}
+            className="flex h-[500px] overflow-hidden w-full max-w-full"
+          >
             {/* Left: Question List */}
             <div
-              className="overflow-hidden min-w-0"
+              className="overflow-hidden min-w-0 rounded-xl bg-background"
               style={{ width: `${leftPanelWidth}%` }}
             >
-              <ScrollArea className="h-full">
-                <div className="divide-y">
+              <ScrollArea className="h-full rounded-xl">
+                <div className="space-y-0">
                   {sortedQuestions.map((question) => {
                     const status = getQuestionStatus(question);
                     const isSelected = question._id === selectedQuestionId;
@@ -491,13 +496,12 @@ export function QuestionsReviewPanel({
                         key={question._id}
                         onClick={() => setSelectedQuestionId(question._id)}
                         className={cn(
-                          "cursor-pointer transition-colors flex items-center justify-between px-3 py-2 border border-transparent",
-                          isSelected
-                            ? "bg-muted ring-2 ring-primary/50"
-                            : statusStyle?.rowClass,
-                          !isSelected && "hover:bg-muted/50",
+                          "cursor-pointer transition-colors flex items-center justify-between px-3 py-2 rounded-none first:rounded-t-xl last:rounded-b-xl",
+                          statusStyle?.rowClass,
+                          isSelected &&
+                            "ring-2 ring-inset ring-black/50 dark:ring-white/60",
                           isActiveProcessing &&
-                            "ring-2 ring-primary/60 bg-primary/5 dark:bg-primary/10",
+                            "ring-2 ring-inset ring-primary/60 bg-primary/5 dark:bg-primary/10",
                         )}
                       >
                         <div className="flex items-center gap-2 min-w-0">
@@ -641,7 +645,9 @@ export function QuestionsReviewPanel({
                     </div>
 
                     {/* Question Text */}
-                    <p className="text-base break-words">{selectedQuestion.questionText}</p>
+                    <p className="text-base break-words">
+                      {selectedQuestion.questionText}
+                    </p>
 
                     {/* Answer Choices for Multiple Choice */}
                     {selectedQuestion.questionType === "multiple_choice" &&
@@ -654,12 +660,16 @@ export function QuestionsReviewPanel({
                           <div className="space-y-1">
                             {selectedQuestion.answerOptionsMCQ.map(
                               (option, i) => {
-                                const optionLetter = String.fromCharCode(65 + i);
+                                const optionLetter = String.fromCharCode(
+                                  65 + i,
+                                );
                                 const isCorrectAnswer =
                                   !isPending &&
                                   selectedQuestion.answer &&
                                   typeof selectedQuestion.answer === "string" &&
-                                  selectedQuestion.answer.toUpperCase().trim() === optionLetter;
+                                  selectedQuestion.answer
+                                    .toUpperCase()
+                                    .trim() === optionLetter;
                                 return (
                                   <div
                                     key={i}
@@ -671,7 +681,7 @@ export function QuestionsReviewPanel({
                                           : isWebSource
                                             ? "bg-amber-100 dark:bg-amber-950/50 border border-amber-500 text-amber-800 dark:text-amber-300 font-medium"
                                             : "bg-blue-100 dark:bg-blue-950/50 border border-blue-500 text-blue-800 dark:text-blue-300 font-medium"
-                                        : "text-muted-foreground"
+                                        : "text-muted-foreground",
                                     )}
                                   >
                                     {optionLetter}. {option}
@@ -696,7 +706,45 @@ export function QuestionsReviewPanel({
                       </div>
                     )}
 
-                    {/* Source - shown above answer */}
+                    {/* Answer - show for all types, but for MCQ only if answer isn't a valid option letter */}
+                    {!isPending &&
+                      !isSkipped &&
+                      (() => {
+                        // For MCQ, check if the answer is a valid option letter
+                        const isMCQ =
+                          selectedQuestion.questionType === "multiple_choice";
+                        const hasOptions =
+                          selectedQuestion.answerOptionsMCQ &&
+                          selectedQuestion.answerOptionsMCQ.length > 0;
+                        const answer =
+                          typeof selectedQuestion.answer === "string"
+                            ? selectedQuestion.answer.toUpperCase().trim()
+                            : "";
+                        const isValidLetter =
+                          hasOptions && /^[A-D]$/.test(answer);
+                        // Show answer box if NOT (MCQ with options AND valid letter answer)
+                        return !(isMCQ && hasOptions && isValidLetter);
+                      })() && (
+                        <div
+                          className={cn(
+                            "rounded-lg px-4 py-3 overflow-hidden",
+                            isWebSource && !isApprovedQuestion
+                              ? "bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900"
+                              : isApprovedQuestion
+                                ? "bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-900"
+                                : "bg-muted/50",
+                          )}
+                        >
+                          <div className="text-xs font-medium text-muted-foreground mb-1">
+                            Answer
+                          </div>
+                          <div className="whitespace-pre-wrap break-words">
+                            {formatAnswer(selectedQuestion.answer)}
+                          </div>
+                        </div>
+                      )}
+
+                    {/* Source below answer */}
                     {selectedQuestion.source && !isPending && !isSkipped && (
                       <div className="flex items-start gap-2 text-sm overflow-hidden">
                         <span className="text-muted-foreground shrink-0">
@@ -728,43 +776,12 @@ export function QuestionsReviewPanel({
                       </div>
                     )}
 
-                    {/* Answer - show for all types, but for MCQ only if answer isn't a valid option letter */}
-                    {!isPending &&
-                      !isSkipped &&
-                      (() => {
-                        // For MCQ, check if the answer is a valid option letter
-                        const isMCQ = selectedQuestion.questionType === "multiple_choice";
-                        const hasOptions = selectedQuestion.answerOptionsMCQ && selectedQuestion.answerOptionsMCQ.length > 0;
-                        const answer = typeof selectedQuestion.answer === "string" ? selectedQuestion.answer.toUpperCase().trim() : "";
-                        const isValidLetter = hasOptions && /^[A-D]$/.test(answer);
-                        // Show answer box if NOT (MCQ with options AND valid letter answer)
-                        return !(isMCQ && hasOptions && isValidLetter);
-                      })() && (
-                        <div
-                          className={cn(
-                            "rounded-lg px-4 py-3 overflow-hidden",
-                            isWebSource && !isApprovedQuestion
-                              ? "bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900"
-                              : isApprovedQuestion
-                                ? "bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-900"
-                                : "bg-muted/50",
-                          )}
-                        >
-                          <div className="text-xs font-medium text-muted-foreground mb-1">
-                            Answer
-                          </div>
-                          <div className="whitespace-pre-wrap break-words">
-                            {formatAnswer(selectedQuestion.answer)}
-                          </div>
-                        </div>
-                      )}
-
                     {/* Key Points */}
                     {selectedQuestion.keyPoints &&
                       selectedQuestion.keyPoints.length > 0 &&
                       !isPending &&
                       !isSkipped && (
-                        <details className="group">
+                        <details className="group" open>
                           <summary className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground cursor-pointer list-none">
                             <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-0 -rotate-90" />
                             Key Points ({selectedQuestion.keyPoints.length})
@@ -811,7 +828,7 @@ export function QuestionsReviewPanel({
                           size="sm"
                           variant="destructive"
                           onClick={handleReject}
-                          disabled={isRejecting || isSkipped}
+                          disabled={isRejecting || isSkipped || !isApprovedQuestion}
                           className="gap-1"
                         >
                           {isRejecting ? (
@@ -851,21 +868,19 @@ export function QuestionsReviewPanel({
                               ) : (
                                 <MessageSquare className="h-4 w-4" />
                               )}
-                              {isSkipped ? "Generate" : "Request Changes"}
+                              {isSkipped ? "Generate" : "Regenerate"}
                             </Button>
                           </PopoverTrigger>
-                          <PopoverContent className="w-80" align="start">
+                          <PopoverContent className="w-64" align="start">
                             <div className="space-y-3">
                               <p className="text-sm font-medium">
-                                {isSkipped
-                                  ? "Generate Answer"
-                                  : "Request Changes"}
+                                {isSkipped ? "Generate Answer" : "Regenerate"}
                               </p>
                               <Textarea
                                 placeholder={
                                   isSkipped
-                                    ? "Describe what answer you want generated..."
-                                    : "e.g., Include more detail, fix the calculation..."
+                                    ? "Describe what answer you want generated... (optional)"
+                                    : "Optional notes for regeneration..."
                                 }
                                 value={changeRequest}
                                 onChange={(e) =>
@@ -876,11 +891,10 @@ export function QuestionsReviewPanel({
                               <Button
                                 size="sm"
                                 onClick={handleRequestChanges}
-                                disabled={!changeRequest.trim()}
                                 className="w-full"
                               >
                                 <Send className="h-4 w-4" />
-                                Send to AI
+                                Regenerate
                               </Button>
                             </div>
                           </PopoverContent>
