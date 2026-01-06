@@ -259,35 +259,51 @@ function normalizeAnswerValue(
   return "";
 }
 
-const EXTRACTION_PROMPT = `Extract ALL questions from this assignment document.
+const EXTRACTION_PROMPT = `<prompt>
+<core_task>
+- Extract ALL questions from this assignment document.
+</core_task>
 
-OUTPUT FIELDS:
-- questionNumber: as shown in document (always a string). If numbering includes letters like "16a/16b/16c", treat each lettered part as its own separate question entry (never merge lettered parts together).
-- questionText: FULL question with instruction (e.g., "Solve for x: 3x + 5 = 20", not just "3x + 5 = 20"). If no instruction given, add one (Solve/Simplify/Factor/etc). If it references a passage/figure, include that reference.
+<formatting_rules>
 - Preserve visible formatting cues that matter to the student (blanks like "____", placeholders like "[ ]", line breaks in passage references). If a blank appears in the prompt, keep it in questionText.
 - Do NOT preserve hard line breaks inside a single sentence (PDF wrap). If a sentence is split across two lines, merge it into one sentence without the break. If there are clearly separate sentences or bullet lines, keep those breaks.
+- NEVER include MCQ option text inside questionText. Keep the stem/instruction in questionText and put every visible option only in answerOptionsMCQ.
+</formatting_rules>
+
+<teacher_additional_info>
+- {additionalInfo}
+</teacher_additional_info>
+
+<teacher_rules>
+- Question modifications → apply directly to questionText.
+- MCQ option changes → modify answerOptionsMCQ, but NEVER replace the correct answer. Identify which option is correct first, then replace a wrong one.
+- Answer format requirements → put in additionalInstructionsForAnswer.
+- Method requirements → put in additionalInstructionsForWork.
+- "skip question X" → set questionType to "skipped".
+</teacher_rules>
+
+<math_and_references>
+- Preserve math expressions exactly.
+- Do NOT transcribe tables/graphs; instead, note the reference in questionText (e.g., "Refer to the table on page 2" or "See graph above").
+- For tables or graphic organizers with blanks/prompts, treat each blank/prompt as its own short_answer question. Include the row/column/section label in questionText (e.g., "Table: causes | Blank 2"), and keep a brief note to refer to the table/organizer instead of copying it.
+</math_and_references>
+
+<output_fields>
+- questionNumber: as shown in document (always a string). If numbering includes letters like "16a/16b/16c", treat each lettered part as its own separate question entry (never merge lettered parts together).
+- questionText: FULL question with instruction (e.g., "Solve for x: 3x + 5 = 20", not just "3x + 5 = 20"). If no instruction given, add one (Solve/Simplify/Factor/etc). If it references a passage/figure, include that reference.
 - questionType: "multiple_choice" | "single_value" | "short_answer" | "free_response" | "skipped"
 - answerOptionsMCQ: array of choices (MCQ only)
 - additionalInstructionsForAnswer: answer format requirements (e.g., "must be decimal")
 - additionalInstructionsForWork: method requirements (e.g., "use quadratic formula")
-- NEVER include MCQ option text inside questionText. Keep the stem/instruction in questionText and put every visible option only in answerOptionsMCQ. 
+</output_fields>
 
-TEACHER'S ADDITIONAL INFO (OVERRIDES DEFAULTS - do what it says):
-{additionalInfo}
+<expected_output>
+- Respond with ONLY valid JSON array.
+- [{"questionNumber": "1", "questionText": "...", "questionType": "...", ...}, ...]
+</expected_output>
+</prompt>`;
 
-When teacher provides additional info:
-- Question modifications → apply directly to questionText
-- MCQ option changes → modify answerOptionsMCQ, but NEVER replace the correct answer. Identify which option is correct first, then replace a wrong one.
-- Answer format requirements → put in additionalInstructionsForAnswer
-- Method requirements → put in additionalInstructionsForWork
-- "skip question X" → set questionType to "skipped"
-
-Preserve math expressions exactly. Do NOT transcribe tables/graphs; instead, note the reference in questionText (e.g., "Refer to the table on page 2" or "See graph above"). Respond with ONLY valid JSON array:
-[{"questionNumber": "1", "questionText": "...", "questionType": "...", ...}, ...]`;
-
-// Import and re-export from shared types
 import type { ExtractedQuestion, GeneratedAnswer } from "../lib/types";
-export type { ExtractedQuestion, GeneratedAnswer };
 
 export async function extractQuestionsFromFiles(
   fileUrls: string[],
@@ -330,17 +346,37 @@ export async function extractQuestionsFromFiles(
   }, "Question extraction");
 }
 
-const ANSWER_PROMPT = `QUESTION #{questionNumber}: {questionText}
-TYPE: {questionType}
+const ANSWER_PROMPT = `<prompt>
+<context>
+- QUESTION #{questionNumber}: {questionText}
+- TYPE: {questionType}
 {mcqOptionsSection}
-FORMAT: {additionalInstructionsForAnswer}
-METHOD: {additionalInstructionsForWork}
+- FORMAT: {additionalInstructionsForAnswer}
+- METHOD: {additionalInstructionsForWork}
+</context>
 
-Answer using the notes provided. If the notes are missing what you need, use Google Search to fetch supporting facts and ground your answer.
+<response_rules>
+- Answer using the notes provided.
+- If the notes are missing what you need, use Google Search to fetch supporting facts and ground your answer.
+- If no notes are provided, rely entirely on Google Search for the needed facts.
 - When you have the final answer, respond ONLY with JSON matching the schema (answer, key_points, source). No prose or markdown.
-- For multiple_choice answers, return ONLY the exact option text (no letter prefixes like "B." and no "B. Option" combos). If the option text is missing, return just the single letter.
-- For answers: use a single string for multiple_choice/single_value/short_answer; use an array for free_response when needed. Provide 1-2 concise key_points (quoted/paraphrased) from notes or searched pages.
-- If you used only notes, set source to \"notes\". If you used search, set source to the real URLs (no placeholders).`;
+- For answers: use a single string for multiple_choice/single_value/short_answer; use an array for free_response when needed.
+</response_rules>
+
+<mcq_rules>
+- For multiple_choice answers, return ONLY the exact option text (no letter prefixes like "B." and no "B. Option" combos).
+- If the option text is missing, return just the single letter.
+</mcq_rules>
+
+<key_points>
+- Provide 1-2 concise key_points (quoted/paraphrased) from notes or searched pages.
+</key_points>
+
+<sourcing>
+- If you used only notes, set source to "notes".
+- If you used search, set source to the real URLs (no placeholders).
+</sourcing>
+</prompt>`;
 
 export async function generateAnswerForQuestion(
   questionNumber: string,
@@ -353,16 +389,16 @@ export async function generateAnswerForQuestion(
   answerOptionsMCQ?: string[],
 ): Promise<GeneratedAnswer> {
   // Build MCQ options section if this is a multiple choice question
-  let mcqOptionsSection = "";
+  let mcqOptionsSection = "- ANSWER OPTIONS: none provided.";
   if (
     questionType === "multiple_choice" &&
     answerOptionsMCQ &&
     answerOptionsMCQ.length > 0
   ) {
     mcqOptionsSection =
-      "ANSWER OPTIONS (choose ONE letter):\n" +
+      "- ANSWER OPTIONS (choose one):\n" +
       answerOptionsMCQ
-        .map((option, i) => `${String.fromCharCode(65 + i)}. ${option}`)
+        .map((option, i) => `  - ${String.fromCharCode(65 + i)}. ${option}`)
         .join("\n");
   }
 
@@ -378,10 +414,6 @@ export async function generateAnswerForQuestion(
       "{additionalInstructionsForWork}",
       additionalInstructionsForWork || "None",
     );
-  const noNotesHint =
-    notesParts.length === 0
-      ? "\nNO_NOTES_CONTEXT: No notes or source files were provided. Use Google Search to find the needed facts before answering."
-      : "";
 
   try {
     const finalResponse = await withRetry(async () => {
@@ -390,7 +422,7 @@ export async function generateAnswerForQuestion(
         contents: [
           {
             role: "user",
-            parts: [{ text: prompt + noNotesHint }, ...notesParts],
+            parts: [{ text: prompt }, ...notesParts],
           },
         ],
         config: {
