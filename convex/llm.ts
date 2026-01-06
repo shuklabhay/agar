@@ -81,10 +81,7 @@ function getClient(): GoogleGenAI {
 const MAX_RETRIES = 3;
 const RETRY_DELAY_MS = 1000;
 
-async function withRetry<T>(
-  fn: () => Promise<T>,
-  context: string,
-): Promise<T> {
+async function withRetry<T>(fn: () => Promise<T>, context: string): Promise<T> {
   let lastError: Error | null = null;
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     try {
@@ -92,12 +89,18 @@ async function withRetry<T>(
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error));
       if (attempt < MAX_RETRIES) {
-        console.warn(`${context} failed (attempt ${attempt}/${MAX_RETRIES}): ${lastError.message}. Retrying...`);
-        await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS * attempt));
+        console.warn(
+          `${context} failed (attempt ${attempt}/${MAX_RETRIES}): ${lastError.message}. Retrying...`,
+        );
+        await new Promise((resolve) =>
+          setTimeout(resolve, RETRY_DELAY_MS * attempt),
+        );
       }
     }
   }
-  throw new Error(`${context} failed after ${MAX_RETRIES} attempts: ${lastError?.message}`);
+  throw new Error(
+    `${context} failed after ${MAX_RETRIES} attempts: ${lastError?.message}`,
+  );
 }
 
 function cleanJsonResponse(text: string): string {
@@ -157,9 +160,7 @@ function cleanJsonResponse(text: string): string {
   }
 
   // Handle common JSON issues
-  cleaned = cleaned
-    .replace(/,\s*}/g, "}")
-    .replace(/,\s*]/g, "]");
+  cleaned = cleaned.replace(/,\s*}/g, "}").replace(/,\s*]/g, "]");
 
   return cleaned;
 }
@@ -206,7 +207,9 @@ function normalizeParsedSource(
   if (Array.isArray(source)) {
     const cleaned = dedupe(
       source
-        .map((s) => (typeof s === "string" ? cleanGroundingUrl(s.trim()) : null))
+        .map((s) =>
+          typeof s === "string" ? cleanGroundingUrl(s.trim()) : null,
+        )
         .filter((s): s is string => Boolean(s)),
     );
     if (cleaned.length > 0) return cleaned;
@@ -296,8 +299,10 @@ TYPE: {questionType}
 FORMAT: {additionalInstructionsForAnswer}
 METHOD: {additionalInstructionsForWork}
 
-Answer using the notes provided. If the notes are missing the concept/facts/method you need (e.g., math notes but grammar question), use Google Search to fetch what’s missing, then solve. You can still use notes if any part is relevant; otherwise rely on search results.
+Answer using the notes provided. If the notes are missing the concept/facts/method you need (e.g., math notes but grammar question), use Google Search to fetch what is missing, then solve. You can still use notes if any part is relevant; otherwise rely ONLY on search results and never your internal knowledge.
+- If the notes do not cover the answer or you feel uncertain, run Google Search before answering. Do not guess—ground every answer in notes or a searched page.
 - Default to verifying with Google Search for any fact/definition/date/example that isn't explicitly spelled out in the notes—even if it's basic. When in doubt, run a search tool call before finalizing the answer.
+
 
 - If you used only notes → set source to "notes" and keep key_points quoted/paraphrased from notes.
 - If you used search (even partially) → set source to an array of the actual URLs you used (not "notes"). Do NOT fabricate note citations. Use the real website URLs (e.g., https://example.com/page), never vertexaisearch.cloud.google.com or redirect wrappers.
@@ -341,10 +346,7 @@ export async function generateAnswerForQuestion(
         .join("\n");
   }
 
-  const prompt = ANSWER_PROMPT.replace(
-    "{questionNumber}",
-    questionNumber,
-  )
+  const prompt = ANSWER_PROMPT.replace("{questionNumber}", questionNumber)
     .replace("{questionText}", questionText)
     .replace("{questionType}", questionType)
     .replace("{mcqOptionsSection}", mcqOptionsSection)
@@ -427,7 +429,9 @@ function extractAnswerFromText(
   const trimmed = text.trim();
   const answer =
     questionType === "free_response"
-      ? (trimmed ? trimmed.split(/\n+/).slice(0, 5) : [])
+      ? trimmed
+        ? trimmed.split(/\n+/).slice(0, 5)
+        : []
       : trimmed || "";
 
   console.warn(
