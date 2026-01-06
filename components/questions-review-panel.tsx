@@ -79,7 +79,6 @@ export function QuestionsReviewPanel({
   const unapproveQuestion = useMutation(api.questions.unapproveQuestion);
   const approveAllQuestions = useMutation(api.questions.approveAllQuestions);
   const removeQuestion = useMutation(api.questions.removeQuestion);
-  const skipQuestion = useMutation(api.questions.skipQuestion);
   const regenerateAnswer = useAction(api.answerGeneration.regenerateAnswer);
 
   const sortedQuestions = [...questions].sort(
@@ -239,10 +238,10 @@ export function QuestionsReviewPanel({
     if (!selectedQuestion) return;
     setIsRejecting(true);
     try {
-      await skipQuestion({ questionId: selectedQuestion._id });
-      toast.success("Question marked as skipped");
+      await unapproveQuestion({ questionId: selectedQuestion._id });
+      toast.success("Approval removed");
     } catch {
-      toast.error("Failed to skip question");
+      toast.error("Failed to remove approval");
     } finally {
       setIsRejecting(false);
     }
@@ -268,6 +267,40 @@ export function QuestionsReviewPanel({
     short_answer: "Short Answer",
     free_response: "Free Response",
     skipped: "Skipped",
+  };
+  const statusStyles: Record<
+    string,
+    { label: string; badgeClass: string; rowClass?: string }
+  > = {
+    approved: {
+      label: "Approved",
+      badgeClass:
+        "bg-green-50 text-green-700 border border-green-200 dark:bg-green-950/40 dark:text-green-200 dark:border-green-900",
+      rowClass: "bg-green-50/60 dark:bg-green-950/10",
+    },
+    needs_review: {
+      label: "Needs review",
+      badgeClass:
+        "bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-950/30 dark:text-amber-200 dark:border-amber-900",
+      rowClass: "bg-amber-50/50 dark:bg-amber-950/10",
+    },
+    skipped: {
+      label: "Skipped",
+      badgeClass:
+        "bg-slate-100 text-slate-600 border border-slate-200 dark:bg-slate-900 dark:text-slate-200 dark:border-slate-800",
+      rowClass: "bg-slate-50/60 dark:bg-slate-900/40",
+    },
+    processing: {
+      label: "Processing",
+      badgeClass:
+        "bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-950/30 dark:text-blue-200 dark:border-blue-900",
+      rowClass: "bg-blue-50/50 dark:bg-blue-950/10",
+    },
+    ready: {
+      label: "Ready",
+      badgeClass:
+        "bg-slate-50 text-slate-700 border border-slate-200 dark:bg-slate-950/30 dark:text-slate-200 dark:border-slate-800",
+    },
   };
 
   // No questions state
@@ -430,13 +463,15 @@ export function QuestionsReviewPanel({
                   {sortedQuestions.map((question) => {
                     const status = getQuestionStatus(question);
                     const isSelected = question._id === selectedQuestionId;
+                    const statusStyle = statusStyles[status];
                     return (
                       <div
                         key={question._id}
                         onClick={() => setSelectedQuestionId(question._id)}
                         className={cn(
                           "cursor-pointer transition-colors flex items-center justify-between px-3 py-2",
-                          isSelected ? "bg-muted" : "hover:bg-muted/50",
+                          isSelected ? "bg-muted" : statusStyle?.rowClass,
+                          !isSelected && "hover:bg-muted/50",
                           status === "processing" && "opacity-60",
                         )}
                       >
@@ -448,7 +483,17 @@ export function QuestionsReviewPanel({
                             {question.questionText}
                           </span>
                         </div>
-                        <div className="shrink-0 ml-2">
+                        <div className="shrink-0 ml-2 flex items-center gap-2">
+                          {statusStyle && (
+                            <span
+                              className={cn(
+                                "text-[11px] font-medium px-2 py-0.5 rounded-full",
+                                statusStyle.badgeClass,
+                              )}
+                            >
+                              {statusStyle.label}
+                            </span>
+                          )}
                           {status === "approved" && (
                             <Check className="h-4 w-4 text-green-600" />
                           )}
