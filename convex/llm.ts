@@ -270,7 +270,7 @@ OUTPUT FIELDS:
 - answerOptionsMCQ: array of choices (MCQ only)
 - additionalInstructionsForAnswer: answer format requirements (e.g., "must be decimal")
 - additionalInstructionsForWork: method requirements (e.g., "use quadratic formula")
-- NEVER include MCQ option text inside questionText. Keep the stem/instruction in questionText and put every visible option only in answerOptionsMCQ. Do not invent or duplicate options.
+- NEVER include MCQ option text inside questionText. Keep the stem/instruction in questionText and put every visible option only in answerOptionsMCQ. 
 
 TEACHER'S ADDITIONAL INFO (OVERRIDES DEFAULTS - do what it says):
 {additionalInfo}
