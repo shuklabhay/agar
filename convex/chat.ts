@@ -474,6 +474,7 @@ export const sendMessageToTutor = action({
         answer: question.answer,
         keyPoints: question.keyPoints,
         additionalInstructionsForWork: question.additionalInstructionsForWork,
+        questionNumber: question.questionNumber,
       },
       history: history.map((m) => ({
         role: m.role,
@@ -495,6 +496,10 @@ export const sendMessageToTutor = action({
             typeof toolCall.args.detectedAnswer === "string"
               ? toolCall.args.detectedAnswer
               : parsedSelectedOption;
+          const advanceIfTrueArg =
+            typeof toolCall.args.advance_if_true === "boolean"
+              ? (toolCall.args.advance_if_true as boolean)
+              : undefined;
           const isMCQ = question.questionType === "multiple_choice";
 
           const correctLetters = deriveCorrectLetters(
@@ -522,6 +527,7 @@ export const sendMessageToTutor = action({
             status: isCorrect ? "correct" : "incorrect",
             submittedText: !isMCQ ? detectedAnswer : undefined,
             selectedAnswer: isMCQ ? answerLetter : undefined,
+            advanceOnCorrect: isCorrect ? advanceIfTrueArg : undefined,
           });
           progressUpdated = true;
         }
@@ -545,22 +551,27 @@ export const sendMessageToTutor = action({
           progressId: progress._id,
           status: isCorrect ? "correct" : "incorrect",
           selectedAnswer: parsedSelectedOption,
+          advanceOnCorrect: true,
         });
         progressUpdated = true;
       }
     }
 
     // Save tutor response
+    const toolCallToStore =
+      response.toolCalls?.find((call) => call.name === "evaluate_response") ??
+      response.toolCalls?.[0];
+
     await ctx.runMutation(internal.chat.addMessage, {
       sessionId: args.sessionId,
       questionId: args.questionId,
       role: "tutor",
       content: response.message,
-      toolCall: response.toolCalls?.[0]
+      toolCall: toolCallToStore
         ? {
-            name: response.toolCalls[0].name,
+            name: toolCallToStore.name,
             args: {
-              ...response.toolCalls[0].args,
+              ...toolCallToStore.args,
               questionNumber: question.questionNumber,
             },
           }

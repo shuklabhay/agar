@@ -21,13 +21,14 @@ import {
   Image as ImageIcon,
 } from "lucide-react";
 import { ChatMessage } from "./ChatMessage";
-import { ChatQuestion } from "@/lib/types";
+import { ChatQuestion, ToolCall } from "@/lib/types";
 
 interface ChatPanelProps {
   sessionId: Id<"studentSessions"> | null;
   questionId: Id<"questions"> | undefined;
   question: ChatQuestion | undefined;
   questions: ChatQuestion[];
+  onToolCalls?: (toolCalls?: ToolCall[]) => void;
 }
 
 export function ChatPanel({
@@ -35,6 +36,7 @@ export function ChatPanel({
   questionId,
   question,
   questions,
+  onToolCalls,
 }: ChatPanelProps) {
   const [input, setInput] = useState("");
   const [isSending, setIsSending] = useState(false);
@@ -62,6 +64,7 @@ export function ChatPanel({
       retryAfterMs: number;
       limit: number;
     };
+    toolCalls?: ToolCall[];
   };
 
   type AttachmentPreview = {
@@ -217,6 +220,7 @@ export function ChatPanel({
         return;
       }
 
+      onToolCalls?.(response?.toolCalls);
       setInput("");
     } catch (error) {
       console.error("Failed to send message:", error);

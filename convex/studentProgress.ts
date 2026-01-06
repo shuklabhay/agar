@@ -218,6 +218,7 @@ export const updateProgressStatus = internalMutation({
     ),
     submittedText: v.optional(v.string()),
     selectedAnswer: v.optional(v.string()),
+    advanceOnCorrect: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const update: {
@@ -226,6 +227,7 @@ export const updateProgressStatus = internalMutation({
       completedAt?: number;
       attempts?: number;
       selectedAnswer?: string;
+      advanceOnCorrect?: boolean;
     } = { status: args.status };
 
     if (args.submittedText !== undefined) {
@@ -233,6 +235,9 @@ export const updateProgressStatus = internalMutation({
     }
     if (args.selectedAnswer !== undefined) {
       update.selectedAnswer = args.selectedAnswer;
+    }
+    if (args.advanceOnCorrect !== undefined) {
+      update.advanceOnCorrect = args.advanceOnCorrect;
     }
 
     if (args.status === "correct") {

@@ -118,6 +118,7 @@ export default defineSchema({
       v.literal("correct"),
       v.literal("incorrect"),
     ),
+    advanceOnCorrect: v.optional(v.boolean()),
     selectedAnswer: v.optional(v.string()),
     submittedText: v.optional(v.string()),
     attempts: v.number(),

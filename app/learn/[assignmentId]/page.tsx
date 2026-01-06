@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useQuery, useMutation, useConvexAuth } from "convex/react";
 import { api } from "@/convex/_generated/api";
@@ -225,6 +225,7 @@ export default function LearnPage() {
     // Check if this question just became correct
     if (
       currentProgress?.status === "correct" &&
+      currentProgress.advanceOnCorrect !== false &&
       lastCorrectQuestionRef.current !== currentQuestion._id
     ) {
       lastCorrectQuestionRef.current = currentQuestion._id;
@@ -365,6 +366,59 @@ export default function LearnPage() {
       setIsStarting(false);
     }
   };
+
+  const handleToolCalls = useCallback(
+    (toolCalls?: Array<{ name: string; args: Record<string, unknown> }>) => {
+      if (!toolCalls || toolCalls.length === 0 || !questions?.length) return;
+
+      const advanceCall = toolCalls.find(
+        (call) => call.name === "advance_to_question",
+      );
+      if (!advanceCall) return;
+
+      const args = advanceCall.args ?? {};
+      const target =
+        (args as { questionNumber?: unknown }).questionNumber ??
+        (args as { questionIndex?: unknown }).questionIndex ??
+        (args as { questionId?: unknown }).questionId;
+
+      let targetIndex = -1;
+
+      if (typeof target === "number" && Number.isFinite(target)) {
+        const clamped = Math.max(
+          0,
+          Math.min(questions.length - 1, Math.round(target)),
+        );
+        targetIndex = clamped;
+      } else if (typeof target === "string") {
+        const trimmed = target.trim();
+        const numeric = Number(trimmed);
+
+        targetIndex = questions.findIndex(
+          (q) =>
+            q.questionNumber === trimmed ||
+            q._id === trimmed ||
+            q.questionNumber === String(numeric),
+        );
+
+        if (targetIndex === -1 && !Number.isNaN(numeric)) {
+          const numericMatch = questions.findIndex(
+            (q) => Number(q.questionNumber) === numeric,
+          );
+          if (numericMatch !== -1) {
+            targetIndex = numericMatch;
+          } else if (numeric >= 0 && numeric < questions.length) {
+            targetIndex = numeric;
+          }
+        }
+      }
+
+      if (targetIndex >= 0 && targetIndex < questions.length) {
+        setCurrentQuestionIndex(targetIndex);
+      }
+    },
+    [questions],
+  );
 
   // Handle resuming an existing session
   const handleResume = async (existingSessionId: Id<"studentSessions">) => {
@@ -581,6 +635,7 @@ export default function LearnPage() {
                 )
               }
               sessionId={activeSessionId as Id<"studentSessions">}
+              onToolCalls={handleToolCalls}
             />
           </div>
 
@@ -602,6 +657,7 @@ export default function LearnPage() {
               questionId={currentQuestion?._id}
               question={currentQuestion}
               questions={questions ?? []}
+              onToolCalls={handleToolCalls}
             />
           </div>
         </main>

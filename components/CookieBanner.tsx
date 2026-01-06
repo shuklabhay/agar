@@ -29,6 +29,9 @@ export function CookieBanner() {
   }, []);
 
   const setConsent = (value: ConsentChoice) => {
+    // Close immediately for snappy UX even if storage operations fail
+    setIsOpen(false);
+
     if (typeof window !== "undefined") {
       window.localStorage.setItem(CONSENT_COOKIE_NAME, value);
     }
@@ -42,7 +45,6 @@ export function CookieBanner() {
     } catch {
       // localStorage already set; ignore cookie errors
     }
-    setIsOpen(false);
   };
 
   if (!isOpen) return null;

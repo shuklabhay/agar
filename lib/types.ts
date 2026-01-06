@@ -60,6 +60,7 @@ export interface TutorQuestion {
   answer?: string | string[];
   keyPoints?: string[];
   additionalInstructionsForWork?: string;
+  questionNumber?: string;
 }
 
 export type UploadedFile = {
@@ -194,6 +195,7 @@ export interface LearnQuestion {
 export interface StudentProgress {
   _id: Id<"studentProgress">;
   status: ProgressStatus;
+  advanceOnCorrect?: boolean;
   selectedAnswer?: string;
   submittedText?: string;
   attempts: number;

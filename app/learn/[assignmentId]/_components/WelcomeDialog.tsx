@@ -49,10 +49,15 @@ export function WelcomeDialog({
 }: WelcomeDialogProps) {
   const [name, setName] = useState("");
 
+  const trimmedName = name.trim();
+  const nameTaken = existingStudents.some(
+    (s) => s.name.trim().toLowerCase() === trimmedName.toLowerCase(),
+  );
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || isLoading) return;
-    onStartNew(name.trim());
+    if (!trimmedName || isLoading || nameTaken) return;
+    onStartNew(trimmedName);
   };
 
   return (
@@ -82,10 +87,15 @@ export function WelcomeDialog({
               className="text-center"
               disabled={isLoading}
             />
+            {nameTaken && (
+              <p className="text-xs text-destructive text-center">
+                That name is already in use. Add a last initial to make it unique (e.g., “{trimmedName} S.”).
+              </p>
+            )}
             <Button
               type="submit"
               className="w-full"
-              disabled={!name.trim() || isLoading}
+              disabled={!trimmedName || isLoading || nameTaken}
             >
               {isLoading ? "Starting..." : "Start Learning"}
             </Button>
