@@ -338,6 +338,7 @@ METHOD: {additionalInstructionsForWork}
 
 Answer using the notes provided. If the notes are missing what you need, use Google Search to fetch supporting facts and ground your answer.
 - When you have the final answer, respond ONLY with JSON matching the schema (answer, key_points, source). No prose or markdown.
+- For multiple_choice answers, return ONLY the exact option text (no letter prefixes like "B." and no "B. Option" combos). If the option text is missing, return just the single letter.
 - For answers: use a single string for multiple_choice/single_value/short_answer; use an array for free_response when needed. Provide 1-2 concise key_points (quoted/paraphrased) from notes or searched pages.
 - If you used only notes, set source to \"notes\". If you used search, set source to the real URLs (no placeholders).`;
 
