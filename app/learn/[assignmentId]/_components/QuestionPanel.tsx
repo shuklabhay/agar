@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { ChevronLeft, ChevronRight, Check, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { LearnQuestion, StudentProgress, ToolCall } from "@/lib/types";
+import { LearnQuestion, StudentProgress } from "@/lib/types";
 
 interface QuestionPanelProps {
   question: LearnQuestion | undefined;
@@ -20,7 +20,6 @@ interface QuestionPanelProps {
   onPrevious: () => void;
   onNext: () => void;
   sessionId: Id<"studentSessions">;
-  onToolCalls?: (toolCalls?: ToolCall[]) => void;
 }
 
 export function QuestionPanel({
@@ -31,7 +30,6 @@ export function QuestionPanel({
   onPrevious,
   onNext,
   sessionId,
-  onToolCalls,
 }: QuestionPanelProps) {
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [textAnswer, setTextAnswer] = useState("");
@@ -156,7 +154,6 @@ export function QuestionPanel({
         }
       }
 
-      onToolCalls?.((response as { toolCalls?: ToolCall[] } | null)?.toolCalls);
     } catch (error) {
       console.error("Failed to submit answer:", error);
     } finally {
@@ -325,7 +322,7 @@ export function QuestionPanel({
       </div>
 
       {/* Navigation - fixed at bottom */}
-      <div className="p-4 bg-background flex items-center justify-between">
+      <div className="px-3 py-3 pt-2 bg-background flex items-center justify-between">
         <Button
           variant="outline"
           size="sm"

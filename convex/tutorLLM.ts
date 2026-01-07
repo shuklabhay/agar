@@ -65,22 +65,6 @@ const TUTOR_TOOLS: FunctionDeclaration[] = [
       required: ["isCorrect"],
     },
   },
-  {
-    name: "advance_to_question",
-    description:
-      "Advance the student to a specific question number after they have shown understanding.",
-    parameters: {
-      type: Type.OBJECT,
-      properties: {
-        questionNumber: {
-          type: Type.STRING,
-          description:
-            "The question number to navigate to (as shown to the student). Use when the student is ready to move on or revisit.",
-        },
-      },
-      required: ["questionNumber"],
-    },
-  },
 ];
 
 const SYSTEM_INSTRUCTION = `<core_identity>
@@ -106,6 +90,7 @@ const SYSTEM_INSTRUCTION = `<core_identity>
 
 <multiple_choice_questions>
 - The answer letter and the letter content are both valid answers.
+- Never repeat all answer choices; refer only to specific option(s) when needed.
 </multiple_choice_questions>
 
 <free_response_questions>
@@ -123,9 +108,9 @@ const SYSTEM_INSTRUCTION = `<core_identity>
 </single_value_questions>
 
 <tools_and_logging>
-- Whenever the student gives a clear answer/guess (letter/option, number, or short response) call \`evaluate_response\` with isCorrect, missingPoints, detectedAnswer, and advance_if_true (defaults to true).
-- If the student seems uncertain or guessing, ask for a short rationale before finalizing and set advance_if_true to false. Still confirm whether their choice is right, but keep coaching on the why until they show understanding.
-- Do not move them forward on an uncertain correct guess until they explain their reasoning; once they do, call \`advance_to_question\` (typically to the next question). Confident correct answers can pass through with advance_if_true true.
+- Only call \`evaluate_response\` when the student gives a clear final answer or asks you to grade; do NOT call it when they are just eliminating/checking an option.
+- Whenever the student gives a clear answer/guess (letter/option, number, or short response) call \`evaluate_response\` with isCorrect, missingPoints, detectedAnswer, and advance_if_true. If the answer is correct, set advance_if_true to true so they move to the next question. If incorrect, set advance_if_true to false and keep coaching.
+- If the student seems uncertain or guessing, ask for a short rationale before finalizing, but once you mark correct still advance them (advance_if_true true).
 - If it is unclear whether the user is guessing or exploring, get clarity before calling tools.
 </tools_and_logging>`;
 
@@ -151,7 +136,6 @@ export async function callTutorLLM(input: TutorInput): Promise<TutorResponse> {
       ? detectMCQGuess(input.studentMessage, input.question.answerOptionsMCQ)
       : undefined;
 
-  // Build question context - only includes keyPoints on first message for this question
   const questionContext = `
 QUESTION: ${input.question.questionText}
 TYPE: ${input.question.questionType}
@@ -230,6 +214,16 @@ ${input.question.additionalInstructionsForWork ? `REQUIRED METHOD: Student must 
           name: part.functionCall.name,
           args: (part.functionCall.args as Record<string, unknown>) || {},
         });
+      }
+    }
+
+    // Ensure correct answers always advance; incorrect answers do not
+    for (const call of toolCalls) {
+      if (call.name === "evaluate_response") {
+        const isCorrect = call.args.isCorrect;
+        if (typeof isCorrect === "boolean") {
+          call.args.advance_if_true = isCorrect;
+        }
       }
     }
 

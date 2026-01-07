@@ -12,23 +12,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Send,
-  Loader2,
-  Paperclip,
-  X,
-  FileText,
-  Image as ImageIcon,
-} from "lucide-react";
+import { Send, Paperclip, X, FileText, Image as ImageIcon } from "lucide-react";
 import { ChatMessage } from "./ChatMessage";
-import { ChatQuestion, ToolCall } from "@/lib/types";
+import { ChatQuestion } from "@/lib/types";
 
 interface ChatPanelProps {
   sessionId: Id<"studentSessions"> | null;
   questionId: Id<"questions"> | undefined;
   question: ChatQuestion | undefined;
   questions: ChatQuestion[];
-  onToolCalls?: (toolCalls?: ToolCall[]) => void;
 }
 
 export function ChatPanel({
@@ -36,7 +28,6 @@ export function ChatPanel({
   questionId,
   question,
   questions,
-  onToolCalls,
 }: ChatPanelProps) {
   const [input, setInput] = useState("");
   const [isSending, setIsSending] = useState(false);
@@ -64,7 +55,6 @@ export function ChatPanel({
       retryAfterMs: number;
       limit: number;
     };
-    toolCalls?: ToolCall[];
   };
 
   type AttachmentPreview = {
@@ -222,8 +212,6 @@ export function ChatPanel({
         setInput(rawInput);
         return;
       }
-
-      onToolCalls?.(response?.toolCalls);
     } catch (error) {
       console.error("Failed to send message:", error);
       setInput(rawInput);
@@ -300,7 +288,7 @@ export function ChatPanel({
           </div>
         )}
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        <div className="flex-1 overflow-y-auto p-4 pb-1.5 space-y-4">
         {chatHistory?.map((msg, index) => {
           const prevMsg = index > 0 ? chatHistory[index - 1] : null;
           const nextMsg =
@@ -410,8 +398,8 @@ export function ChatPanel({
       )}
 
       {/* Input Area */}
-      <div className="border-t p-4 bg-background">
-        <div className="flex gap-2 items-end">
+      <div className="border-t px-[0.5625rem] py-[0.5625rem] bg-background">
+        <div className="flex gap-[0.5625rem] items-center">
           <input
             ref={fileInputRef}
             type="file"
@@ -440,20 +428,16 @@ export function ChatPanel({
           />
           <Button
             onClick={handleSend}
-            disabled={
-              (!input.trim() && attachedFiles.length === 0) ||
-              isSending ||
-              (!!rateLimitInfo && retryCountdownMs > 0)
-            }
-            size="icon"
-            className="h-10 w-10 shrink-0"
-          >
-            {isSending ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Send className="h-4 w-4" />
-            )}
-          </Button>
+          disabled={
+            (!input.trim() && attachedFiles.length === 0) ||
+            isSending ||
+            (!!rateLimitInfo && retryCountdownMs > 0)
+          }
+          size="icon"
+          className="h-10 w-10 shrink-0"
+        >
+          <Send className="h-4 w-4" />
+        </Button>
         </div>
       </div>
 
