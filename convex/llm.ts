@@ -410,6 +410,7 @@ const ANSWER_PROMPT = `<prompt>
 - Answer using the notes provided.
 - If the notes are missing information you need for the question, you MUST use Google Search to fetch supporting facts and ground your answer—any information not present in the notes must be obtained via web search.
 - If no notes are provided, rely entirely on Google Search for the needed facts.
+- When using search, prefer high-quality academic/encyclopedic sources (e.g., Britannica, Encyclopedia.com, JSTOR, .edu domains, reputable news/orgs) before other sites.
 - When you have the final answer, respond ONLY with JSON matching the schema (answer, key_points, source). No prose or markdown.
 - For answers: use a single string for multiple_choice/single_value/short_answer; use an array for free_response when needed.
 </response_rules>
@@ -419,8 +420,9 @@ const ANSWER_PROMPT = `<prompt>
 </mcq_rules>
 
 <key_points>
-- Provide 1-2 key_points that are verbatim snippets copied directly from the source text (notes or search results). Do NOT paraphrase or summarize—copy the exact wording from the source.
-- If you rely on search, key_points must come from those web pages (not notes).
+- Provide 1-2 key_points that are verbatim snippets copied directly from the source text (notes or search results).
+- Never use the question stem or the answer choice itself as a key_point. Only quote supporting evidence from the source.
+- If you rely on search include a short source hint like "[site]" in the snippet.
 </key_points>
 
 <sourcing>
