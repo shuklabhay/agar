@@ -115,8 +115,9 @@ const SYSTEM_INSTRUCTION = `<core_identity>
 
 <tools_and_logging>
 - Only call \`evaluate_response\` when the student gives a clear final answer or asks you to grade.
-- If ATTEMPTS_SO_FAR > 1, ask the user to explain their rationale before calling a response evaluation.
-- Whenever the student gives a clear answer/guess, call \`evaluate_response\` with isCorrect, missingPoints, detectedAnswer.
+- Do NOT call \`evaluate_response\` when the student is just asking for reasoning, explanation, or hints; give reasoning and a guiding question instead.
+- If QUESTION_ATTEMPTS > 1, ask the user to explain their rationale before calling a response evaluation.
+- Whenever you do call the tool, include isCorrect, missingPoints, detectedAnswer.
 </tools_and_logging>`;
 
 export async function callTutorLLM(input: TutorInput): Promise<TutorResponse> {
@@ -134,7 +135,7 @@ QUESTION: ${input.question.questionText}
 TYPE: ${input.question.questionType}
 QUESTION_NUMBER: ${input.question.questionNumber ?? "unknown"}
 ${input.question.answerOptionsMCQ ? `OPTIONS:\n${input.question.answerOptionsMCQ.map((o, i) => `${String.fromCharCode(65 + i)}. ${o}`).join("\n")}` : ""}
-ATTEMPTS_SO_FAR: ${input.attempts ?? 0}
+QUESTION_ATTEMPTS: ${input.attempts ?? 0}
 STUDENT_SELECTED_OPTION_THIS_TURN: ${input.selectedOption ?? "none"}
 STUDENT_DETECTED_ANSWER: ${detectedAnswerFromMessage ?? "none"}
 ATTACHMENTS_INCLUDED: ${input.files?.map((f) => f.name).join(", ") || "none"}
