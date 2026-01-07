@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useLayoutEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useMutation, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
@@ -40,7 +40,6 @@ export function QuestionPanel({
   const [correctQuestions, setCorrectQuestions] = useState<Set<string>>(
     () => new Set(),
   );
-  const [isEntering, setIsEntering] = useState(true);
 
   const initProgress = useMutation(api.studentProgress.initializeProgress);
   const markInProgress = useMutation(api.studentProgress.markInProgress);
@@ -181,12 +180,6 @@ export function QuestionPanel({
     }
   };
 
-  // Subtle enter animation when switching questions
-  useLayoutEffect(() => {
-    setIsEntering(false);
-    const frame = window.requestAnimationFrame(() => setIsEntering(true));
-    return () => window.cancelAnimationFrame(frame);
-  }, [questionId]);
 
   if (!question) {
     return (
@@ -223,11 +216,9 @@ export function QuestionPanel({
       {/* Scrollable content area */}
       <div className="flex-1 overflow-y-auto p-6 pb-2 flex flex-col">
         <div
-          className={cn(
-            "flex flex-col transition-opacity duration-500 ease-out",
-            isEntering ? "opacity-100" : "opacity-0",
-          )}
-          style={{ willChange: "opacity" }}
+          key={questionId}
+          className="flex flex-col question-fade"
+          style={{ willChange: "opacity, transform" }}
         >
         {/* Question header */}
         <div className="flex items-center justify-between mb-2">
@@ -269,7 +260,7 @@ export function QuestionPanel({
                         isSelected &&
                           (isCorrect
                             ? "border-transparent text-emerald-900 bg-emerald-100 hover:bg-emerald-100 shadow-sm ring-1 ring-emerald-500/80 dark:text-emerald-100 dark:bg-emerald-900/30 dark:hover:bg-emerald-900/30 dark:ring-emerald-600/80"
-                            : "border-transparent text-foreground bg-white hover:bg-white shadow-sm ring-1 ring-foreground/25 dark:text-foreground dark:bg-foreground/5 dark:hover:bg-foreground/5 dark:ring-foreground/35"),
+                            : "border-transparent text-foreground bg-white hover:bg-white shadow-sm ring-1 ring-foreground/45 dark:text-foreground dark:bg-foreground/5 dark:hover:bg-foreground/5 dark:ring-foreground/55"),
                         incorrectOptions.includes(letter) &&
                           "border-muted text-muted-foreground bg-muted/30 ring-0",
                         isCorrectSelection && "disabled:opacity-100",
@@ -361,7 +352,7 @@ export function QuestionPanel({
         )}
 
         {isCorrect && (
-          <div className="w-full mb-3 bg-emerald-100 dark:bg-emerald-900/30 border border-emerald-500/80 dark:border-emerald-600/80 rounded-lg h-10 px-3 flex items-center">
+          <div className="w-full mb-3 bg-emerald-100 dark:bg-emerald-900/30 border border-emerald-500/80 dark:border-emerald-600/80 rounded-lg h-9 px-3 flex items-center">
             <p className="text-emerald-900 dark:text-emerald-100 text-sm font-medium flex items-center gap-2 leading-none">
               <Check className="h-4 w-4" />
               Great job!
@@ -389,7 +380,21 @@ export function QuestionPanel({
             <ChevronRight className="h-4 w-4 ml-1" />
           </Button>
         </div>
-      </div>
+        </div>
+
+      <style jsx>{`
+        @keyframes question-fade {
+          0% {
+            opacity: 0.9;
+          }
+          100% {
+            opacity: 1;
+          }
+        }
+        .question-fade {
+          animation: question-fade 420ms ease;
+        }
+      `}</style>
     </div>
   );
 }

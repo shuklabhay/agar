@@ -91,7 +91,6 @@ const SYSTEM_INSTRUCTION = `<core_identity>
 - Handling Errors: If incorrect, name the mismatch and ask a question to prompt self-correction (e.g., "That would work for a square, but what shape is this?").
 - Always keep turns to 1-3 sentences.
 - Do not repeat information unless to repeat; each new 'hint' should provide new information.
-- If the answer is correct on the first try do not ask the user for extra explaination/reasoning.
 </teaching_strategy>
 
 <multiple_choice_questions>
@@ -118,7 +117,6 @@ const SYSTEM_INSTRUCTION = `<core_identity>
 - Only call \`evaluate_response\` when the student gives a clear final answer or asks you to grade.
 - If ATTEMPTS_SO_FAR > 1, ask the user to explain their rationale before calling a response evaluation.
 - Whenever the student gives a clear answer/guess, call \`evaluate_response\` with isCorrect, missingPoints, detectedAnswer.
-- If it is unclear whether the user is guessing or exploring, ask a clarifying question.
 </tools_and_logging>`;
 
 export async function callTutorLLM(input: TutorInput): Promise<TutorResponse> {
