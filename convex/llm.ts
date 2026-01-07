@@ -325,9 +325,9 @@ const EXTRACTION_PROMPT = `<prompt>
 - If the teacher asks to edit a question, apply the change directly to questionText.
 - If the teacher edits MCQ options, update answerOptionsMCQ, but NEVER replace the correct answer. Identify the correct option first, then replace a wrong one.
 - If the teacher says "skip question X", set that questionType to "skipped".
+- If the teacher asks to add an extra question (e.g., “add another multiple choice question), create that question using notes concepts/information. If they specify where to place it, insert it there and set the appropriate questionNumber; otherwise append it at the end with the next logical questionNumber.
 - Answer format requirements (e.g., “must be decimal”) go to additionalInstructionsForAnswer.
 - Method/solution requirements (e.g., “use quadratic formula”) go to additionalInstructionsForWork.
-- If the teacher asks to add an extra question (e.g., “add another multiple choice question using the notes”), create that question. If they specify where to place it, insert it there and set the appropriate questionNumber; otherwise append it at the end with the next logical questionNumber. Build it from the provided notes/instructions.
 - Teacher specified instructions: {additionalInfo}
 </additional_instructions>
 
