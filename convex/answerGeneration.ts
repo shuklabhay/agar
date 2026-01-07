@@ -189,7 +189,6 @@ export const generateAnswers = action({
       let nextBatch = 0;
 
       const launchBatch = (batch: typeof questions) => {
-        let wrapped: Promise<void>;
         const run = (async () => {
           const result = await processBatch(batch);
           processed += result.processed;
@@ -199,7 +198,7 @@ export const generateAnswers = action({
           }
         })();
 
-        wrapped = run.finally(() => {
+        const wrapped = run.finally(() => {
           const idx = active.indexOf(wrapped);
           if (idx !== -1) active.splice(idx, 1);
         });

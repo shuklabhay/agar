@@ -1,7 +1,7 @@
 "use node";
 
 import { GoogleGenAI, FunctionDeclaration, Type } from "@google/genai";
-import type { TutorInput, TutorQuestion, TutorResponse } from "../lib/types";
+import type { TutorInput, TutorResponse } from "../lib/types";
 
 const TUTOR_MODEL = "gemini-2.0-flash-lite";
 
