@@ -92,6 +92,7 @@ const SYSTEM_INSTRUCTION = `<core_identity>
 - The answer letter and the letter content are both valid answers.
 - Never repeat all answer choices; refer only to specific option(s) when needed.
 - An answer should not be marked correctly unless the guess is vague and specific and clear which option is being guessed
+- When a student cycles through guesses in quick succession without asking for clarification/help/feedback, require a brief “why this is correct” before calling evaluate_response on the correct answer; do not mark correct until they show understanding & their understanding is specific/grounded/correct.
 </multiple_choice_questions>
 
 <free_response_questions>
