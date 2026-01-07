@@ -19,6 +19,12 @@ export type ProgressStatus =
 
 export type AnswerSource = "notes" | string[];
 
+export interface KeyPoint {
+  point: string;
+  url?: string;
+  sourceType: string;
+}
+
 export interface ExtractedQuestion {
   questionNumber: string;
   questionText: string;
@@ -30,7 +36,7 @@ export interface ExtractedQuestion {
 
 export interface GeneratedAnswer {
   answer: string | string[];
-  keyPoints: string[];
+  keyPoints: KeyPoint[];
   source: AnswerSource;
 }
 
@@ -48,7 +54,7 @@ export interface Question extends StudentQuestion {
   additionalInstructionsForAnswer?: string;
   additionalInstructionsForWork?: string;
   answer?: string | string[];
-  keyPoints?: string[];
+  keyPoints?: KeyPoint[];
   source?: AnswerSource;
   status: QuestionStatus;
 }
@@ -58,7 +64,7 @@ export interface TutorQuestion {
   questionType: string;
   answerOptionsMCQ?: string[];
   answer?: string | string[];
-  keyPoints?: string[];
+  keyPoints?: KeyPoint[];
   additionalInstructionsForWork?: string;
   questionNumber?: string;
 }
@@ -243,8 +249,8 @@ export interface ReviewQuestion {
   questionType: string;
   answerOptionsMCQ?: string[];
   answer?: string | string[];
-  keyPoints?: string[];
-  source?: "notes" | string[];
+  keyPoints?: KeyPoint[];
+  source?: AnswerSource;
   status: QuestionStatus;
 }
 
@@ -254,7 +260,7 @@ export interface EditableQuestion {
   questionText: string;
   questionType: string;
   answer?: string | string[];
-  keyPoints?: string[];
+  keyPoints?: KeyPoint[];
 }
 
 export type AuthMode = "login" | "signup";

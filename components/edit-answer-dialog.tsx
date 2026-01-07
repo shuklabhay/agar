@@ -13,9 +13,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Loader2 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Loader2, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { EditableQuestion } from "@/lib/types";
+import { EditableQuestion, KeyPoint } from "@/lib/types";
+import { normalizeKeyPoints } from "@/lib/keyPoints";
 
 interface EditAnswerDialogProps {
   question: EditableQuestion | null;
@@ -29,7 +31,9 @@ export function EditAnswerDialog({
   onOpenChange,
 }: EditAnswerDialogProps) {
   const [answer, setAnswer] = useState("");
-  const [keyPoints, setKeyPoints] = useState("");
+  const [keyPoints, setKeyPoints] = useState<KeyPoint[]>([
+    { point: "", url: "", sourceType: "notes" },
+  ]);
   const [isSaving, setIsSaving] = useState(false);
 
   const editQuestionAnswer = useMutation(api.questions.editQuestionAnswer);
@@ -43,8 +47,18 @@ export function EditAnswerDialog({
       } else {
         setAnswer(question.answer || "");
       }
-      // Convert keyPoints to newline-separated string
-      setKeyPoints(question.keyPoints?.join("\n") || "");
+      const normalized = normalizeKeyPoints(question.keyPoints);
+      setKeyPoints(
+        normalized.length > 0
+          ? normalized
+          : [
+              {
+                point: "",
+                url: "",
+                sourceType: "notes",
+              },
+            ],
+      );
     }
   }, [question]);
 
@@ -65,11 +79,14 @@ export function EditAnswerDialog({
         parsedAnswer = answer.trim();
       }
 
-      // Parse keyPoints
+      // Parse keyPoints from rows
       const parsedKeyPoints = keyPoints
-        .split("\n")
-        .map((s) => s.trim())
-        .filter((s) => s.length > 0);
+        .map((kp) => ({
+          point: kp.point.trim(),
+          url: kp.url?.trim() || undefined,
+          sourceType: kp.sourceType.trim() || "unknown",
+        }))
+        .filter((kp) => kp.point.length > 0);
 
       await editQuestionAnswer({
         questionId: question._id,
@@ -129,21 +146,99 @@ export function EditAnswerDialog({
           </div>
 
           {/* Key Points */}
-          <div>
-            <Label htmlFor="keyPoints">
-              Key Points
-              <span className="text-xs text-muted-foreground ml-1">
-                (one per line, optional)
-              </span>
-            </Label>
-            <Textarea
-              id="keyPoints"
-              value={keyPoints}
-              onChange={(e) => setKeyPoints(e.target.value)}
-              placeholder="Supporting excerpts from notes that justify the answer"
-              rows={3}
-              className="mt-1"
-            />
+          <div className="space-y-2">
+            <Label>Key Points</Label>
+            <div className="hidden sm:grid sm:grid-cols-[6fr_4fr_2fr_auto] gap-2 text-xs text-muted-foreground">
+              <span>Point</span>
+              <span>URL (website only)</span>
+              <span>Source Type</span>
+              <span />
+            </div>
+            <div className="space-y-2">
+              {keyPoints.map((kp, idx) => (
+                <div
+                  key={idx}
+                  className="grid grid-cols-1 gap-2 sm:grid-cols-[6fr_4fr_2fr_auto] items-start"
+                >
+                  <Textarea
+                    value={kp.point}
+                    onChange={(e) => {
+                      const next = [...keyPoints];
+                      next[idx] = { ...kp, point: e.target.value };
+                      setKeyPoints(next);
+                    }}
+                    placeholder="Supporting excerpt"
+                    rows={2}
+                  />
+                  {kp.sourceType === "website" ? (
+                    <Input
+                      value={kp.url || ""}
+                      onChange={(e) => {
+                        const next = [...keyPoints];
+                        next[idx] = { ...kp, url: e.target.value };
+                        setKeyPoints(next);
+                      }}
+                      placeholder="https://source.com (website only)"
+                    />
+                  ) : (
+                    <div className="text-[11px] text-muted-foreground sm:text-center">
+                      URL not needed
+                    </div>
+                  )}
+                  <select
+                    className="h-9 rounded-md border border-input bg-transparent px-2 text-sm capitalize"
+                    value={kp.sourceType}
+                    onChange={(e) => {
+                      const next = [...keyPoints];
+                      next[idx] = { ...kp, sourceType: e.target.value };
+                      if (e.target.value !== "website") {
+                        next[idx].url = "";
+                      }
+                      setKeyPoints(next);
+                    }}
+                  >
+                    {["notes", "passage", "figure", "table", "chart", "website", "unknown"].map(
+                      (type) => (
+                        <option key={type} value={type}>
+                          {type}
+                        </option>
+                      ),
+                    )}
+                  </select>
+                  {keyPoints.length > 1 && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-9 w-9 col-span-1"
+                      onClick={() =>
+                        setKeyPoints(keyPoints.filter((_, i) => i !== idx))
+                      }
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              ))}
+            </div>
+            <div className="flex justify-between items-center text-xs text-muted-foreground">
+              <span>URL required only for website sources.</span>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="gap-1"
+                onClick={() =>
+                  setKeyPoints([
+                    ...keyPoints,
+                    { point: "", url: "", sourceType: "notes" },
+                  ])
+                }
+              >
+                <Plus className="h-4 w-4" />
+                Add Key Point
+              </Button>
+            </div>
           </div>
         </div>
 

@@ -3,6 +3,14 @@ import { internalMutation, internalQuery, query, mutation } from "./_generated/s
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { Id } from "./_generated/dataModel";
 
+type KeyPointInput = { point: string; url?: string; sourceType: string };
+
+const keyPointValidator = v.object({
+  point: v.string(),
+  url: v.optional(v.string()),
+  sourceType: v.string(),
+});
+
 // Internal query to get assignment with file URLs
 export const getAssignmentForProcessing = internalQuery({
   args: { assignmentId: v.id("assignments") },
@@ -165,7 +173,7 @@ export const updateQuestionAnswer = internalMutation({
   args: {
     questionId: v.id("questions"),
     answer: v.union(v.string(), v.array(v.string())),
-    keyPoints: v.array(v.string()),
+    keyPoints: v.array(keyPointValidator),
     source: v.union(v.literal("notes"), v.array(v.string())),
     status: v.union(
       v.literal("pending"),
@@ -345,7 +353,7 @@ export const editQuestionAnswer = mutation({
   args: {
     questionId: v.id("questions"),
     answer: v.union(v.string(), v.array(v.string())),
-    keyPoints: v.optional(v.array(v.string())),
+    keyPoints: v.optional(v.array(keyPointValidator)),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
@@ -362,7 +370,7 @@ export const editQuestionAnswer = mutation({
       throw new Error("Not authorized");
     }
 
-    const update: { answer: string | string[]; keyPoints?: string[] } = {
+    const update: { answer: string | string[]; keyPoints?: KeyPointInput[] } = {
       answer: args.answer,
     };
     if (args.keyPoints !== undefined) {

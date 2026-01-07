@@ -9,8 +9,8 @@ export const getAssignmentForStudent = query({
     const assignment = await ctx.db.get(args.assignmentId);
     if (!assignment || assignment.isDraft) return null;
 
-    // Only return if processing is complete and has approved questions
-    if (assignment.processingStatus !== "ready") return null;
+    const processingStatus = assignment.processingStatus || "pending";
+    const processingError = assignment.processingError;
 
     // Check if there are any approved questions
     const approvedQuestions = await ctx.db
@@ -19,7 +19,7 @@ export const getAssignmentForStudent = query({
       .filter((q) => q.eq(q.field("status"), "approved"))
       .first();
 
-    if (!approvedQuestions) return null;
+    const isReady = processingStatus === "ready" && Boolean(approvedQuestions);
 
     // Get class name for display
     const classDoc = await ctx.db.get(assignment.classId);
@@ -28,6 +28,9 @@ export const getAssignmentForStudent = query({
       _id: assignment._id,
       name: assignment.name,
       className: classDoc?.name ?? "Unknown Class",
+      processingStatus,
+      processingError,
+      isReady,
     };
   },
 });

@@ -2,6 +2,7 @@
 
 import { GoogleGenAI, FunctionDeclaration, Type } from "@google/genai";
 import type { TutorInput, TutorResponse } from "../lib/types";
+import { keyPointTexts } from "../lib/keyPoints";
 
 const TUTOR_MODEL = "gemini-2.0-flash-lite";
 
@@ -33,7 +34,6 @@ function detectMCQGuess(
   return matches.length === 1 ? matches[0] : undefined;
 }
 
-// Tool definitions for the tutor
 const TUTOR_TOOLS: FunctionDeclaration[] = [
   {
     name: "evaluate_response",
@@ -128,6 +128,8 @@ export async function callTutorLLM(input: TutorInput): Promise<TutorResponse> {
       ? detectMCQGuess(input.studentMessage, input.question.answerOptionsMCQ)
       : undefined;
 
+  const relevantKeyPoints = keyPointTexts(input.question.keyPoints);
+
   const questionContext = `
 QUESTION: ${input.question.questionText}
 TYPE: ${input.question.questionType}
@@ -140,22 +142,19 @@ ATTACHMENTS_INCLUDED: ${input.files?.map((f) => f.name).join(", ") || "none"}
 
 [HIDDEN - For guidance only]
 CORRECT ANSWER: ${JSON.stringify(input.question.answer)}
-${input.question.keyPoints?.length ? `RELEVANT CONCEPTS: ${input.question.keyPoints.join(" | ")}` : ""}
+${relevantKeyPoints.length ? `RELEVANT CONCEPTS: ${relevantKeyPoints.join(" | ")}` : ""}
 ${input.question.additionalInstructionsForWork ? `REQUIRED METHOD: Student must use this approach: ${input.question.additionalInstructionsForWork}` : ""}
 `;
 
-  // Build conversation history
   const conversationHistory = input.history.map((m) => ({
     role: m.role === "student" ? ("user" as const) : ("model" as const),
     parts: [{ text: m.content }],
   }));
 
-  // Build file parts if files are provided
   const fileParts: Array<{ inlineData: { data: string; mimeType: string } }> =
     [];
   if (input.files && input.files.length > 0) {
     for (const file of input.files) {
-      // Extract base64 data from data URL
       const base64Data = file.data.split(",")[1] || file.data;
       fileParts.push({
         inlineData: {
@@ -166,7 +165,6 @@ ${input.question.additionalInstructionsForWork ? `REQUIRED METHOD: Student must 
     }
   }
 
-  // Build messages array
   const messages = [
     ...conversationHistory,
     {
@@ -188,11 +186,9 @@ ${input.question.additionalInstructionsForWork ? `REQUIRED METHOD: Student must 
       },
     });
 
-    // Parse plain text + tool calls
     const candidate = response.candidates?.[0];
     const parts = candidate?.content?.parts || [];
 
-    // Build message purely from parts to avoid duplicate text from response.text
     let messageFromParts = "";
     const toolCalls: Array<{ name: string; args: Record<string, unknown> }> =
       [];
@@ -209,10 +205,7 @@ ${input.question.additionalInstructionsForWork ? `REQUIRED METHOD: Student must 
       }
     }
 
-    // Trim trailing whitespace to avoid newline endings
     let message = messageFromParts.trimEnd();
-
-    // If no message but has tool calls, generate a friendly response
     if (!message && toolCalls.length > 0) {
       const toolCall = toolCalls[0];
       if (toolCall.name === "evaluate_response") {
@@ -234,8 +227,7 @@ ${input.question.additionalInstructionsForWork ? `REQUIRED METHOD: Student must 
   } catch (error) {
     console.error("Tutor LLM error:", error);
     return {
-      message:
-        "I'm having trouble connecting right now. Let me try again - what's your question?",
+      message: "I'm having trouble connecting right now, let's try again.",
     };
   }
 }

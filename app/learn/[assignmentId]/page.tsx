@@ -441,6 +441,48 @@ export default function LearnPage() {
     );
   }
 
+  // Assignment exists but isn't ready yet (processing or awaiting approval)
+  if (assignment && assignment.isReady === false) {
+    const status = assignment.processingStatus || "pending";
+    const statusLabel: Record<string, string> = {
+      pending: "Queued",
+      extracting: "Extracting questions",
+      generating_answers: "Generating answers",
+      ready: "Awaiting teacher approval",
+      error: "Processing error",
+    };
+    const friendlyStatus =
+      statusLabel[status] || "Assignment processing";
+    const detail =
+      status === "error"
+        ? assignment.processingError ||
+          "Something went wrong while preparing this assignment."
+        : "This assignment is still being processed. Please check back soon.";
+
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <Card className="max-w-md w-full">
+          <CardContent className="flex flex-col items-center justify-center py-10 text-center space-y-3">
+            <div className="rounded-full bg-primary/10 p-3">
+              {status === "error" ? (
+                <AlertCircle className="h-7 w-7 text-destructive" />
+              ) : (
+                <Loader2 className="h-7 w-7 animate-spin text-primary" />
+              )}
+            </div>
+            <h1 className="text-xl font-semibold">
+              {assignment.name || "Assignment"} is not ready yet
+            </h1>
+            <p className="text-sm font-medium text-muted-foreground">
+              {friendlyStatus}
+            </p>
+            <p className="text-sm text-muted-foreground">{detail}</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   // Assignment not found or not ready
   if (assignment === null) {
     return (

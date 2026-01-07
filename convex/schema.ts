@@ -80,7 +80,17 @@ export default defineSchema({
         v.array(v.string()), // for free response key points
       ),
     ),
-    keyPoints: v.optional(v.array(v.string())),
+    keyPoints: v.optional(
+      v.array(
+        v.union(
+          v.object({
+            point: v.string(),
+            url: v.optional(v.string()),
+            sourceType: v.string(),
+          }),
+        ),
+      ),
+    ),
     source: v.optional(
       v.union(v.literal("notes"), v.array(v.string())),
     ),

@@ -35,11 +35,13 @@ import {
   AlertCircle,
   Undo2,
   XCircle,
+  RefreshCw,
 } from "lucide-react";
 import { useResizablePanel } from "@/hooks/use-resizable-panel";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { ReviewQuestion } from "@/lib/types";
+import { normalizeKeyPoints } from "@/lib/keyPoints";
 
 interface QuestionsReviewPanelProps {
   questions: ReviewQuestion[];
@@ -70,8 +72,9 @@ export function QuestionsReviewPanel({
   const [regenQueue, setRegenQueue] = useState<
     Array<{ questionId: Id<"questions">; feedback?: string }>
   >([]);
-  const [currentRegenId, setCurrentRegenId] =
-    useState<Id<"questions"> | null>(null);
+  const [currentRegenId, setCurrentRegenId] = useState<Id<"questions"> | null>(
+    null,
+  );
   const [changeRequest, setChangeRequest] = useState("");
   const [changePopoverOpen, setChangePopoverOpen] = useState(false);
 
@@ -93,6 +96,11 @@ export function QuestionsReviewPanel({
   );
   const selectedQuestion =
     sortedQuestions.find((q) => q._id === selectedQuestionId) || null;
+  const normalizedKeyPoints = selectedQuestion
+    ? normalizeKeyPoints(selectedQuestion.keyPoints)
+    : [];
+  const isWebSource =
+    selectedQuestion?.source && Array.isArray(selectedQuestion.source);
 
   // Stats
   const skippedQuestions = sortedQuestions.filter(
@@ -318,11 +326,33 @@ export function QuestionsReviewPanel({
       try {
         const parsed = new URL(candidate);
         return { href: parsed.href, hostname: parsed.hostname };
-      } catch {
-      }
+      } catch {}
     }
 
     return null;
+  };
+
+  const formatSourceLabel = (value?: string | null): string => {
+    if (!value) return "";
+    let cleaned = value.trim();
+    if (!cleaned) return "";
+    const lower = cleaned.toLowerCase();
+    if (lower === "notes") return "Teacher Notes";
+    try {
+      cleaned = decodeURIComponent(cleaned);
+    } catch {
+      // ignore decoding issues
+    }
+    cleaned = cleaned.replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim();
+    return cleaned
+      .split(" ")
+      .filter(Boolean)
+      .map((word) =>
+        word.length > 1
+          ? word[0].toUpperCase() + word.slice(1).toLowerCase()
+          : word.toUpperCase(),
+      )
+      .join(" ");
   };
 
   const formatAnswer = (answer: string | string[] | undefined) => {
@@ -413,8 +443,6 @@ export function QuestionsReviewPanel({
     selectedStatus === "pending" || selectedStatus === "processing";
   const isApprovedQuestion = selectedQuestion?.status === "approved";
   const isSkipped = selectedQuestion?.questionType === "skipped";
-  const isWebSource =
-    selectedQuestion?.source && Array.isArray(selectedQuestion.source);
   const hasUnapprovedWebSources = unapprovedWebSourced.length > 0;
   const isCurrentRegenerating = selectedQuestion
     ? currentRegenId === selectedQuestion._id
@@ -544,7 +572,7 @@ export function QuestionsReviewPanel({
         <CardContent className="!p-0 overflow-hidden w-full max-w-full !rounded-none">
           <div
             ref={containerRef}
-            className="flex h-[500px] overflow-hidden w-full max-w-full"
+            className="flex h-[550px] overflow-hidden w-full max-w-full"
           >
             {/* Left: Question List */}
             <div
@@ -792,7 +820,7 @@ export function QuestionsReviewPanel({
                             : "";
                         const isValidLetter =
                           hasOptions && /^[A-D]$/.test(answer);
-                        // Show answer box if NOT (MCQ with options AND valid letter answer)
+
                         return !(isMCQ && hasOptions && isValidLetter);
                       })() && (
                         <div
@@ -814,76 +842,133 @@ export function QuestionsReviewPanel({
                         </div>
                       )}
 
-                    {/* Source below answer */}
-                    {selectedQuestion.source && !isPending && !isSkipped && (
-                      <div className="flex items-start gap-2 text-sm overflow-hidden">
-                        <span className="text-muted-foreground shrink-0">
-                          Source:
-                        </span>
-                        {selectedQuestion.source === "notes" ? (
-                          <span className="text-green-600 dark:text-green-400 font-medium">
-                            Notes
-                          </span>
-                        ) : Array.isArray(selectedQuestion.source) ? (
-                          <div className="flex flex-wrap gap-2 min-w-0 overflow-hidden">
-                            {selectedQuestion.source.map((url, i) => {
-                              const parsed = getSourceUrlInfo(url);
-                              if (!parsed) {
-                                const fallback = typeof url === "string"
-                                  ? url || "Unknown source"
-                                  : "Unknown source";
-                                return (
-                                  <span
-                                    key={i}
-                                    className="text-muted-foreground truncate max-w-[200px]"
-                                    title={String(fallback)}
-                                  >
-                                    {fallback}
-                                  </span>
-                                );
-                              }
-                              return (
-                                <a
-                                  key={i}
-                                  href={parsed.href}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-amber-600 hover:underline inline-flex items-center gap-1 truncate max-w-[200px]"
-                                  title={parsed.href}
-                                >
-                                  {parsed.hostname}
-                                  <ExternalLink className="h-3 w-3 shrink-0" />
-                                </a>
-                              );
-                            })}
-                          </div>
-                        ) : (
-                          <span className="text-muted-foreground truncate max-w-[200px]">
-                            {String(selectedQuestion.source)}
-                          </span>
-                        )}
-                      </div>
-                    )}
-
                     {/* Key Points */}
-                    {selectedQuestion.keyPoints &&
-                      selectedQuestion.keyPoints.length > 0 &&
+                    {normalizedKeyPoints.length > 0 &&
                       !isPending &&
                       !isSkipped && (
                         <details className="group" open>
                           <summary className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground cursor-pointer list-none">
                             <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-0 -rotate-90" />
-                            Key Points ({selectedQuestion.keyPoints.length})
+                            Key Points ({normalizedKeyPoints.length})
                           </summary>
                           <div className="mt-2 space-y-2 pl-6 overflow-hidden">
-                            {selectedQuestion.keyPoints.map((keyPoint, i) => (
-                              <div
-                                key={i}
-                                className="text-sm bg-muted rounded-md px-3 py-2 italic border-l-2 border-primary/30 break-words"
-                              >
-                                &ldquo;{keyPoint}&rdquo;
-                              </div>
-                            ))}
+                            {normalizedKeyPoints.map((keyPoint, i) => {
+                              const rawSourceType = (keyPoint.sourceType || "").trim();
+                              const normalizedSourceType = rawSourceType.toLowerCase();
+                              const rawUrl = keyPoint.url?.trim();
+                              const fallbackUrl =
+                                !rawUrl &&
+                                normalizedSourceType === "website" &&
+                                Array.isArray(selectedQuestion?.source)
+                                  ? selectedQuestion.source.find(
+                                      (u) => typeof u === "string" && u.trim().length > 0,
+                                    )
+                                  : undefined;
+                              const sourceUrl =
+                                normalizedSourceType === "website"
+                                  ? rawUrl || fallbackUrl
+                                  : undefined;
+                              const sourceInfo = sourceUrl
+                                ? getSourceUrlInfo(sourceUrl)
+                                : null;
+                              const linkHref =
+                                sourceInfo?.href ||
+                                (sourceUrl
+                                  ? sourceUrl.startsWith("http")
+                                    ? sourceUrl
+                                    : `https://${sourceUrl}`
+                                  : undefined);
+                              const isWebSource =
+                                normalizedSourceType === "website" &&
+                                Boolean(sourceUrl);
+                              const displayLabel = isWebSource
+                                ? formatSourceLabel(
+                                    sourceInfo?.hostname ||
+                                      (sourceUrl || "Website")
+                                        .replace(/^https?:\/\//i, "")
+                                        .split("/")[0] ||
+                                      "Website",
+                                  )
+                                : formatSourceLabel(rawSourceType || "unknown");
+                              const typeLabel =
+                                normalizedSourceType !== "website"
+                                  ? formatSourceLabel(normalizedSourceType || "unknown")
+                                  : "";
+                              const hasSourceDisplay = Boolean(
+                                displayLabel || typeLabel || sourceUrl,
+                              );
+                              const isAssociated =
+                                typeLabel &&
+                                ["Passage", "Figure", "Table", "Chart"].includes(typeLabel);
+
+                              return (
+                                <div
+                                  key={`${keyPoint.point}-${i}`}
+                                  className="bg-muted rounded-md px-3 py-2 border-l-2 border-primary/30 space-y-1"
+                                >
+                                  <div className="text-sm italic break-words">
+                                    &ldquo;{keyPoint.point}&rdquo;
+                                  </div>
+                                  {hasSourceDisplay && (
+                                    <div className="flex flex-wrap items-center gap-1 text-xs text-muted-foreground leading-tight">
+                                      {isWebSource ? (
+                                        <>
+                                          <span className="uppercase text-[10px] tracking-wide">
+                                            Website
+                                          </span>
+                                          {linkHref ? (
+                                            <a
+                                              href={linkHref}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              className="inline-flex items-center gap-1 truncate max-w-[240px] text-primary hover:underline"
+                                              title={linkHref}
+                                            >
+                                              <span className="truncate">
+                                                {sourceInfo?.hostname ||
+                                                  sourceUrl ||
+                                                  "Open link"}
+                                              </span>
+                                              <ExternalLink className="h-3 w-3 shrink-0" />
+                                            </a>
+                                          ) : (
+                                            <span className="text-muted-foreground">
+                                              URL missing
+                                            </span>
+                                          )}
+                                        </>
+                                      ) : (
+                                        <>
+                                          <span className="uppercase text-[10px] tracking-wide">
+                                            Source
+                                          </span>
+                                          {(() => {
+                                            const contextualLabel = isAssociated
+                                              ? `Associated ${typeLabel}`
+                                              : displayLabel;
+                                            return (
+                                              <span
+                                                className="truncate max-w-[220px] text-foreground"
+                                                title={
+                                                  contextualLabel ||
+                                                  sourceUrl ||
+                                                  "Unknown source"
+                                                }
+                                              >
+                                                {contextualLabel ||
+                                                  formatSourceLabel(
+                                                    "Unknown source",
+                                                  )}
+                                              </span>
+                                            );
+                                          })()}
+                                        </>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
                           </div>
                         </details>
                       )}
@@ -917,7 +1002,9 @@ export function QuestionsReviewPanel({
                           size="sm"
                           variant="destructive"
                           onClick={handleReject}
-                          disabled={isRejecting || isSkipped || !isApprovedQuestion}
+                          disabled={
+                            isRejecting || isSkipped || !isApprovedQuestion
+                          }
                           className="gap-1"
                         >
                           {isRejecting ? (
@@ -955,7 +1042,7 @@ export function QuestionsReviewPanel({
                               {isCurrentRegenerating ? (
                                 <Loader2 className="h-4 w-4 animate-spin" />
                               ) : (
-                                <MessageSquare className="h-4 w-4" />
+                                <RefreshCw className="h-4 w-4" />
                               )}
                               {isCurrentRegenerating
                                 ? "Regenerating..."

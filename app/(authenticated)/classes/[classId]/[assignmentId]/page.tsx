@@ -52,7 +52,13 @@ import { toast } from "sonner";
 import { QuestionsReviewPanel } from "@/components/questions-review-panel";
 import { EditAnswerDialog } from "@/components/edit-answer-dialog";
 import { FileListCompact } from "@/components/file-list-compact";
-import { UploadedFile, UploadingFile, FileCategory } from "@/lib/types";
+import {
+  FileCategory,
+  AnswerSource,
+  KeyPoint,
+  UploadedFile,
+  UploadingFile,
+} from "@/lib/types";
 
 const ACCEPTED_FILE_TYPES = {
   "image/jpeg": [".jpg", ".jpeg"],
@@ -1151,8 +1157,8 @@ function ReviewAssignmentView({
     questionText: string;
     questionType: string;
     answer?: string | string[];
-    keyPoints?: string[];
-    source?: "notes" | string[];
+    keyPoints?: KeyPoint[];
+    source?: AnswerSource;
     status: "pending" | "processing" | "ready" | "approved";
   }>;
 }) {
@@ -1171,8 +1177,8 @@ function ReviewAssignmentView({
     questionText: string;
     questionType: string;
     answer?: string | string[];
-    keyPoints?: string[];
-    source?: "notes" | string[];
+    keyPoints?: KeyPoint[];
+    source?: AnswerSource;
     status: "pending" | "processing" | "ready" | "approved";
   } | null>(null);
   const [previewFile, setPreviewFile] = useState<{

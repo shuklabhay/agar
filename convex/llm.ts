@@ -1,6 +1,7 @@
 "use node";
 
 import { GoogleGenAI, Part, Schema, Type } from "@google/genai";
+import { normalizeKeyPoints, RawKeyPoint } from "../lib/keyPoints";
 
 const MODELS = {
   extraction: "gemini-2.5-flash-lite",
@@ -48,7 +49,18 @@ const ANSWER_RESPONSE_SCHEMA: Schema = {
     },
     key_points: {
       type: Type.ARRAY,
-      items: { type: Type.STRING },
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          point: { type: Type.STRING },
+          url: { type: Type.STRING },
+          sourceType: {
+            type: Type.STRING,
+            enum: ["website", "notes", "passage", "figure", "table", "chart"],
+          },
+        },
+        required: ["point", "sourceType"],
+      },
     },
     source: {
       anyOf: [
@@ -422,9 +434,13 @@ const ANSWER_PROMPT = `<prompt>
 </mcq_rules>
 
 <key_points>
-- Provide 1-2 key_points that are verbatim snippets copied directly from the source text (notes or search results). Do NOT paraphrase or summarize.
+- Provide 1-2 key_points objects. For each:
+  - point: verbatim snippet copied directly from the source text (no paraphrasing and no bracketed hints).
+  - Do NOT wrap the snippet in quotation marks; return the raw text only.
+  - url (optional): if sourceType is "website" you MUST put the exact URL here.
+  - sourceType: "website" | "notes" | "passage" | "figure" | "table" | "chart".
+  - If you used search, set sourceType to "website" and include the exact URL in url.
 - Never use the question stem or the answer choice itself as a key_point. Only quote supporting evidence from the source.
-- Each key_point MUST end with a bracketed source hint. Use "[teacher notes]" for anything from notes (even if the notes contain a passage/figure/table). Use "[passage]" or "[figure]" or "[table]" ONLY when the evidence comes from the assignment document itself—pick the accurate one. Use "[website name]" ONLY when a website is accessed for THIS question (e.g., "[britannica.com]").
 </key_points>
 
 <sourcing>
@@ -501,7 +517,11 @@ export async function generateAnswerForQuestion(
       const responseText = response.text ?? "";
       const parsed = parseJsonWithCleaning<{
         answer: string | string[];
-        key_points: string[];
+        key_points: Array<{
+          point?: string;
+          url?: string;
+          sourceType: string;
+        }>;
         source: string | string[];
       }>(responseText, `Answer generation Q${questionNumber}`);
 
@@ -514,6 +534,10 @@ export async function generateAnswerForQuestion(
       answerOptionsMCQ,
     );
 
+    const keyPoints = normalizeKeyPoints(
+      (finalResponse.parsed.key_points as unknown as RawKeyPoint[]) || [],
+    );
+
     const source = normalizeParsedSource(
       finalResponse.parsed.source,
       finalResponse.cleanedGroundingUrls,
@@ -521,7 +545,7 @@ export async function generateAnswerForQuestion(
 
     return {
       answer: normalizedAnswer,
-      keyPoints: finalResponse.parsed.key_points || [],
+      keyPoints,
       source: source || "notes",
     } as GeneratedAnswer;
   } catch (error) {
