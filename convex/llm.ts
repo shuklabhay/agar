@@ -335,9 +335,12 @@ const EXTRACTION_PROMPT = `<prompt>
 
 <math_and_references>
 - Preserve math expressions exactly.
-- Do NOT transcribe tables/graphs; instead, note the reference in questionText (e.g., "Refer to the table on page 2" or "See graph above").
-- For tables or graphic organizers with blanks/prompts, treat each blank/prompt as its own short_answer question. Include the row/column/section label in questionText (e.g., "Table: causes | Blank 2"), and keep a brief note to refer to the table/organizer instead of copying it.
 </math_and_references>
+
+<tables_and_graphs>
+- Never NOT transcribe informational passages/paragraphs/tables/graphs; instead, note the reference in questionText (e.g., "Refer to the table on page 2" or "See graph above").
+- For tables or graphic organizers with blanks/prompts, treat each blank/prompt as its own short_answer question. Include the row/column/section label in questionText (e.g., "Table: causes | Blank 2"), and keep a brief note to refer to the table/organizer instead of copying it.
+</tables_and_graphs>
 
 <output_fields>
 - questionNumber: as shown in document (always a string). If numbering includes letters like "16a/16b/16c", treat each lettered part as its own separate question entry (never merge lettered parts together).
