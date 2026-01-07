@@ -346,20 +346,20 @@ export function QuestionsReviewPanel({
     processing: {
       label: "Processing",
       badgeClass:
-        "bg-slate-400 text-slate-950 border border-slate-600 dark:bg-slate-800 dark:text-slate-50 dark:border-slate-700",
-      rowClass: "bg-slate-300/90 dark:bg-slate-900/60",
+        "bg-slate-300 text-slate-900 border border-slate-500 dark:bg-slate-800/60 dark:text-slate-100 dark:border-slate-700",
+      rowClass: "bg-slate-200/80 dark:bg-slate-800/40",
     },
     ready: {
       label: "Answer ready",
       badgeClass:
         "bg-slate-100 text-slate-700 border border-slate-300 dark:bg-slate-800/50 dark:text-slate-100 dark:border-slate-700",
-      rowClass: "bg-slate-50 dark:bg-slate-950/30",
+      rowClass: "bg-slate-100/70 dark:bg-slate-900/30",
     },
     pending: {
       label: "Pending",
       badgeClass:
-        "bg-slate-400 text-slate-950 border border-slate-600 dark:bg-slate-900 dark:text-slate-50 dark:border-slate-800",
-      rowClass: "bg-slate-400/70 dark:bg-slate-900/75",
+        "bg-slate-300 text-slate-900 border border-slate-500 dark:bg-slate-800 dark:text-slate-50 dark:border-slate-700",
+      rowClass: "bg-slate-200/80 dark:bg-slate-800/60",
     },
   };
 

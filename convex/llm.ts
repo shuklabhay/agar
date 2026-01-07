@@ -321,17 +321,15 @@ const EXTRACTION_PROMPT = `<prompt>
 - NEVER include MCQ option text inside questionText. Keep the stem/instruction in questionText and put every visible option only in answerOptionsMCQ.
 </formatting_rules>
 
-<teacher_additional_info>
-- {additionalInfo}
-</teacher_additional_info>
-
-<teacher_rules>
-- Question modifications → apply directly to questionText.
-- MCQ option changes → modify answerOptionsMCQ, but NEVER replace the correct answer. Identify which option is correct first, then replace a wrong one.
-- Answer format requirements → put in additionalInstructionsForAnswer.
-- Method requirements → put in additionalInstructionsForWork.
-- "skip question X" → set questionType to "skipped".
-</teacher_rules>
+<additional_instructions>
+- If the teacher asks to edit a question, apply the change directly to questionText.
+- If the teacher edits MCQ options, update answerOptionsMCQ, but NEVER replace the correct answer. Identify the correct option first, then replace a wrong one.
+- If the teacher says "skip question X", set that questionType to "skipped".
+- Answer format requirements (e.g., “must be decimal”) go to additionalInstructionsForAnswer.
+- Method/solution requirements (e.g., “use quadratic formula”) go to additionalInstructionsForWork.
+- If the teacher asks to add an extra question (e.g., “add another multiple choice question using the notes”), create that question. If they specify where to place it, insert it there and set the appropriate questionNumber; otherwise append it at the end with the next logical questionNumber. Build it from the provided notes/instructions.
+- Teacher specified instructions: {additionalInfo}
+</additional_instructions>
 
 <math_and_references>
 - Preserve math expressions exactly.
@@ -339,7 +337,7 @@ const EXTRACTION_PROMPT = `<prompt>
 
 <tables_and_graphs>
 - Never NOT transcribe informational passages/paragraphs/tables/graphs; instead, note the reference in questionText (e.g., "Refer to the table on page 2" or "See graph above").
-- For tables or graphic organizers with blanks/prompts, treat each blank/prompt as its own short_answer question. Include the row/column/section label in questionText (e.g., "Table: causes | Blank 2"), and keep a brief note to refer to the table/organizer instead of copying it.
+- For tables or graphic organizers with blanks/prompts, treat each blank/prompt as its own short_answer question. 
 </tables_and_graphs>
 
 <output_fields>
