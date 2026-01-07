@@ -153,7 +153,6 @@ export function QuestionPanel({
           }
         }
       }
-
     } catch (error) {
       console.error("Failed to submit answer:", error);
     } finally {
@@ -315,7 +314,7 @@ export function QuestionPanel({
           <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
             <p className="text-green-700 dark:text-green-300 text-sm font-medium flex items-center gap-2">
               <Check className="h-4 w-4" />
-              Great job! You can move to the next question.
+              Great job!
             </p>
           </div>
         )}

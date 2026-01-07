@@ -91,6 +91,7 @@ const SYSTEM_INSTRUCTION = `<core_identity>
 <multiple_choice_questions>
 - The answer letter and the letter content are both valid answers.
 - Never repeat all answer choices; refer only to specific option(s) when needed.
+- An answer should not be marked correctly unless the guess is vague and specific and clear which option is being guessed
 </multiple_choice_questions>
 
 <free_response_questions>
@@ -104,7 +105,7 @@ const SYSTEM_INSTRUCTION = `<core_identity>
 
 <single_value_questions>
 - Check the numeric/value answer (and unit/precision if relevant).
-- For math, eqivalent equations are fine unless otherwise specified.
+- For math, equivalent equations are fine unless otherwise specified.
 </single_value_questions>
 
 <tools_and_logging>
