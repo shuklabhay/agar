@@ -322,10 +322,11 @@ const EXTRACTION_PROMPT = `<prompt>
 </formatting_rules>
 
 <additional_instructions>
+- Teacher instructions override the document. ALWAYS apply them, even if it means creating content not explicitly in the files.
 - If the teacher asks to edit a question, apply the change directly to questionText.
 - If the teacher edits MCQ options, update answerOptionsMCQ, but NEVER replace the correct answer. Identify the correct option first, then replace a wrong one.
 - If the teacher says "skip question X", set that questionType to "skipped".
-- If the teacher asks to add an extra question (e.g., “add another multiple choice question), create that question using notes concepts/information. If they specify where to place it, insert it there and set the appropriate questionNumber; otherwise append it at the end with the next logical questionNumber.
+- If the teacher asks to add an extra question (e.g., “add another multiple choice question” or “add a question about respiration”), you MUST create and include that new question. If they specify where to place it, insert it there and set the appropriate questionNumber; otherwise append it at the end with the next logical questionNumber. Use the teacher message/notes to author the question and options.
 - Answer format requirements (e.g., “must be decimal”) go to additionalInstructionsForAnswer.
 - Method/solution requirements (e.g., “use quadratic formula”) go to additionalInstructionsForWork.
 - Teacher specified instructions: {additionalInfo}
