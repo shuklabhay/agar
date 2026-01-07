@@ -1182,9 +1182,31 @@ function ReviewAssignmentView({
       ? `${window.location.origin}/learn/${assignmentId}`
       : `/learn/${assignmentId}`;
 
+  const previousProcessingStatus = useRef<string | undefined>(
+    assignment.processingStatus,
+  );
+
   const isProcessing =
     assignment.processingStatus === "extracting" ||
     assignment.processingStatus === "generating_answers";
+
+  useEffect(() => {
+    const prev = previousProcessingStatus.current;
+    const curr = assignment.processingStatus;
+    const prevWasProcessing =
+      prev === "extracting" || prev === "generating_answers";
+    const nowDone =
+      curr === "ready" ||
+      curr === "approved" ||
+      curr === undefined ||
+      curr === null;
+
+    if (prevWasProcessing && nowDone) {
+      toast.success("Question extraction and answer generation complete");
+    }
+
+    previousProcessingStatus.current = curr;
+  }, [assignment.processingStatus]);
 
   const handleStopGeneration = useCallback(async () => {
     setIsStopping(true);

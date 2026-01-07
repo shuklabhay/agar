@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
@@ -67,6 +67,11 @@ export function QuestionsReviewPanel({
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [isRemoving, setIsRemoving] = useState(false);
   const [isRejecting, setIsRejecting] = useState(false);
+  const [regenQueue, setRegenQueue] = useState<
+    Array<{ questionId: Id<"questions">; feedback?: string }>
+  >([]);
+  const [currentRegenId, setCurrentRegenId] =
+    useState<Id<"questions"> | null>(null);
   const [changeRequest, setChangeRequest] = useState("");
   const [changePopoverOpen, setChangePopoverOpen] = useState(false);
 
@@ -203,25 +208,60 @@ export function QuestionsReviewPanel({
 
   const handleRequestChanges = async () => {
     if (!selectedQuestion) return;
-    setIsRegenerating(true);
     setChangePopoverOpen(false);
-    try {
-      const result = await regenerateAnswer({
-        questionId: selectedQuestion._id,
-        feedback: changeRequest.trim() || undefined,
-      });
-      if (result.success) {
-        toast.success("Answer regenerated");
-        setChangeRequest("");
-      } else {
-        toast.error(result.error || "Failed to update answer");
+    const feedback = changeRequest.trim() || undefined;
+    setChangeRequest("");
+
+    let enqueuePosition = 0;
+    setRegenQueue((prev) => {
+      if (
+        prev.some((item) => item.questionId === selectedQuestion._id) ||
+        currentRegenId === selectedQuestion._id
+      ) {
+        enqueuePosition = -1;
+        return prev;
       }
-    } catch {
-      toast.error("Failed to request changes");
-    } finally {
-      setIsRegenerating(false);
+      const next = [...prev, { questionId: selectedQuestion._id, feedback }];
+      enqueuePosition = next.length;
+      return next;
+    });
+
+    if (enqueuePosition === -1) {
+      toast("Already regenerating this question");
+    } else if (enqueuePosition > 1 || isRegenerating || currentRegenId) {
+      toast.success(`Queued regeneration (#${enqueuePosition})`);
     }
   };
+
+  // Process queued regenerations sequentially
+  useEffect(() => {
+    if (isRegenerating || regenQueue.length === 0) return;
+
+    const next = regenQueue[0];
+    const run = async () => {
+      setIsRegenerating(true);
+      setCurrentRegenId(next.questionId);
+      try {
+        const result = await regenerateAnswer({
+          questionId: next.questionId,
+          feedback: next.feedback,
+        });
+        if (result.success) {
+          toast.success("Answer regenerated");
+        } else {
+          toast.error(result.error || "Failed to update answer");
+        }
+      } catch {
+        toast.error("Failed to request changes");
+      } finally {
+        setRegenQueue((prev) => prev.slice(1));
+        setIsRegenerating(false);
+        setCurrentRegenId(null);
+      }
+    };
+
+    void run();
+  }, [isRegenerating, regenQueue, regenerateAnswer]);
 
   const handleRemove = async () => {
     if (!selectedQuestion) return;
@@ -353,6 +393,13 @@ export function QuestionsReviewPanel({
   const isWebSource =
     selectedQuestion?.source && Array.isArray(selectedQuestion.source);
   const hasUnapprovedWebSources = unapprovedWebSourced.length > 0;
+  const isCurrentRegenerating = selectedQuestion
+    ? currentRegenId === selectedQuestion._id
+    : false;
+  const isQueuedForSelected = selectedQuestion
+    ? isCurrentRegenerating ||
+      regenQueue.some((item) => item.questionId === selectedQuestion._id)
+    : false;
 
   return (
     <div className="space-y-0.5 min-w-0 w-full max-w-full overflow-hidden">
@@ -478,10 +525,10 @@ export function QuestionsReviewPanel({
           >
             {/* Left: Question List */}
             <div
-              className="overflow-hidden min-w-0 rounded-xl bg-background"
+              className="overflow-hidden min-w-0 rounded-l-xl bg-background"
               style={{ width: `${leftPanelWidth}%` }}
             >
-              <ScrollArea className="h-full rounded-xl">
+              <ScrollArea className="h-full rounded-l-xl">
                 <div className="space-y-0">
                   {sortedQuestions.map((question) => {
                     const status = getQuestionStatus(question);
@@ -496,7 +543,7 @@ export function QuestionsReviewPanel({
                         key={question._id}
                         onClick={() => setSelectedQuestionId(question._id)}
                         className={cn(
-                          "cursor-pointer transition-colors flex items-center justify-between px-3 py-2 rounded-none first:rounded-t-xl last:rounded-b-xl",
+                          "cursor-pointer transition-colors flex items-center justify-between px-3 py-2 rounded-none first:rounded-tl-xl last:rounded-bl-xl",
                           statusStyle?.rowClass,
                           isSelected &&
                             "ring-2 ring-inset ring-black/50 dark:ring-white/60",
@@ -861,14 +908,20 @@ export function QuestionsReviewPanel({
                             <Button
                               size="sm"
                               variant="outline"
-                              disabled={isRegenerating}
+                              disabled={!!isQueuedForSelected}
                             >
-                              {isRegenerating ? (
+                              {isCurrentRegenerating ? (
                                 <Loader2 className="h-4 w-4 animate-spin" />
                               ) : (
                                 <MessageSquare className="h-4 w-4" />
                               )}
-                              {isSkipped ? "Generate" : "Regenerate"}
+                              {isCurrentRegenerating
+                                ? "Regenerating..."
+                                : isQueuedForSelected
+                                  ? "Queued"
+                                  : isSkipped
+                                    ? "Generate"
+                                    : "Regenerate"}
                             </Button>
                           </PopoverTrigger>
                           <PopoverContent className="w-64" align="start">
@@ -892,9 +945,10 @@ export function QuestionsReviewPanel({
                                 size="sm"
                                 onClick={handleRequestChanges}
                                 className="w-full"
+                                disabled={!!isQueuedForSelected}
                               >
                                 <Send className="h-4 w-4" />
-                                Regenerate
+                                {isQueuedForSelected ? "Queued" : "Regenerate"}
                               </Button>
                             </div>
                           </PopoverContent>

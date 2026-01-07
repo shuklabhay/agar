@@ -225,9 +225,56 @@ function normalizeParsedSource(
   return "notes";
 }
 
+function normalizeMcqAnswer(answer: unknown, options?: string[]): string {
+  const letters = options?.map((_, idx) => String.fromCharCode(65 + idx)) || [];
+
+  const coerceToString = (val: unknown): string => {
+    if (typeof val === "string") return val;
+    if (Array.isArray(val)) return val.map(coerceToString).join(" ");
+    if (val && typeof val === "object") {
+      return Object.values(val).map(coerceToString).join(" ");
+    }
+    if (val === null || val === undefined) return "";
+    return String(val);
+  };
+
+  const raw = coerceToString(answer).trim();
+  if (!raw) return "";
+
+  const leadingLetterMatch = raw.match(/^([A-Za-z])/);
+  if (leadingLetterMatch) {
+    const letter = leadingLetterMatch[1].toUpperCase();
+    if (letters.length === 0 || letters.includes(letter)) return letter;
+  }
+
+  const strippedOptionText = raw.replace(/^[A-Za-z][).:\-\s]+/, "").trim();
+
+  if (options && options.length > 0) {
+    const lowerOptions = options.map((opt) => opt.trim().toLowerCase());
+    const lowerStripped = strippedOptionText.toLowerCase();
+    const exactIdx = lowerOptions.findIndex((opt) => opt === lowerStripped);
+    if (exactIdx !== -1) return letters[exactIdx];
+
+    const containsIdx = lowerOptions.findIndex((opt) =>
+      lowerStripped.includes(opt),
+    );
+    if (containsIdx !== -1) return letters[containsIdx];
+  }
+
+  if (letters.length > 0) {
+    const boundaryRegex = new RegExp(`\\b([${letters.join("")}])\\b`, "i");
+    const boundaryMatch = raw.match(boundaryRegex);
+    if (boundaryMatch) return boundaryMatch[1].toUpperCase();
+  }
+
+  const fallback = raw[0]?.toUpperCase();
+  return fallback || "";
+}
+
 function normalizeAnswerValue(
   answer: unknown,
   questionType: string,
+  answerOptionsMCQ?: string[],
 ): string | string[] {
   const coerceValue = (val: unknown): string => {
     if (typeof val === "string") return val.trim();
@@ -240,6 +287,10 @@ function normalizeAnswerValue(
     if (val === null || val === undefined) return "";
     return String(val);
   };
+
+  if (questionType === "multiple_choice") {
+    return normalizeMcqAnswer(answer, answerOptionsMCQ);
+  }
 
   if (typeof answer === "string") {
     return answer.trim();
@@ -364,8 +415,7 @@ const ANSWER_PROMPT = `<prompt>
 </response_rules>
 
 <mcq_rules>
-- For multiple_choice answers, return ONLY the exact option text (no letter prefixes like "B." and no "B. Option" combos).
-- If the option text is missing, return just the single letter.
+- For multiple_choice answers, return ONLY the single letter of the correct option (A/B/C/...). Never include the option text.
 </mcq_rules>
 
 <key_points>
@@ -456,6 +506,7 @@ export async function generateAnswerForQuestion(
     const normalizedAnswer = normalizeAnswerValue(
       finalResponse.parsed.answer,
       questionType,
+      answerOptionsMCQ,
     );
 
     const source = normalizeParsedSource(
