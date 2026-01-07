@@ -28,7 +28,11 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Progress } from "@/components/ui/progress";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import {
   ArrowLeft,
   Upload,
@@ -1081,8 +1085,8 @@ function EditAssignmentView({
 
             <div className="bg-blue-50 dark:bg-blue-950/30 rounded-lg p-3 text-sm mt-5">
               <p className="text-blue-800 dark:text-blue-200">
-                After creating, your questions will be extracted and proceessed
-                using AI. This may take a few minutes.
+                After creating, your questions will be extracted and proceessed.
+                This may take a few minutes.
               </p>
             </div>
           </div>
@@ -1194,9 +1198,7 @@ function ReviewAssignmentView({
     const prev = previousProcessingStatus.current;
     const curr = assignment.processingStatus;
     const extractionFinished =
-      prev === "extracting" &&
-      curr !== "extracting" &&
-      curr !== "error";
+      prev === "extracting" && curr !== "extracting" && curr !== "error";
     const answersFinished =
       prev === "generating_answers" &&
       (curr === "ready" ||
@@ -1275,12 +1277,16 @@ function ReviewAssignmentView({
         <AlertDialogHeader>
           <AlertDialogTitle>Stop generating?</AlertDialogTitle>
           <AlertDialogDescription>
-            This halts extraction/answering in-progress. You can restart later with Regenerate all.
+            This halts extraction/answering in-progress. You can restart later
+            with Regenerate all.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel disabled={isStopping}>Cancel</AlertDialogCancel>
-          <AlertDialogAction onClick={handleStopGeneration} disabled={isStopping}>
+          <AlertDialogAction
+            onClick={handleStopGeneration}
+            disabled={isStopping}
+          >
             {isStopping ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin mr-1" />
@@ -1316,11 +1322,14 @@ function ReviewAssignmentView({
         <AlertDialogHeader>
           <AlertDialogTitle>Regenerate all questions?</AlertDialogTitle>
           <AlertDialogDescription>
-            This re-extracts questions and regenerates answers using the uploaded files. Existing edits may be overwritten.
+            This re-extracts questions and regenerates answers using the
+            uploaded files. Existing edits may be overwritten.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={isRegenerating}>Cancel</AlertDialogCancel>
+          <AlertDialogCancel disabled={isRegenerating}>
+            Cancel
+          </AlertDialogCancel>
           <AlertDialogAction
             onClick={handleRegenerateAll}
             disabled={isRegenerating}
@@ -1439,52 +1448,57 @@ function ReviewAssignmentView({
       {/* Error State (skip showing banner when teacher intentionally stopped) */}
       {assignment.processingStatus === "error" &&
         assignment.processingError !== "Stopped by teacher" && (
-        <Card className="border-destructive bg-destructive/5">
-          <CardContent className="py-4">
-            <div className="flex items-start gap-3">
-              <div className="rounded-full bg-destructive/10 p-2">
-                <X className="h-4 w-4 text-destructive" />
-              </div>
-              <div className="flex-1 space-y-1">
-                <p className="font-medium text-destructive">Processing Failed</p>
-                <p className="text-sm text-muted-foreground">
-                  {assignment.processingError || "An error occurred while processing the assignment."}
-                </p>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={isRetrying}
-                onClick={async () => {
-                  setIsRetrying(true);
-                  try {
-                    const result = await processAssignment({ assignmentId });
-                    if (result.success) {
-                      toast.success(`Processed ${result.questionsExtracted} questions`);
-                    } else {
-                      toast.error(result.error || "Processing failed");
+          <Card className="border-destructive bg-destructive/5">
+            <CardContent className="py-4">
+              <div className="flex items-start gap-3">
+                <div className="rounded-full bg-destructive/10 p-2">
+                  <X className="h-4 w-4 text-destructive" />
+                </div>
+                <div className="flex-1 space-y-1">
+                  <p className="font-medium text-destructive">
+                    Processing Failed
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {assignment.processingError ||
+                      "An error occurred while processing the assignment."}
+                  </p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={isRetrying}
+                  onClick={async () => {
+                    setIsRetrying(true);
+                    try {
+                      const result = await processAssignment({ assignmentId });
+                      if (result.success) {
+                        toast.success(
+                          `Processed ${result.questionsExtracted} questions`,
+                        );
+                      } else {
+                        toast.error(result.error || "Processing failed");
+                      }
+                    } catch (error) {
+                      console.error(error);
+                      toast.error("Failed to retry processing");
+                    } finally {
+                      setIsRetrying(false);
                     }
-                  } catch (error) {
-                    console.error(error);
-                    toast.error("Failed to retry processing");
-                  } finally {
-                    setIsRetrying(false);
-                  }
-                }}
-              >
-                {isRetrying ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin mr-1" />
-                    Retrying...
-                  </>
-                ) : (
-                  "Retry"
-                )}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+                  }}
+                >
+                  {isRetrying ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                      Retrying...
+                    </>
+                  ) : (
+                    "Retry"
+                  )}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
       {/* Questions Review Section */}
       {(() => {
