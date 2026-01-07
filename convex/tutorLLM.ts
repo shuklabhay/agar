@@ -56,11 +56,6 @@ const TUTOR_TOOLS: FunctionDeclaration[] = [
           description:
             "Student's final answer (MCQ letter, number, or short phrase) to log/grayout",
         },
-        advance_if_true: {
-          type: Type.BOOLEAN,
-          description:
-            "If true, advance to the next question when correct. Set to false when the student feels uncertain and you want to keep coaching before moving on.",
-        },
       },
       required: ["isCorrect"],
     },
@@ -80,7 +75,8 @@ const SYSTEM_INSTRUCTION = `<core_identity>
 - Do not format answers with markdown
 - Do not repeat information unless asked for it; each new 'hint' should provide actual new information.
 - Do not messages without trailing blank lines.
-- Do not do meta chatter and generic encouragement (Never say things like 'Let's analyze this question.', 'Let's move on to the next question.', etc)
+- Avoid meta chatter (statements like 'Let's analyze this question.', 'Let's move on to the next question.', etc)
+- Avoid generic encouragement 
 - Do not ask the user follow up questions to check for understanding.
 - Do not end your messages with questions (Never say things like 'Ready for another question?', 'What do you think?', 'Would you like to review why?' etc)
 - If users are are stuck, give a strategy/hints/clues and gradually increase support.
@@ -92,7 +88,6 @@ const SYSTEM_INSTRUCTION = `<core_identity>
 - The answer letter and the letter content are both valid answers.
 - Never repeat all answer choices; refer only to specific option(s) when needed.
 - An answer should not be marked correctly unless the guess is vague and specific and clear which option is being guessed
-- When a student cycles through guesses in quick succession without asking for clarification/help/feedback, require a brief “why this is correct” before calling evaluate_response on the correct answer; do not mark correct until they show understanding & their understanding is specific/grounded/correct.
 </multiple_choice_questions>
 
 <free_response_questions>
@@ -110,9 +105,10 @@ const SYSTEM_INSTRUCTION = `<core_identity>
 </single_value_questions>
 
 <tools_and_logging>
-- Only call \`evaluate_response\` when the student gives a clear final answer or asks you to grade; do NOT call it when they are just eliminating/checking an option.
-- Whenever the student gives a clear answer/guess (letter/option, number, or short response) call \`evaluate_response\` with isCorrect, missingPoints, detectedAnswer, and advance_if_true. If the answer is correct, set advance_if_true to true so they move to the next question. If incorrect, set advance_if_true to false and keep coaching.
-- If the student seems uncertain or guessing, ask for a short rationale before finalizing, but once you mark correct still advance them (advance_if_true true).
+- Only call \`evaluate_response\` when the student gives a clear final answer or asks you to grade.
+- If ATTEMPTS_SO_FAR is >1 and the student keeps guessing without asking for help/support/advice, ask for reasoning for their choice before calling \`evaluate_response\`. We want to prevent random guessing and getting it right by luck.
+- Whenever the student gives a clear answer/guess (letter/option, number, or short response) call \`evaluate_response\` with isCorrect, missingPoints, detectedAnswer.
+- If the student seems uncertain or guessing, ask for a short rationale before finalizing.
 - If it is unclear whether the user is guessing or exploring, get clarity before calling tools.
 </tools_and_logging>`;
 
@@ -216,16 +212,6 @@ ${input.question.additionalInstructionsForWork ? `REQUIRED METHOD: Student must 
           name: part.functionCall.name,
           args: (part.functionCall.args as Record<string, unknown>) || {},
         });
-      }
-    }
-
-    // Ensure correct answers always advance; incorrect answers do not
-    for (const call of toolCalls) {
-      if (call.name === "evaluate_response") {
-        const isCorrect = call.args.isCorrect;
-        if (typeof isCorrect === "boolean") {
-          call.args.advance_if_true = isCorrect;
-        }
       }
     }
 
