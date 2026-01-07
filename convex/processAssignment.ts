@@ -4,6 +4,18 @@ import { v } from "convex/values";
 import { action } from "./_generated/server";
 import { api, internal } from "./_generated/api";
 
+function formatError(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message || error.name || "Unknown error";
+  }
+  if (typeof error === "string") return error;
+  try {
+    return JSON.stringify(error);
+  } catch {
+    return "Unknown error";
+  }
+}
+
 // Process assignment: extract questions then generate answers
 export const processAssignment = action({
   args: { assignmentId: v.id("assignments") },
@@ -24,9 +36,14 @@ export const processAssignment = action({
       }
 
       // Step 1: Extract questions
-      const extractResult = await ctx.runAction(api.questionExtraction.extractQuestions, {
-        assignmentId: args.assignmentId,
-      });
+      let extractResult;
+      try {
+        extractResult = await ctx.runAction(api.questionExtraction.extractQuestions, {
+          assignmentId: args.assignmentId,
+        });
+      } catch (error) {
+        throw new Error(`Extraction threw: ${formatError(error)}`);
+      }
 
       if (!extractResult.success) {
         return {
@@ -48,9 +65,14 @@ export const processAssignment = action({
       }
 
       // Step 2: Generate answers
-      const generateResult = await ctx.runAction(api.answerGeneration.generateAnswers, {
-        assignmentId: args.assignmentId,
-      });
+      let generateResult;
+      try {
+        generateResult = await ctx.runAction(api.answerGeneration.generateAnswers, {
+          assignmentId: args.assignmentId,
+        });
+      } catch (error) {
+        throw new Error(`Answer generation threw: ${formatError(error)}`);
+      }
 
       if (!generateResult.success) {
         return {
@@ -66,8 +88,8 @@ export const processAssignment = action({
         answersGenerated: generateResult.processed,
       };
     } catch (error) {
-      console.error("Process assignment error:", error);
-      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      const errorMessage = formatError(error);
+      console.error("Process assignment error:", errorMessage, error);
 
       // Update status to error with message
       await ctx.runMutation(internal.questions.updateAssignmentStatus, {
