@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useLayoutEffect } from "react";
 import { useMutation, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
@@ -20,6 +20,7 @@ interface QuestionPanelProps {
   onPrevious: () => void;
   onNext: () => void;
   sessionId: Id<"studentSessions">;
+  completedQuestions: Set<Id<"questions">>;
 }
 
 export function QuestionPanel({
@@ -30,11 +31,16 @@ export function QuestionPanel({
   onPrevious,
   onNext,
   sessionId,
+  completedQuestions,
 }: QuestionPanelProps) {
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [textAnswer, setTextAnswer] = useState("");
   const [isCheckingAnswer, setIsCheckingAnswer] = useState(false);
   const [incorrectOptions, setIncorrectOptions] = useState<string[]>([]);
+  const [correctQuestions, setCorrectQuestions] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const [isEntering, setIsEntering] = useState(true);
 
   const initProgress = useMutation(api.studentProgress.initializeProgress);
   const markInProgress = useMutation(api.studentProgress.markInProgress);
@@ -80,6 +86,21 @@ export function QuestionPanel({
     progress?.selectedAnswer,
     progress?.submittedText,
   ]);
+
+  // Remember correct questions locally to avoid flash of controls before progress loads
+  useEffect(() => {
+    if (
+      questionId &&
+      (progress?.status === "correct" || completedQuestions.has(questionId))
+    ) {
+      setCorrectQuestions((prev) => {
+        if (prev.has(questionId)) return prev;
+        const next = new Set(prev);
+        next.add(questionId);
+        return next;
+      });
+    }
+  }, [completedQuestions, progress?.status, questionId]);
 
   // Track incorrect MCQ attempts without clearing user input on in_progress updates
   useEffect(() => {
@@ -160,6 +181,13 @@ export function QuestionPanel({
     }
   };
 
+  // Subtle enter animation when switching questions
+  useLayoutEffect(() => {
+    setIsEntering(false);
+    const frame = window.requestAnimationFrame(() => setIsEntering(true));
+    return () => window.cancelAnimationFrame(frame);
+  }, [questionId]);
+
   if (!question) {
     return (
       <div className="h-full flex flex-col">
@@ -183,12 +211,24 @@ export function QuestionPanel({
     );
   }
 
-  const isCorrect = progress?.status === "correct";
-  const isIncorrect = progress?.status === "incorrect";
+  const knownCompleted = questionId ? completedQuestions.has(questionId) : false;
+  const isCorrect =
+    knownCompleted ||
+    progress?.status === "correct" ||
+    (questionId ? correctQuestions.has(questionId) : false);
+  const isIncorrect = !isCorrect && progress?.status === "incorrect";
+  const showSubmit = !isCorrect;
   return (
     <div className="h-full flex flex-col">
       {/* Scrollable content area */}
       <div className="flex-1 overflow-y-auto p-6 pb-2 flex flex-col">
+        <div
+          className={cn(
+            "flex flex-col transition-opacity duration-500 ease-out",
+            isEntering ? "opacity-100" : "opacity-0",
+          )}
+          style={{ willChange: "opacity" }}
+        >
         {/* Question header */}
         <div className="flex items-center justify-between mb-2">
           <span className="text-sm text-muted-foreground font-medium">
@@ -196,7 +236,7 @@ export function QuestionPanel({
             {totalQuestions})
           </span>
           {isCorrect && (
-            <Badge className="bg-green-500 text-white">
+            <Badge className="bg-emerald-100 text-emerald-900 border border-emerald-300 dark:bg-emerald-900/40 dark:text-emerald-100 dark:border-emerald-700">
               <Check className="h-3 w-3 mr-1" /> Correct
             </Badge>
           )}
@@ -217,6 +257,7 @@ export function QuestionPanel({
                 {question.answerOptionsMCQ.map((option, i) => {
                   const letter = String.fromCharCode(65 + i);
                   const isSelected = selectedOption === letter;
+                  const isCorrectSelection = isSelected && isCorrect;
                   const isDisabled =
                     incorrectOptions.includes(letter) || isCorrect;
                   return (
@@ -226,9 +267,12 @@ export function QuestionPanel({
                       className={cn(
                         "w-full justify-start text-left h-auto py-3 px-4",
                         isSelected &&
-                          "border-primary text-primary bg-primary/10 hover:bg-primary/15",
+                          (isCorrect
+                            ? "border-transparent text-emerald-900 bg-emerald-100 hover:bg-emerald-100 shadow-sm ring-1 ring-emerald-500/80 dark:text-emerald-100 dark:bg-emerald-900/30 dark:hover:bg-emerald-900/30 dark:ring-emerald-600/80"
+                            : "border-transparent text-foreground bg-white hover:bg-white shadow-sm ring-1 ring-foreground/25 dark:text-foreground dark:bg-foreground/5 dark:hover:bg-foreground/5 dark:ring-foreground/35"),
                         incorrectOptions.includes(letter) &&
-                          "border-muted text-muted-foreground bg-muted/30",
+                          "border-muted text-muted-foreground bg-muted/30 ring-0",
+                        isCorrectSelection && "disabled:opacity-100",
                       )}
                       onClick={() => {
                         handleInteraction();
@@ -284,62 +328,67 @@ export function QuestionPanel({
           )}
         </div>
 
-        {/* Submit Button (all types go through tutor) */}
-        <Button
-          onClick={handleSubmit}
-          disabled={
-            isCorrect ||
-            isCheckingAnswer ||
-            (question.questionType === "multiple_choice" && !selectedOption) ||
-            (question.questionType === "single_value" && !textAnswer.trim()) ||
-            (question.questionType !== "multiple_choice" &&
-              question.questionType !== "single_value" &&
-              !textAnswer.trim())
-          }
-          className={cn("w-full mt-2", isCorrect && "invisible")}
-          size="lg"
-        >
-          {isCheckingAnswer ? (
-            <>
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              Checking...
-            </>
-          ) : (
-            "Submit Answer"
-          )}
-        </Button>
+        </div>
+      </div>
 
-        {/* Success message */}
+      {/* Bottom rail - navigation + actions */}
+      <div className="px-3 py-3 pt-2 bg-background">
+        {showSubmit && (
+          <Button
+            onClick={handleSubmit}
+            disabled={
+              isCheckingAnswer ||
+              (question.questionType === "multiple_choice" &&
+                !selectedOption) ||
+              (question.questionType === "single_value" &&
+                !textAnswer.trim()) ||
+              (question.questionType !== "multiple_choice" &&
+                question.questionType !== "single_value" &&
+                !textAnswer.trim())
+            }
+            className="w-full mb-3"
+            size="lg"
+          >
+            {isCheckingAnswer ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Checking...
+              </>
+            ) : (
+              "Submit Answer"
+            )}
+          </Button>
+        )}
+
         {isCorrect && (
-          <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
-            <p className="text-green-700 dark:text-green-300 text-sm font-medium flex items-center gap-2">
+          <div className="w-full mb-3 bg-emerald-100 dark:bg-emerald-900/30 border border-emerald-500/80 dark:border-emerald-600/80 rounded-lg h-10 px-3 flex items-center">
+            <p className="text-emerald-900 dark:text-emerald-100 text-sm font-medium flex items-center gap-2 leading-none">
               <Check className="h-4 w-4" />
               Great job!
             </p>
           </div>
         )}
-      </div>
 
-      {/* Navigation - fixed at bottom */}
-      <div className="px-3 py-3 pt-2 bg-background flex items-center justify-between">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={onPrevious}
-          disabled={questionIndex === 0}
-        >
-          <ChevronLeft className="h-4 w-4 mr-1" />
-          Previous
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={onNext}
-          disabled={questionIndex === totalQuestions - 1}
-        >
-          Next
-          <ChevronRight className="h-4 w-4 ml-1" />
-        </Button>
+        <div className="flex items-center justify-between">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onPrevious}
+            disabled={questionIndex === 0}
+          >
+            <ChevronLeft className="h-4 w-4 mr-1" />
+            Previous
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onNext}
+            disabled={questionIndex === totalQuestions - 1}
+          >
+            Next
+            <ChevronRight className="h-4 w-4 ml-1" />
+          </Button>
+        </div>
       </div>
     </div>
   );

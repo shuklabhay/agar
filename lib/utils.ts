@@ -1,8 +1,8 @@
-import { clsx, type ClassValue } from "clsx"
-import { twMerge } from "tailwind-merge"
+import { clsx, type ClassValue } from "clsx";
+import { twMerge } from "tailwind-merge";
 
 export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs))
+  return twMerge(clsx(inputs));
 }
 
 export function compareQuestionNumbers(a: string, b: string): number {
@@ -19,15 +19,15 @@ export function compareQuestionNumbers(a: string, b: string): number {
   if (!Number.isNaN(pa.num) && !Number.isNaN(pb.num)) {
     if (pa.num !== pb.num) return pa.num - pb.num;
     if (pa.suffix !== pb.suffix) {
-      // Plain numbers sort before lettered variants; lettered variants sort alphabetically
       if (pa.suffix === "") return -1;
       if (pb.suffix === "") return 1;
-      return pa.suffix.localeCompare(pb.suffix, undefined, { sensitivity: "base" });
+      return pa.suffix.localeCompare(pb.suffix, undefined, {
+        sensitivity: "base",
+      });
     }
     return 0;
   }
 
-  // Fallback to localeCompare with numeric handling for mixed formats
   return normalize(a).localeCompare(normalize(b), undefined, {
     numeric: true,
     sensitivity: "base",

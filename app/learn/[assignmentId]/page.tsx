@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useQuery, useMutation, useConvexAuth } from "convex/react";
 import { api } from "@/convex/_generated/api";
@@ -56,6 +56,7 @@ export default function LearnPage() {
   const lastCorrectQuestionRef = useRef<string | null>(null);
   const previousStatusMapRef = useRef<Map<string, string>>(new Map());
   const questionScrollRef = useRef<HTMLDivElement | null>(null);
+  const completedQuestionsRef = useRef<Set<Id<"questions">>>(new Set());
 
   // Resizable panels
   const { containerRef, leftPanelWidth, handleMouseDown } = useResizablePanel({
@@ -90,6 +91,28 @@ export default function LearnPage() {
     api.studentProgress.getProgress,
     activeSessionId ? { sessionId: activeSessionId } : "skip",
   );
+
+  const completedQuestions = useMemo(() => {
+    const previous = completedQuestionsRef.current;
+    const next = new Set(previous);
+    let changed = false;
+
+    if (progress) {
+      for (const entry of progress) {
+        if (entry.status === "correct" && !next.has(entry.questionId)) {
+          next.add(entry.questionId);
+          changed = true;
+        }
+      }
+    }
+
+    if (changed) {
+      completedQuestionsRef.current = next;
+      return next;
+    }
+
+    return previous;
+  }, [progress]);
 
   const totalQuestions = questions?.length ?? 0;
   const correctCount =
@@ -129,6 +152,7 @@ export default function LearnPage() {
     lastCorrectQuestionRef.current = null;
     previousQuestionId.current = null;
     previousStatusMapRef.current = new Map();
+    completedQuestionsRef.current = new Set<Id<"questions">>();
   }, [activeSessionId]);
 
   // Sync session from query result
@@ -647,6 +671,7 @@ export default function LearnPage() {
                 )
               }
               sessionId={activeSessionId as Id<"studentSessions">}
+              completedQuestions={completedQuestions}
             />
           </div>
 
