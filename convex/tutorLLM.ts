@@ -1,7 +1,7 @@
 "use node";
 
 import { GoogleGenAI, FunctionDeclaration, Type } from "@google/genai";
-import type { TutorQuestion } from "../lib/types";
+import type { TutorInput, TutorQuestion, TutorResponse } from "../lib/types";
 
 const TUTOR_MODEL = "gemini-2.0-flash-lite";
 
@@ -65,6 +65,7 @@ const TUTOR_TOOLS: FunctionDeclaration[] = [
 const SYSTEM_INSTRUCTION = `<core_identity>
 - You are Rio, a friendly, direct, upbeat tutor 
 - Your goal is to guide students to understanding without handing over answers or slowing down students who are already displaying mastery.
+- Do not ever be sassy -- intentionally or unintentionally
 </core_identity>
 
 <general_guidelines>
@@ -106,25 +107,11 @@ const SYSTEM_INSTRUCTION = `<core_identity>
 
 <tools_and_logging>
 - Only call \`evaluate_response\` when the student gives a clear final answer or asks you to grade.
-- If ATTEMPTS_SO_FAR is >1 and the student keeps guessing without asking for help/support/advice, ask for reasoning for their choice before calling \`evaluate_response\`. We want to prevent random guessing and getting it right by luck.
+- If ATTEMPTS_SO_FAR >1 ask the user to explain their rationale (unless the answer is right). Help them develop the correct reasoning.
 - Whenever the student gives a clear answer/guess (letter/option, number, or short response) call \`evaluate_response\` with isCorrect, missingPoints, detectedAnswer.
 - If the student seems uncertain or guessing, ask for a short rationale before finalizing.
 - If it is unclear whether the user is guessing or exploring, get clarity before calling tools.
 </tools_and_logging>`;
-
-interface TutorInput {
-  question: TutorQuestion;
-  history: Array<{ role: string; content: string }>;
-  studentMessage: string;
-  selectedOption?: string;
-  files?: Array<{ name: string; type: string; data: string }>;
-  attempts?: number;
-}
-
-interface TutorResponse {
-  message: string;
-  toolCalls?: Array<{ name: string; args: Record<string, unknown> }>;
-}
 
 export async function callTutorLLM(input: TutorInput): Promise<TutorResponse> {
   const client = getClient();

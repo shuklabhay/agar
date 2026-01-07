@@ -63,6 +63,20 @@ export interface TutorQuestion {
   questionNumber?: string;
 }
 
+export interface TutorInput {
+  question: TutorQuestion;
+  history: Array<{ role: string; content: string }>;
+  studentMessage: string;
+  selectedOption?: string;
+  files?: Array<{ name: string; type: string; data: string }>;
+  attempts?: number;
+}
+
+export interface TutorResponse {
+  message: string;
+  toolCalls?: Array<{ name: string; args: Record<string, unknown> }>;
+}
+
 export type UploadedFile = {
   id: string;
   storageId: Id<"_storage">;
@@ -255,8 +269,9 @@ export interface TutorInput {
   question: TutorQuestion;
   history: Array<{ role: string; content: string }>;
   studentMessage: string;
+  selectedOption?: string;
   files?: Array<{ name: string; type: string; data: string }>;
-  isFirstMessageForQuestion: boolean;
+  attempts?: number;
 }
 
 export interface TutorResponse {

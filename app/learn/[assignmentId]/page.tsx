@@ -54,6 +54,7 @@ export default function LearnPage() {
   // Question navigation
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const lastCorrectQuestionRef = useRef<string | null>(null);
+  const previousStatusMapRef = useRef<Map<string, string>>(new Map());
   const questionScrollRef = useRef<HTMLDivElement | null>(null);
 
   // Resizable panels
@@ -127,6 +128,7 @@ export default function LearnPage() {
     hasSetInitialIndex.current = false;
     lastCorrectQuestionRef.current = null;
     previousQuestionId.current = null;
+    previousStatusMapRef.current = new Map();
   }, [activeSessionId]);
 
   // Sync session from query result
@@ -221,10 +223,24 @@ export default function LearnPage() {
     const currentProgress = progress.find(
       (p) => p.questionId === currentQuestion._id,
     );
+    const currentStatus = currentProgress?.status;
+    const previousStatus = previousStatusMapRef.current.get(
+      currentQuestion._id,
+    );
+
+    // First time seeing this question in the map—initialize and exit early
+    if (previousStatus === undefined) {
+      previousStatusMapRef.current.set(
+        currentQuestion._id,
+        currentStatus ?? "unknown",
+      );
+      return;
+    }
 
     // Check if this question just became correct
     if (
-      currentProgress?.status === "correct" &&
+      currentStatus === "correct" &&
+      previousStatus !== "correct" &&
       currentProgress.advanceOnCorrect !== false &&
       lastCorrectQuestionRef.current !== currentQuestion._id
     ) {
@@ -249,6 +265,12 @@ export default function LearnPage() {
       }
       // All questions answered - stay on current
     }
+
+    // Track status for transition detection
+    previousStatusMapRef.current.set(
+      currentQuestion._id,
+      currentStatus ?? "unknown",
+    );
   }, [questions, progress, currentQuestionIndex]);
 
   // Trigger celebration when everything is completed

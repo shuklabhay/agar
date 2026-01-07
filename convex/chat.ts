@@ -496,10 +496,6 @@ export const sendMessageToTutor = action({
             typeof toolCall.args.detectedAnswer === "string"
               ? toolCall.args.detectedAnswer
               : parsedSelectedOption;
-          const advanceIfTrueArg =
-            typeof toolCall.args.advance_if_true === "boolean"
-              ? (toolCall.args.advance_if_true as boolean)
-              : undefined;
           const isMCQ = question.questionType === "multiple_choice";
 
           const correctLetters = deriveCorrectLetters(
@@ -527,7 +523,7 @@ export const sendMessageToTutor = action({
             status: isCorrect ? "correct" : "incorrect",
             submittedText: !isMCQ ? detectedAnswer : undefined,
             selectedAnswer: isMCQ ? answerLetter : undefined,
-            advanceOnCorrect: isCorrect ? advanceIfTrueArg : undefined,
+            advanceOnCorrect: isCorrect ? true : undefined,
           });
           progressUpdated = true;
         }
@@ -539,7 +535,8 @@ export const sendMessageToTutor = action({
       !progressUpdated &&
       question.questionType === "multiple_choice" &&
       progress &&
-      parsedSelectedOption
+      parsedSelectedOption &&
+      (progress.attempts ?? 0) === 0
     ) {
       const correctLetters = deriveCorrectLetters(
         question.answer,
