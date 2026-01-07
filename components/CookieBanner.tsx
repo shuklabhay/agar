@@ -1,53 +1,32 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Cookies from "js-cookie";
 import { Button } from "@/components/ui/button";
-import {
-  CONSENT_COOKIE_NAME,
-  CONSENT_MAX_AGE_DAYS,
-  ConsentChoice,
-} from "@/lib/cookieConsent";
+import { CONSENT_COOKIE_NAME, ConsentChoice } from "@/lib/cookieConsent";
 
 export function CookieBanner() {
-  const [isOpen, setIsOpen] = useState(false);
-
-  const getStoredConsent = () => {
-    if (typeof window === "undefined") return undefined;
-    try {
-      const cookieConsent = Cookies.get(CONSENT_COOKIE_NAME);
-      if (cookieConsent) return cookieConsent;
-    } catch {
-      // Ignore and fall back to localStorage
-    }
-    return window.localStorage.getItem(CONSENT_COOKIE_NAME) || undefined;
-  };
+  const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    const hasConsent = getStoredConsent();
-    setIsOpen(!hasConsent);
+    if (typeof window === "undefined") return;
+    try {
+      const stored = window.localStorage.getItem(CONSENT_COOKIE_NAME);
+      setVisible(!stored);
+    } catch {
+      setVisible(true);
+    }
   }, []);
 
   const setConsent = (value: ConsentChoice) => {
-    // Close immediately for snappy UX even if storage operations fail
-    setIsOpen(false);
-
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem(CONSENT_COOKIE_NAME, value);
-    }
+    setVisible(false);
     try {
-      Cookies.set(CONSENT_COOKIE_NAME, value, {
-        expires: CONSENT_MAX_AGE_DAYS,
-        sameSite: "Lax",
-        path: "/",
-        secure: typeof window !== "undefined" && window.location.protocol === "https:",
-      });
+      window.localStorage.setItem(CONSENT_COOKIE_NAME, value);
     } catch {
-      // localStorage already set; ignore cookie errors
+      // ignore storage failures; banner already hidden
     }
   };
 
-  if (!isOpen) return null;
+  if (!visible) return null;
 
   return (
     <div className="fixed bottom-4 left-4 z-[9999] w-[min(420px,calc(100%-2rem))] rounded-lg border bg-card/95 p-4 shadow-lg backdrop-blur">
@@ -57,10 +36,10 @@ export function CookieBanner() {
           with analytics. Choose whether to allow non-essential cookies.
         </div>
         <div className="flex gap-2 justify-end">
-          <Button variant="outline" size="sm" onClick={() => setConsent("declined")}>
+          <Button type="button" variant="outline" size="sm" onClick={() => setConsent("declined")}>
             Decline non-essential
           </Button>
-          <Button size="sm" onClick={() => setConsent("accepted")}>
+          <Button type="button" size="sm" onClick={() => setConsent("accepted")}>
             Accept all
           </Button>
         </div>
