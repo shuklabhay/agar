@@ -1,19 +1,21 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { CONSENT_COOKIE_NAME, ConsentChoice } from "@/lib/cookieConsent";
 
 export function CookieBanner() {
-  const [visible, setVisible] = useState<boolean>(() => {
-    if (typeof window === "undefined") return false;
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
     try {
       const stored = window.localStorage.getItem(CONSENT_COOKIE_NAME);
-      return !stored;
+      setVisible(!stored);
     } catch {
-      return true;
+      // Show the banner if localStorage is unavailable so users can still consent.
+      setVisible(true);
     }
-  });
+  }, []);
 
   const setConsent = (value: ConsentChoice) => {
     setVisible(false);
