@@ -302,6 +302,29 @@ export function QuestionsReviewPanel({
     }
   };
 
+  const getSourceUrlInfo = (
+    url: string,
+  ): { href: string; hostname: string } | null => {
+    if (typeof url !== "string") return null;
+    const trimmed = url.trim();
+    if (!trimmed) return null;
+
+    const candidates = [trimmed];
+    if (!/^https?:\/\//i.test(trimmed)) {
+      candidates.push(`https://${trimmed}`);
+    }
+
+    for (const candidate of candidates) {
+      try {
+        const parsed = new URL(candidate);
+        return { href: parsed.href, hostname: parsed.hostname };
+      } catch {
+      }
+    }
+
+    return null;
+  };
+
   const formatAnswer = (answer: string | string[] | undefined) => {
     if (!answer) return "No answer generated";
     if (Array.isArray(answer)) {
@@ -801,24 +824,43 @@ export function QuestionsReviewPanel({
                           <span className="text-green-600 dark:text-green-400 font-medium">
                             Notes
                           </span>
-                        ) : (
+                        ) : Array.isArray(selectedQuestion.source) ? (
                           <div className="flex flex-wrap gap-2 min-w-0 overflow-hidden">
-                            {(selectedQuestion.source as string[]).map(
-                              (url, i) => (
+                            {selectedQuestion.source.map((url, i) => {
+                              const parsed = getSourceUrlInfo(url);
+                              if (!parsed) {
+                                const fallback = typeof url === "string"
+                                  ? url || "Unknown source"
+                                  : "Unknown source";
+                                return (
+                                  <span
+                                    key={i}
+                                    className="text-muted-foreground truncate max-w-[200px]"
+                                    title={String(fallback)}
+                                  >
+                                    {fallback}
+                                  </span>
+                                );
+                              }
+                              return (
                                 <a
                                   key={i}
-                                  href={url}
+                                  href={parsed.href}
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   className="text-amber-600 hover:underline inline-flex items-center gap-1 truncate max-w-[200px]"
-                                  title={url}
+                                  title={parsed.href}
                                 >
-                                  {new URL(url).hostname}
+                                  {parsed.hostname}
                                   <ExternalLink className="h-3 w-3 shrink-0" />
                                 </a>
-                              ),
-                            )}
+                              );
+                            })}
                           </div>
+                        ) : (
+                          <span className="text-muted-foreground truncate max-w-[200px]">
+                            {String(selectedQuestion.source)}
+                          </span>
                         )}
                       </div>
                     )}
