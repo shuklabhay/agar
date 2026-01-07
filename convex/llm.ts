@@ -425,7 +425,7 @@ const ANSWER_PROMPT = `<prompt>
 <key_points>
 - Provide 1-2 key_points that are verbatim snippets copied directly from the source text (notes or search results). Do NOT paraphrase or summarize.
 - Never use the question stem or the answer choice itself as a key_point. Only quote supporting evidence from the source.
-- Each key_point MUST end with a bracketed source hint: "[teacher notes]" if from teacher notes, "[passage | figure | table]" if from a provided passage/figure/table caption (select which one it is), or "[website name]" for websites (e.g., "[britannica.com]").
+- Each key_point MUST end with a bracketed source hint: "[teacher notes]" if from teacher notes, "[passage | figure | table]" if from a provided passage/figure/table caption (select which one it is), or "[website name]" ONLY when a website is accessed for THIS question (e.g., "[britannica.com]").
 </key_points>
 
 <sourcing>
