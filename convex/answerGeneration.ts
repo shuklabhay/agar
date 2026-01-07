@@ -6,6 +6,9 @@ import { internal } from "./_generated/api";
 import { generateAnswerForQuestion, fetchFileAsBase64 } from "./llm";
 import { GoogleGenAI, Part } from "@google/genai";
 
+const BATCH_SIZE = 4;
+const MAX_PARALLEL_BATCHES = 2;
+
 function formatError(error: unknown): string {
   if (error instanceof Error) return error.message || error.name || "Unknown error";
   if (typeof error === "string") return error;
@@ -88,78 +91,133 @@ export const generateAnswers = action({
       let errors = 0;
       let abortedMessage: string | null = null;
 
-      // Process questions ONE AT A TIME for real-time progress feedback
-      for (const q of questions) {
-        const status = await ctx.runQuery(internal.questions.getAssignmentStatus, {
-          assignmentId: args.assignmentId,
-        });
-        if (status?.status === "error") {
-          abortedMessage = status.error ?? "Processing stopped";
-          break;
+      // Helper to process a batch of questions sequentially, sharing the same context window
+      const processBatch = async (batch: typeof questions) => {
+        let batchProcessed = 0;
+        let batchErrors = 0;
+        let batchAborted: string | null = null;
+
+        for (const q of batch) {
+          const status = await ctx.runQuery(internal.questions.getAssignmentStatus, {
+            assignmentId: args.assignmentId,
+          });
+          if (status?.status === "error") {
+            batchAborted = status.error ?? "Processing stopped";
+            break;
+          }
+
+          try {
+            // Mark question as processing (visible in UI immediately)
+            await ctx.runMutation(internal.questions.markQuestionProcessing, {
+              questionId: q._id,
+            });
+
+            // If a stop was requested after we marked processing, honor it
+            const statusAfterMark = await ctx.runQuery(
+              internal.questions.getAssignmentStatus,
+              { assignmentId: args.assignmentId },
+            );
+            if (statusAfterMark?.status === "error") {
+              await ctx.runMutation(internal.questions.markQuestionPending, {
+                questionId: q._id,
+              });
+              batchAborted = statusAfterMark.error ?? "Processing stopped";
+              break;
+            }
+
+            // Generate answer for this specific question using the shared contextParts
+            const answer = await generateAnswerForQuestion(
+              q.questionNumber,
+              q.questionText,
+              q.questionType,
+              q.additionalInstructionsForAnswer,
+              q.additionalInstructionsForWork,
+              contextParts,
+              client,
+              q.answerOptionsMCQ,
+            );
+
+            // If stopped during LLM call, do not write the answer
+            const statusBeforeWrite = await ctx.runQuery(
+              internal.questions.getAssignmentStatus,
+              { assignmentId: args.assignmentId },
+            );
+            if (statusBeforeWrite?.status === "error") {
+              await ctx.runMutation(internal.questions.markQuestionPending, {
+                questionId: q._id,
+              });
+              batchAborted = statusBeforeWrite.error ?? "Processing stopped";
+              break;
+            }
+
+            // Update question with answer (visible in UI immediately)
+            await ctx.runMutation(internal.questions.updateQuestionAnswer, {
+              questionId: q._id,
+              answer: answer.answer,
+              keyPoints: answer.keyPoints,
+              source: answer.source,
+              status: "ready",
+            });
+
+            batchProcessed++;
+          } catch (error) {
+            console.error(`Error generating answer for Q${q.questionNumber}:`, error);
+            batchErrors++;
+
+            // Reset question to pending so it can be retried cleanly
+            await ctx.runMutation(internal.questions.markQuestionPending, {
+              questionId: q._id,
+            });
+          }
         }
 
-        try {
-          // Mark question as processing (visible in UI immediately)
-          await ctx.runMutation(internal.questions.markQuestionProcessing, {
-            questionId: q._id,
-          });
+        return {
+          processed: batchProcessed,
+          errors: batchErrors,
+          abortedMessage: batchAborted,
+        };
+      };
 
-          // If a stop was requested after we marked processing, honor it
-          const statusAfterMark = await ctx.runQuery(
-            internal.questions.getAssignmentStatus,
-            { assignmentId: args.assignmentId },
-          );
-          if (statusAfterMark?.status === "error") {
-            await ctx.runMutation(internal.questions.markQuestionPending, {
-              questionId: q._id,
-            });
-            abortedMessage = statusAfterMark.error ?? "Processing stopped";
-            break;
+      // Chunk questions into batches of BATCH_SIZE
+      const batches: typeof questions[] = [];
+      for (let i = 0; i < questions.length; i += BATCH_SIZE) {
+        batches.push(questions.slice(i, i + BATCH_SIZE));
+      }
+
+      // Process batches with limited parallelism; start next batch as soon as one finishes
+      const active: Promise<void>[] = [];
+      let nextBatch = 0;
+
+      const launchBatch = (batch: typeof questions) => {
+        let wrapped: Promise<void>;
+        const run = (async () => {
+          const result = await processBatch(batch);
+          processed += result.processed;
+          errors += result.errors;
+          if (result.abortedMessage && !abortedMessage) {
+            abortedMessage = result.abortedMessage;
           }
+        })();
 
-          // Generate answer for this specific question
-          const answer = await generateAnswerForQuestion(
-            q.questionNumber,
-            q.questionText,
-            q.questionType,
-            q.additionalInstructionsForAnswer,
-            q.additionalInstructionsForWork,
-            contextParts,
-            client,
-            q.answerOptionsMCQ,
-          );
+        wrapped = run.finally(() => {
+          const idx = active.indexOf(wrapped);
+          if (idx !== -1) active.splice(idx, 1);
+        });
+        active.push(wrapped);
+      };
 
-          // If stopped during LLM call, do not write the answer
-          const statusBeforeWrite = await ctx.runQuery(
-            internal.questions.getAssignmentStatus,
-            { assignmentId: args.assignmentId },
-          );
-          if (statusBeforeWrite?.status === "error") {
-            await ctx.runMutation(internal.questions.markQuestionPending, {
-              questionId: q._id,
-            });
-            abortedMessage = statusBeforeWrite.error ?? "Processing stopped";
-            break;
-          }
+      while ((nextBatch < batches.length || active.length > 0) && !abortedMessage) {
+        while (
+          active.length < MAX_PARALLEL_BATCHES &&
+          nextBatch < batches.length &&
+          !abortedMessage
+        ) {
+          launchBatch(batches[nextBatch]);
+          nextBatch++;
+        }
 
-          // Update question with answer (visible in UI immediately)
-          await ctx.runMutation(internal.questions.updateQuestionAnswer, {
-            questionId: q._id,
-            answer: answer.answer,
-            keyPoints: answer.keyPoints,
-            source: answer.source,
-            status: "ready",
-          });
-
-          processed++;
-        } catch (error) {
-          console.error(`Error generating answer for Q${q.questionNumber}:`, error);
-          errors++;
-
-          // Reset question to pending so it can be retried cleanly
-          await ctx.runMutation(internal.questions.markQuestionPending, {
-            questionId: q._id,
-          });
+        if (active.length > 0) {
+          await Promise.race(active);
         }
       }
 
