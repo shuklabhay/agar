@@ -175,6 +175,9 @@ export const updateQuestionAnswer = internalMutation({
     ),
   },
   handler: async (ctx, args) => {
+    const existing = await ctx.db.get(args.questionId);
+    if (!existing) return;
+
     await ctx.db.patch(args.questionId, {
       answer: args.answer,
       keyPoints: args.keyPoints,
@@ -188,6 +191,8 @@ export const updateQuestionAnswer = internalMutation({
 export const markQuestionProcessing = internalMutation({
   args: { questionId: v.id("questions") },
   handler: async (ctx, args) => {
+    const existing = await ctx.db.get(args.questionId);
+    if (!existing) return;
     await ctx.db.patch(args.questionId, { status: "processing" });
   },
 });
@@ -196,6 +201,8 @@ export const markQuestionProcessing = internalMutation({
 export const markQuestionPending = internalMutation({
   args: { questionId: v.id("questions") },
   handler: async (ctx, args) => {
+    const existing = await ctx.db.get(args.questionId);
+    if (!existing) return;
     await ctx.db.patch(args.questionId, { status: "pending" });
   },
 });

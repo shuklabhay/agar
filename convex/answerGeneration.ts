@@ -6,172 +6,193 @@ import { internal } from "./_generated/api";
 import { generateAnswerForQuestion, fetchFileAsBase64 } from "./llm";
 import { GoogleGenAI, Part } from "@google/genai";
 
+function formatError(error: unknown): string {
+  if (error instanceof Error) return error.message || error.name || "Unknown error";
+  if (typeof error === "string") return error;
+  try {
+    return JSON.stringify(error);
+  } catch {
+    return "Unknown error";
+  }
+}
+
 export const generateAnswers = action({
   args: { assignmentId: v.id("assignments") },
   handler: async (ctx, args): Promise<{ success: boolean; processed?: number; error?: string }> => {
-    const currentStatus = await ctx.runQuery(internal.questions.getAssignmentStatus, {
-      assignmentId: args.assignmentId,
-    });
-    if (currentStatus?.status === "error") {
-      return { success: false, error: currentStatus.error ?? "Processing stopped" };
-    }
-
-    // Get pending questions
-    const questions = await ctx.runQuery(
-      internal.questions.getPendingQuestions,
-      { assignmentId: args.assignmentId },
-    );
-
-    if (questions.length === 0) {
-      return { success: true, processed: 0 };
-    }
-
-    // Get assignment (for assignment file URLs)
-    const assignment = await ctx.runQuery(
-      internal.questions.getAssignmentForProcessing,
-      { assignmentId: args.assignmentId },
-    );
-
-    if (!assignment) {
-      return { success: false, error: "Assignment not found" };
-    }
-
-    // Get notes file URLs
-    const notesUrls = await ctx.runQuery(
-      internal.questions.getNotesForAssignment,
-      { assignmentId: args.assignmentId },
-    );
-
-    // Update assignment status
-    await ctx.runMutation(internal.questions.updateAssignmentStatus, {
-      assignmentId: args.assignmentId,
-      status: "generating_answers",
-    });
-
-    // Prepare notes files once (reuse across all questions)
-    const notesParts: Part[] = await Promise.all(
-      notesUrls.map(async (url: string) => {
-        const { data, mimeType } = await fetchFileAsBase64(url);
-        return { inlineData: { data, mimeType } };
-      }),
-    );
-    // Prepare assignment files once (reuse across all questions)
-    const assignmentParts: Part[] = await Promise.all(
-      (assignment.assignmentFiles || [])
-        .filter((f) => f.url)
-        .map(async (file) => {
-          const { data, mimeType } = await fetchFileAsBase64(file.url as string);
-          return { inlineData: { data, mimeType } };
-        }),
-    );
-    const contextParts = [...notesParts, ...assignmentParts];
-
-    // Get Gemini client
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-      return { success: false, error: "GEMINI_API_KEY not configured" };
-    }
-    const client = new GoogleGenAI({ apiKey });
-
-    let processed = 0;
-    let errors = 0;
-    let abortedMessage: string | null = null;
-
-    // Process questions ONE AT A TIME for real-time progress feedback
-    for (const q of questions) {
-      const status = await ctx.runQuery(internal.questions.getAssignmentStatus, {
+    try {
+      const currentStatus = await ctx.runQuery(internal.questions.getAssignmentStatus, {
         assignmentId: args.assignmentId,
       });
-      if (status?.status === "error") {
-        abortedMessage = status.error ?? "Processing stopped";
-        break;
+      if (currentStatus?.status === "error") {
+        return { success: false, error: currentStatus.error ?? "Processing stopped" };
       }
 
-      try {
-        // Mark question as processing (visible in UI immediately)
-        await ctx.runMutation(internal.questions.markQuestionProcessing, {
-          questionId: q._id,
-        });
+      // Get pending questions
+      const questions = await ctx.runQuery(
+        internal.questions.getPendingQuestions,
+        { assignmentId: args.assignmentId },
+      );
 
-        // If a stop was requested after we marked processing, honor it
-        const statusAfterMark = await ctx.runQuery(
-          internal.questions.getAssignmentStatus,
-          { assignmentId: args.assignmentId },
-        );
-        if (statusAfterMark?.status === "error") {
-          await ctx.runMutation(internal.questions.markQuestionPending, {
-            questionId: q._id,
-          });
-          abortedMessage = statusAfterMark.error ?? "Processing stopped";
+      if (questions.length === 0) {
+        return { success: true, processed: 0 };
+      }
+
+      // Get assignment (for assignment file URLs)
+      const assignment = await ctx.runQuery(
+        internal.questions.getAssignmentForProcessing,
+        { assignmentId: args.assignmentId },
+      );
+
+      if (!assignment) {
+        return { success: false, error: "Assignment not found" };
+      }
+
+      // Get notes file URLs
+      const notesUrls = await ctx.runQuery(
+        internal.questions.getNotesForAssignment,
+        { assignmentId: args.assignmentId },
+      );
+
+      // Update assignment status
+      await ctx.runMutation(internal.questions.updateAssignmentStatus, {
+        assignmentId: args.assignmentId,
+        status: "generating_answers",
+      });
+
+      // Prepare notes files once (reuse across all questions)
+      const notesParts: Part[] = await Promise.all(
+        notesUrls.map(async (url: string) => {
+          const { data, mimeType } = await fetchFileAsBase64(url);
+          return { inlineData: { data, mimeType } };
+        }),
+      );
+      // Prepare assignment files once (reuse across all questions)
+      const assignmentParts: Part[] = await Promise.all(
+        (assignment.assignmentFiles || [])
+          .filter((f) => f.url)
+          .map(async (file) => {
+            const { data, mimeType } = await fetchFileAsBase64(file.url as string);
+            return { inlineData: { data, mimeType } };
+          }),
+      );
+      const contextParts = [...notesParts, ...assignmentParts];
+
+      // Get Gemini client
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (!apiKey) {
+        return { success: false, error: "GEMINI_API_KEY not configured" };
+      }
+      const client = new GoogleGenAI({ apiKey });
+
+      let processed = 0;
+      let errors = 0;
+      let abortedMessage: string | null = null;
+
+      // Process questions ONE AT A TIME for real-time progress feedback
+      for (const q of questions) {
+        const status = await ctx.runQuery(internal.questions.getAssignmentStatus, {
+          assignmentId: args.assignmentId,
+        });
+        if (status?.status === "error") {
+          abortedMessage = status.error ?? "Processing stopped";
           break;
         }
 
-        // Generate answer for this specific question
-        const answer = await generateAnswerForQuestion(
-          q.questionNumber,
-          q.questionText,
-          q.questionType,
-          q.additionalInstructionsForAnswer,
-          q.additionalInstructionsForWork,
-          contextParts,
-          client,
-          q.answerOptionsMCQ,
-        );
+        try {
+          // Mark question as processing (visible in UI immediately)
+          await ctx.runMutation(internal.questions.markQuestionProcessing, {
+            questionId: q._id,
+          });
 
-        // If stopped during LLM call, do not write the answer
-        const statusBeforeWrite = await ctx.runQuery(
-          internal.questions.getAssignmentStatus,
-          { assignmentId: args.assignmentId },
-        );
-        if (statusBeforeWrite?.status === "error") {
+          // If a stop was requested after we marked processing, honor it
+          const statusAfterMark = await ctx.runQuery(
+            internal.questions.getAssignmentStatus,
+            { assignmentId: args.assignmentId },
+          );
+          if (statusAfterMark?.status === "error") {
+            await ctx.runMutation(internal.questions.markQuestionPending, {
+              questionId: q._id,
+            });
+            abortedMessage = statusAfterMark.error ?? "Processing stopped";
+            break;
+          }
+
+          // Generate answer for this specific question
+          const answer = await generateAnswerForQuestion(
+            q.questionNumber,
+            q.questionText,
+            q.questionType,
+            q.additionalInstructionsForAnswer,
+            q.additionalInstructionsForWork,
+            contextParts,
+            client,
+            q.answerOptionsMCQ,
+          );
+
+          // If stopped during LLM call, do not write the answer
+          const statusBeforeWrite = await ctx.runQuery(
+            internal.questions.getAssignmentStatus,
+            { assignmentId: args.assignmentId },
+          );
+          if (statusBeforeWrite?.status === "error") {
+            await ctx.runMutation(internal.questions.markQuestionPending, {
+              questionId: q._id,
+            });
+            abortedMessage = statusBeforeWrite.error ?? "Processing stopped";
+            break;
+          }
+
+          // Update question with answer (visible in UI immediately)
+          await ctx.runMutation(internal.questions.updateQuestionAnswer, {
+            questionId: q._id,
+            answer: answer.answer,
+            keyPoints: answer.keyPoints,
+            source: answer.source,
+            status: "ready",
+          });
+
+          processed++;
+        } catch (error) {
+          console.error(`Error generating answer for Q${q.questionNumber}:`, error);
+          errors++;
+
+          // Reset question to pending so it can be retried cleanly
           await ctx.runMutation(internal.questions.markQuestionPending, {
             questionId: q._id,
           });
-          abortedMessage = statusBeforeWrite.error ?? "Processing stopped";
-          break;
         }
-
-        // Update question with answer (visible in UI immediately)
-        await ctx.runMutation(internal.questions.updateQuestionAnswer, {
-          questionId: q._id,
-          answer: answer.answer,
-          keyPoints: answer.keyPoints,
-          source: answer.source,
-          status: "ready",
-        });
-
-        processed++;
-      } catch (error) {
-        console.error(`Error generating answer for Q${q.questionNumber}:`, error);
-        errors++;
-
-        // Reset question to pending so it can be retried cleanly
-        await ctx.runMutation(internal.questions.markQuestionPending, {
-          questionId: q._id,
-        });
       }
-    }
 
-    if (abortedMessage) {
+      if (abortedMessage) {
+        return {
+          success: false,
+          processed,
+          error: abortedMessage,
+        };
+      }
+
+      // Update assignment status
+      await ctx.runMutation(internal.questions.updateAssignmentStatus, {
+        assignmentId: args.assignmentId,
+        status: errors > 0 ? "error" : "ready",
+        error: errors > 0 ? `${errors} question(s) failed` : undefined,
+      });
+
       return {
-        success: false,
+        success: errors === 0,
         processed,
-        error: abortedMessage,
+        error: errors > 0 ? `${errors} question(s) failed to generate` : undefined,
       };
+    } catch (error) {
+      const message = formatError(error);
+      console.error("generateAnswers fatal error:", message, error);
+      await ctx.runMutation(internal.questions.updateAssignmentStatus, {
+        assignmentId: args.assignmentId,
+        status: "error",
+        error: message,
+      });
+      return { success: false, error: message };
     }
-
-    // Update assignment status
-    await ctx.runMutation(internal.questions.updateAssignmentStatus, {
-      assignmentId: args.assignmentId,
-      status: errors > 0 ? "error" : "ready",
-      error: errors > 0 ? `${errors} question(s) failed` : undefined,
-    });
-
-    return {
-      success: errors === 0,
-      processed,
-      error: errors > 0 ? `${errors} question(s) failed to generate` : undefined,
-    };
   },
 });
 

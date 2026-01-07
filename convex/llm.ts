@@ -420,9 +420,9 @@ const ANSWER_PROMPT = `<prompt>
 </mcq_rules>
 
 <key_points>
-- Provide 1-2 key_points that are verbatim snippets copied directly from the source text (notes or search results).
+- Provide 1-2 key_points that are verbatim snippets copied directly from the source text (notes or search results). Do NOT paraphrase or summarize.
 - Never use the question stem or the answer choice itself as a key_point. Only quote supporting evidence from the source.
-- If you rely on search include a short source hint like "[site]" in the snippet.
+- Each key_point MUST end with a bracketed source hint: "[notes]" if from teacher notes, "[passage/figure/table]" if from a provided passage/figure/table caption, or "[site]" for websites (e.g., "[britannica.com]").
 </key_points>
 
 <sourcing>
