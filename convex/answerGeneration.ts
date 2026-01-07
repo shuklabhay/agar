@@ -171,17 +171,20 @@ export const generateAnswers = action({
         };
       }
 
-      // Update assignment status
+      const errorSummary =
+        errors > 0 ? `${errors} question(s) failed to generate` : undefined;
+
+      // Always mark as ready; individual questions remain pending for retry
       await ctx.runMutation(internal.questions.updateAssignmentStatus, {
         assignmentId: args.assignmentId,
-        status: errors > 0 ? "error" : "ready",
-        error: errors > 0 ? `${errors} question(s) failed` : undefined,
+        status: "ready",
+        error: undefined,
       });
 
       return {
-        success: errors === 0,
+        success: true,
         processed,
-        error: errors > 0 ? `${errors} question(s) failed to generate` : undefined,
+        error: errorSummary,
       };
     } catch (error) {
       const message = formatError(error);

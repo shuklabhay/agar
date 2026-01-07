@@ -234,12 +234,13 @@ function normalizeMcqAnswer(answer: unknown, options?: string[]): string {
     if (val && typeof val === "object") {
       return Object.values(val).map(coerceToString).join(" ");
     }
-    if (val === null || val === undefined) return "";
-    return String(val);
+    return String(val ?? "");
   };
 
   const raw = coerceToString(answer).trim();
-  if (!raw) return "";
+  if (!raw) {
+    throw new Error("MCQ answer is empty");
+  }
 
   const leadingLetterMatch = raw.match(/^([A-Za-z])/);
   if (leadingLetterMatch) {
@@ -267,8 +268,7 @@ function normalizeMcqAnswer(answer: unknown, options?: string[]): string {
     if (boundaryMatch) return boundaryMatch[1].toUpperCase();
   }
 
-  const fallback = raw[0]?.toUpperCase();
-  return fallback || "";
+  throw new Error("MCQ answer could not be normalized to a letter");
 }
 
 function normalizeAnswerValue(
@@ -422,7 +422,7 @@ const ANSWER_PROMPT = `<prompt>
 <key_points>
 - Provide 1-2 key_points that are verbatim snippets copied directly from the source text (notes or search results). Do NOT paraphrase or summarize.
 - Never use the question stem or the answer choice itself as a key_point. Only quote supporting evidence from the source.
-- Each key_point MUST end with a bracketed source hint: "[notes]" if from teacher notes, "[passage/figure/table]" if from a provided passage/figure/table caption, or "[site]" for websites (e.g., "[britannica.com]").
+- Each key_point MUST end with a bracketed source hint: "[notes]" if from teacher notes, "[passage | figure | table]" if from a provided passage/figure/table caption (select which one it is), or "[site]" for websites (e.g., "[britannica.com]").
 </key_points>
 
 <sourcing>
