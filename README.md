@@ -1,46 +1,51 @@
-# Welcome to your Convex + Next.js + Convex Auth app
+# Agar
 
-This is a [Convex](https://convex.dev/) project created with [`npm create convex`](https://www.npmjs.com/package/create-convex).
+[![Vercel](https://github.com/shuklabhay/agar/actions/workflows/vercel.yml/badge.svg?branch=main&label=vercel)](https://github.com/shuklabhay/agar/actions/workflows/vercel.yml) [![Prettier](https://github.com/shuklabhay/agar/actions/workflows/prettier.yml/badge.svg)](https://github.com/shuklabhay/agar/actions/workflows/prettier.yml)
 
-After the initial setup (<2 minutes) you'll have a working full-stack app using:
+AI-native classroom companion that grounds tutoring in the assignments and notes teachers upload, keeping students on track and teachers in the loop.
 
-- Convex as your backend (database, server logic)
-- [React](https://react.dev/) as your frontend (web page interactivity)
-- [Next.js](https://nextjs.org/) for optimized web hosting and page routing
-- [Tailwind](https://tailwindcss.com/) for building great looking accessible UI
-- [Convex Auth](https://labs.convex.dev/auth) for authentication
+## What’s inside
 
-## Get started
+- Next.js 16 + React 19 with Tailwind CSS and Radix UI.
+- Convex for data, server functions, and Convex Auth.
+- Gemini-powered assignment parsing and tutoring flows.
+- Vercel deploys with Convex deployment baked into the build script.
 
-If you just cloned this codebase and didn't use `npm create convex`, run:
+## Getting started
 
-```
-npm install
-npm run dev
-```
+- Requirements: Node 20+, pnpm, a Convex account (`pnpm dlx convex login` once), and a Gemini API key.
+- Install deps: `pnpm install`
+- Link Convex: `pnpm convex dev` (pick/create a project).
+- Some other stuff I lowkey dont remmeber
+- Run the stack:
+  ```bash
+  pnpm dev           # Next.js + Convex dev servers together
+  pnpm dev:frontend  # only Next.js
+  pnpm dev:backend   # only Convex (writes NEXT_PUBLIC_CONVEX_URL to .env.local)
+  ```
+  The first run of the Convex server will prompt you to pick/create a Convex project and will write local URLs into `.env.local`.
 
-If you're reading this README on GitHub and want to use this template, run:
+## Scripts
 
-```
-npm create convex@latest -- -t nextjs-convexauth
-```
+- `pnpm lint` — Run Prettier in write mode across the repo.
+- `pnpm format` / `pnpm format:check` — Prettier formatting (also enforced in CI).
+- `pnpm build` — Production Next.js build.
+- `pnpm start` — Run the built app.
 
-## Learn more
+## Deployment (Vercel)
 
-To learn more about developing your project with Convex, check out:
+- GitHub Action: `.github/workflows/vercel.yml` runs `vercel build` + `vercel deploy --prebuilt` on pushes and PRs. Configure repo secrets: `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`, `CONVEX_DEPLOY_KEY`, `CONVEX_SITE_URL`, `GEMINI_API_KEY`, and `NEXT_PUBLIC_CONVEX_URL` for preview builds (prod gets this injected by `convex deploy`).
+- Vercel build uses `vercel.json` + `scripts/build.sh`; in production (`VERCEL_ENV=production`) it runs `convex deploy --cmd 'npm run build'`, which deploys Convex and injects `NEXT_PUBLIC_CONVEX_URL` for the Next.js build. Previews skip the Convex deploy and only build, so ensure `NEXT_PUBLIC_CONVEX_URL` is set in preview envs.
+- Manual deploy from CLI (if needed):
+  ```bash
+  pnpm dlx vercel pull --yes --environment=production
+  pnpm dlx vercel build
+  pnpm dlx vercel deploy --prebuilt --prod
+  ```
 
-- The [Tour of Convex](https://docs.convex.dev/get-started) for a thorough introduction to Convex principles.
-- The rest of [Convex docs](https://docs.convex.dev/) to learn about all Convex features.
-- [Stack](https://stack.convex.dev/) for in-depth articles on advanced topics.
-- [Convex Auth docs](https://labs.convex.dev/auth) for documentation on the Convex Auth library.
+## Project layout
 
-## Configuring other authentication methods
-
-To configure different authentication methods, see [Configuration](https://labs.convex.dev/auth/config) in the Convex Auth docs.
-
-## Join the community
-
-Join thousands of developers building full-stack apps with Convex:
-
-- Join the [Convex Discord community](https://convex.dev/community) to get help in real-time.
-- Follow [Convex on GitHub](https://github.com/get-convex/), star and contribute to the open-source implementation of Convex.
+- `app/` — Next.js routes and UI.
+- `convex/` — Convex schema, functions, and auth config.
+- `components/`, `hooks/`, `lib/` — shared UI and helpers.
+- `scripts/build.sh` — Vercel-aware build helper.

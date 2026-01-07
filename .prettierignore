@@ -1,0 +1,15 @@
+node_modules
+.next
+.vercel
+convex/_generated
+coverage
+dist
+out
+build
+.turbo
+.idea
+*.log
+pnpm-lock.yaml
+package-lock.json
+yarn.lock
+tsconfig.tsbuildinfo
