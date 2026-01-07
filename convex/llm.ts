@@ -419,12 +419,13 @@ const ANSWER_PROMPT = `<prompt>
 </mcq_rules>
 
 <key_points>
-- Provide 1-2 concise key_points (quoted/paraphrased) from notes or searched pages.
+- Provide 1-2 key_points that are verbatim snippets copied directly from the source text (notes or search results). Do NOT paraphrase or summarize—copy the exact wording from the source.
+- If you rely on search, key_points must come from those web pages (not notes).
 </key_points>
 
 <sourcing>
 - If you used only notes, set source to "notes".
-- If you used search, set source to the real URLs (no placeholders).
+- If you used search, set source to the real URLs (no placeholders) and ensure key_points come from those URLs.
 </sourcing>
 </prompt>`;
 

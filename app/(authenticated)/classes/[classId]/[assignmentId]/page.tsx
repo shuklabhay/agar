@@ -1193,16 +1193,26 @@ function ReviewAssignmentView({
   useEffect(() => {
     const prev = previousProcessingStatus.current;
     const curr = assignment.processingStatus;
-    const prevWasProcessing =
-      prev === "extracting" || prev === "generating_answers";
-    const nowDone =
-      curr === "ready" ||
-      curr === "approved" ||
-      curr === undefined ||
-      curr === null;
+    const extractionFinished =
+      prev === "extracting" &&
+      curr !== "extracting" &&
+      curr !== "error";
+    const answersFinished =
+      prev === "generating_answers" &&
+      (curr === "ready" ||
+        curr === "approved" ||
+        curr === undefined ||
+        curr === null);
 
-    if (prevWasProcessing && nowDone) {
-      toast.success("Question extraction and answer generation complete");
+    if (extractionFinished) {
+      const message =
+        curr === "generating_answers"
+          ? "Question extraction complete. Generating answers..."
+          : "Question extraction complete.";
+      toast.success(message);
+    }
+    if (answersFinished) {
+      toast.success("Answer generation complete");
     }
 
     previousProcessingStatus.current = curr;
