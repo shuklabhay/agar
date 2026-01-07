@@ -241,6 +241,7 @@ export default function LearnPage() {
     if (
       currentStatus === "correct" &&
       previousStatus !== "correct" &&
+      currentProgress &&
       currentProgress.advanceOnCorrect !== false &&
       lastCorrectQuestionRef.current !== currentQuestion._id
     ) {
