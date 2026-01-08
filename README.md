@@ -1,6 +1,6 @@
 # Agar
 
-[![Vercel](https://github.com/shuklabhay/agar/actions/workflows/vercel.yml/badge.svg?branch=main&label=vercel)](https://github.com/shuklabhay/agar/actions/workflows/vercel.yml) [![Prettier](https://github.com/shuklabhay/agar/actions/workflows/prettier.yml/badge.svg)](https://github.com/shuklabhay/agar/actions/workflows/prettier.yml)
+[![Prettier](https://github.com/shuklabhay/agar/actions/workflows/prettier.yml/badge.svg)](https://github.com/shuklabhay/agar/actions/workflows/prettier.yml)
 
 AI-native classroom companion that grounds tutoring in the assignments and notes teachers upload, keeping students on track and teachers in the loop.
 
