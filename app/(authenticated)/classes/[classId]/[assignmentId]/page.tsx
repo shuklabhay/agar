@@ -726,7 +726,10 @@ function EditAssignmentView({
             Drag and drop files here, or{" "}
             <button
               type="button"
-              onClick={openFilePicker}
+              onClick={(e) => {
+                e.stopPropagation();
+                openFilePicker();
+              }}
               className="text-primary underline-offset-4 hover:underline"
             >
               browse
