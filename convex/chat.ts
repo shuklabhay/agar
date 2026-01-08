@@ -295,6 +295,8 @@ export const addMessage = internalMutation({
   args: {
     sessionId: v.id("studentSessions"),
     questionId: v.id("questions"),
+    assignmentId: v.optional(v.id("assignments")),
+    classId: v.optional(v.id("classes")),
     role: v.union(v.literal("student"), v.literal("tutor"), v.literal("system")),
     content: v.string(),
     toolCall: v.optional(
@@ -316,9 +318,17 @@ export const addMessage = internalMutation({
     ),
   },
   handler: async (ctx, args) => {
+    let assignmentId = args.assignmentId;
+    if (!assignmentId) {
+      const session = await ctx.db.get(args.sessionId);
+      assignmentId = session?.assignmentId;
+    }
+
     return await ctx.db.insert("chatMessages", {
       sessionId: args.sessionId,
       questionId: args.questionId,
+      assignmentId: assignmentId ?? undefined,
+      classId: args.classId ?? undefined,
       role: args.role,
       content: args.content,
       timestamp: Date.now(),
@@ -392,6 +402,7 @@ export const sendMessageToTutor = action({
     const question = await ctx.runQuery(internal.chat.getQuestionForTutor, {
       questionId: args.questionId,
     });
+    const assignmentId = question?.assignmentId;
 
     if (!question) {
       throw new Error("Question not found");
@@ -452,6 +463,7 @@ export const sendMessageToTutor = action({
     await ctx.runMutation(internal.chat.addMessage, {
       sessionId: args.sessionId,
       questionId: args.questionId,
+      assignmentId,
       role: "student",
       content: args.message,
       attachments: storedAttachments,
@@ -476,7 +488,7 @@ export const sendMessageToTutor = action({
         additionalInstructionsForWork: question.additionalInstructionsForWork,
         questionNumber: question.questionNumber,
       },
-      history: history.map((m) => ({
+      history: history.map((m: { role: string; content: string }) => ({
         role: m.role,
         content: m.content,
       })),
@@ -562,6 +574,7 @@ export const sendMessageToTutor = action({
     await ctx.runMutation(internal.chat.addMessage, {
       sessionId: args.sessionId,
       questionId: args.questionId,
+      assignmentId,
       role: "tutor",
       content: response.message,
       toolCall: toolCallToStore

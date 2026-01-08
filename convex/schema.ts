@@ -122,6 +122,8 @@ export default defineSchema({
   studentProgress: defineTable({
     sessionId: v.id("studentSessions"),
     questionId: v.id("questions"),
+    assignmentId: v.optional(v.id("assignments")),
+    classId: v.optional(v.id("classes")),
     status: v.union(
       v.literal("not_started"),
       v.literal("in_progress"),
@@ -138,12 +140,15 @@ export default defineSchema({
     lastViewedAt: v.optional(v.number()), // When current viewing session started
   })
     .index("by_sessionId", ["sessionId"])
+    .index("by_assignmentId", ["assignmentId"])
     .index("by_sessionId_questionId", ["sessionId", "questionId"]),
 
   // Chat history for tutor conversations
   chatMessages: defineTable({
     sessionId: v.id("studentSessions"),
     questionId: v.id("questions"),
+    assignmentId: v.optional(v.id("assignments")),
+    classId: v.optional(v.id("classes")),
     role: v.union(
       v.literal("student"),
       v.literal("tutor"),
@@ -170,7 +175,8 @@ export default defineSchema({
     ),
   })
     .index("by_session_question", ["sessionId", "questionId"])
-    .index("by_sessionId", ["sessionId"]),
+    .index("by_sessionId", ["sessionId"])
+    .index("by_assignmentId", ["assignmentId"]),
 
   // Student file uploads
   studentUploads: defineTable({

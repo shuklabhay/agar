@@ -83,14 +83,12 @@ export default function LearnPage() {
     !isTeacherView && sessionToken ? { sessionToken } : "skip",
   );
   const activeSessionId = isTeacherView ? teacherSessionId : sessionId;
-  const questions = useQuery(
-    api.studentProgress.getQuestionsForStudent,
-    activeSessionId ? { assignmentId } : "skip",
-  );
-  const progress = useQuery(
-    api.studentProgress.getProgress,
+  const sessionData = useQuery(
+    api.studentProgress.getSessionData,
     activeSessionId ? { sessionId: activeSessionId } : "skip",
   );
+  const questions = sessionData?.questions;
+  const progress = sessionData?.progress;
 
   const completedQuestions = useMemo(() => {
     const previous = completedQuestionsRef.current;

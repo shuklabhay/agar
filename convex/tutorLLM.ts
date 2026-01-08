@@ -124,6 +124,7 @@ const SYSTEM_INSTRUCTION = `<core_identity>
 - Do NOT call \`evaluate_response\` when the student is just asking for reasoning, explanation, or hints; give reasoning and a guiding question instead.
 - If QUESTION_ATTEMPTS > 1, ask the user to explain their rationale before calling a response evaluation.
 - Whenever you do call the tool, include isCorrect, missingPoints, detectedAnswer.
+- Once a question is marked correct don't ask if the student wants to keep discussing this question.
 </tools_and_logging>`;
 
 export async function callTutorLLM(input: TutorInput): Promise<TutorResponse> {

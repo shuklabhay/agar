@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import {
   Settings,
   LogOut,
@@ -16,7 +16,7 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { useRouter } from "next/navigation";
-import { useQuery, useMutation } from "convex/react";
+import { useConvex, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 
 import {
@@ -63,10 +63,71 @@ export function AppSidebar() {
   const pathname = usePathname();
   const { signOut } = useAuthActions();
   const router = useRouter();
-  const classes = useQuery(api.classes.listClasses);
-  const currentUser = useQuery(api.myFunctions.getCurrentUser);
-  const userPreferences = useQuery(api.myFunctions.getUserPreferences);
+  const convex = useConvex();
   const updatePreferences = useMutation(api.myFunctions.updateUserPreferences);
+  const [classes, setClasses] = useState<any[] | null>(null);
+  const [currentUser, setCurrentUser] = useState<any | null>(null);
+  const [userPreferences, setUserPreferences] = useState<any | null>(null);
+  const [classesLoading, setClassesLoading] = useState(true);
+  const [currentUserLoading, setCurrentUserLoading] = useState(true);
+  const [userPreferencesLoading, setUserPreferencesLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    convex
+      .query(api.classes.listClasses, {})
+      .then((data) => {
+        if (!cancelled) setClasses(data);
+      })
+      .catch((error) => {
+        console.error("Failed to load classes", error);
+        if (!cancelled) setClasses([]);
+      })
+      .finally(() => {
+        if (!cancelled) setClassesLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [convex]);
+
+  useEffect(() => {
+    let cancelled = false;
+    convex
+      .query(api.myFunctions.getCurrentUser, {})
+      .then((data) => {
+        if (!cancelled) setCurrentUser(data);
+      })
+      .catch((error) => {
+        console.error("Failed to load user", error);
+        if (!cancelled) setCurrentUser(null);
+      })
+      .finally(() => {
+        if (!cancelled) setCurrentUserLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [convex]);
+
+  useEffect(() => {
+    let cancelled = false;
+    convex
+      .query(api.myFunctions.getUserPreferences, {})
+      .then((data) => {
+        if (!cancelled) setUserPreferences(data);
+      })
+      .catch((error) => {
+        console.error("Failed to load user preferences", error);
+        if (!cancelled) setUserPreferences(null);
+      })
+      .finally(() => {
+        if (!cancelled) setUserPreferencesLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [convex]);
 
   const defaultMetric = userPreferences?.defaultMetric ?? "mean";
   const fullCommitHash =
@@ -80,7 +141,7 @@ export function AppSidebar() {
     updatePreferences({ defaultMetric: metric });
   }, [updatePreferences]);
 
-  const isLoading = classes === undefined;
+  const isLoading = classesLoading;
 
   const handleSignOut = async () => {
     await signOut();

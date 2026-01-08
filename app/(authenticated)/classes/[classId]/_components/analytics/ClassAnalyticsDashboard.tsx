@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useQuery } from "convex/react";
+import { useEffect, useState } from "react";
+import { useConvex, useQuery } from "convex/react";
 import Cookies from "js-cookie";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
@@ -97,33 +97,173 @@ export function ClassAnalyticsDashboard({
     ? Array.from(selectedAssignmentIds)[0]
     : null;
 
-  // Queries
-  const classAnalytics = useQuery(api.analytics.getClassAnalytics, { classId });
-  const assignmentAnalytics = useQuery(
-    api.analytics.getAssignmentAnalytics,
-    singleSelectedId
-      ? { assignmentId: singleSelectedId as Id<"assignments"> }
-      : "skip",
-  );
-  const studentPerformance = useQuery(
-    api.analytics.getStudentPerformance,
-    singleSelectedId
-      ? { assignmentId: singleSelectedId as Id<"assignments"> }
-      : "skip",
-  );
-  const assignmentComparison = useQuery(
-    api.analytics.getAssignmentComparisonBoxPlots,
-    { classId },
-  );
-  const questionBoxPlots = useQuery(
-    api.analytics.getQuestionBoxPlots,
-    singleSelectedId
-      ? { assignmentId: singleSelectedId as Id<"assignments"> }
-      : "skip",
-  );
-  const allStudents = useQuery(api.analytics.getAllStudentsInClass, {
-    classId,
-  });
+  const convex = useConvex();
+
+  const [classAnalytics, setClassAnalytics] = useState<any>(null);
+  const [classAnalyticsLoading, setClassAnalyticsLoading] = useState(true);
+  const [assignmentAnalytics, setAssignmentAnalytics] = useState<any>(null);
+  const [assignmentAnalyticsLoading, setAssignmentAnalyticsLoading] =
+    useState(false);
+  const [studentPerformance, setStudentPerformance] = useState<any>(null);
+  const [studentPerformanceLoading, setStudentPerformanceLoading] =
+    useState(false);
+  const [assignmentComparison, setAssignmentComparison] = useState<any>(null);
+  const [assignmentComparisonLoading, setAssignmentComparisonLoading] =
+    useState(false);
+  const [questionBoxPlots, setQuestionBoxPlots] = useState<any>(null);
+  const [questionBoxPlotsLoading, setQuestionBoxPlotsLoading] = useState(false);
+  const [allStudents, setAllStudents] = useState<any>(null);
+  const [allStudentsLoading, setAllStudentsLoading] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    setClassAnalyticsLoading(true);
+    convex
+      .query(api.analytics.getClassAnalytics, { classId })
+      .then((data) => {
+        if (!cancelled) setClassAnalytics(data);
+      })
+      .catch((error) => {
+        console.error("Failed to load class analytics", error);
+        if (!cancelled) setClassAnalytics(null);
+      })
+      .finally(() => {
+        if (!cancelled) setClassAnalyticsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [classId, convex]);
+
+  useEffect(() => {
+    if (activeTab !== "overview") return;
+    let cancelled = false;
+    setAssignmentComparisonLoading(true);
+    convex
+      .query(api.analytics.getAssignmentComparisonBoxPlots, { classId })
+      .then((data) => {
+        if (!cancelled) setAssignmentComparison(data);
+      })
+      .catch((error) => {
+        console.error("Failed to load assignment comparison", error);
+        if (!cancelled) setAssignmentComparison(null);
+      })
+      .finally(() => {
+        if (!cancelled) setAssignmentComparisonLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [activeTab, classId, convex]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!singleSelectedId || activeTab !== "overview") {
+      setAssignmentAnalytics(null);
+      setAssignmentAnalyticsLoading(false);
+      return;
+    }
+    setAssignmentAnalyticsLoading(true);
+    convex
+      .query(api.analytics.getAssignmentAnalytics, {
+        assignmentId: singleSelectedId as Id<"assignments">,
+      })
+      .then((data) => {
+        if (!cancelled) setAssignmentAnalytics(data);
+      })
+      .catch((error) => {
+        console.error("Failed to load assignment analytics", error);
+        if (!cancelled) setAssignmentAnalytics(null);
+      })
+      .finally(() => {
+        if (!cancelled) setAssignmentAnalyticsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [activeTab, convex, singleSelectedId]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!singleSelectedId || activeTab !== "students") {
+      setStudentPerformance(null);
+      setStudentPerformanceLoading(false);
+      return;
+    }
+    setStudentPerformanceLoading(true);
+    convex
+      .query(api.analytics.getStudentPerformance, {
+        assignmentId: singleSelectedId as Id<"assignments">,
+      })
+      .then((data) => {
+        if (!cancelled) setStudentPerformance(data);
+      })
+      .catch((error) => {
+        console.error("Failed to load student performance", error);
+        if (!cancelled) setStudentPerformance(null);
+      })
+      .finally(() => {
+        if (!cancelled) setStudentPerformanceLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [activeTab, convex, singleSelectedId]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (
+      !singleSelectedId ||
+      activeTab !== "overview" ||
+      boxPlotView !== "per-question"
+    ) {
+      setQuestionBoxPlots(null);
+      setQuestionBoxPlotsLoading(false);
+      return;
+    }
+    setQuestionBoxPlotsLoading(true);
+    convex
+      .query(api.analytics.getQuestionBoxPlots, {
+        assignmentId: singleSelectedId as Id<"assignments">,
+      })
+      .then((data) => {
+        if (!cancelled) setQuestionBoxPlots(data);
+      })
+      .catch((error) => {
+        console.error("Failed to load question box plots", error);
+        if (!cancelled) setQuestionBoxPlots(null);
+      })
+      .finally(() => {
+        if (!cancelled) setQuestionBoxPlotsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [activeTab, boxPlotView, convex, singleSelectedId]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (activeTab !== "students" || isSingleSelected) {
+      setAllStudentsLoading(false);
+      return;
+    }
+    setAllStudentsLoading(true);
+    convex
+      .query(api.analytics.getAllStudentsInClass, { classId })
+      .then((data) => {
+        if (!cancelled) setAllStudents(data);
+      })
+      .catch((error) => {
+        console.error("Failed to load all students", error);
+        if (!cancelled) setAllStudents(null);
+      })
+      .finally(() => {
+        if (!cancelled) setAllStudentsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [activeTab, classId, convex, isSingleSelected]);
 
   // Toggle assignment selection
   const toggleAssignment = (id: string) => {
@@ -150,11 +290,11 @@ export function ClassAnalyticsDashboard({
 
   // Filter assignment comparison data based on selection
   const filteredAssignmentComparison = assignmentComparison?.filter(
-    (a) => isAllSelected || selectedAssignmentIds.has(a.assignmentId),
+    (a: any) => isAllSelected || selectedAssignmentIds.has(a.assignmentId),
   );
 
   // Loading state
-  if (classAnalytics === undefined) {
+  if (classAnalyticsLoading || !classAnalytics) {
     return (
       <Card>
         <CardContent className="py-12">
@@ -168,7 +308,7 @@ export function ClassAnalyticsDashboard({
   }
 
   // No data state
-  if (!classAnalytics?.hasData) {
+  if (!classAnalytics.hasData) {
     return (
       <Card>
         <CardContent className="py-12">
@@ -187,7 +327,8 @@ export function ClassAnalyticsDashboard({
     );
   }
 
-  const isLoading = isSingleSelected && assignmentAnalytics === undefined;
+  const isLoading =
+    isSingleSelected && activeTab === "overview" && assignmentAnalyticsLoading;
 
   const tabs: { id: Tab; label: string }[] = [
     { id: "overview", label: "Overview" },
@@ -439,7 +580,7 @@ export function ClassAnalyticsDashboard({
               <>
                 <HorizontalBoxPlot
                   title="Messages per Question"
-                  data={questionBoxPlots.map((q) => ({
+                  data={questionBoxPlots.map((q: any) => ({
                     name: `Q${q.questionNumber}`,
                     boxPlot: q.messagesBoxPlot,
                   }))}
@@ -450,7 +591,7 @@ export function ClassAnalyticsDashboard({
                 />
                 <HorizontalBoxPlot
                   title="Time per Question"
-                  data={questionBoxPlots.map((q) => ({
+                  data={questionBoxPlots.map((q: any) => ({
                     name: `Q${q.questionNumber}`,
                     boxPlot: q.timeBoxPlot
                       ? {
@@ -477,7 +618,7 @@ export function ClassAnalyticsDashboard({
                 <>
                 <HorizontalBoxPlot
                   title="Messages per Assignment"
-                  data={filteredAssignmentComparison.map((a) => ({
+                  data={filteredAssignmentComparison.map((a: any) => ({
                     name:
                       a.assignmentName.length > 20
                         ? a.assignmentName.slice(0, 20) + "..."
@@ -491,7 +632,7 @@ export function ClassAnalyticsDashboard({
                 />
                 <HorizontalBoxPlot
                   title="Time per Assignment"
-                  data={filteredAssignmentComparison.map((a) => ({
+                  data={filteredAssignmentComparison.map((a: any) => ({
                     name:
                       a.assignmentName.length > 20
                         ? a.assignmentName.slice(0, 20) + "..."
@@ -582,15 +723,24 @@ export function ClassAnalyticsDashboard({
       )}
 
       {/* Students Tab */}
-      {activeTab === "students" && !isLoading && (
+      {activeTab === "students" && (
         <div>
-          {isSingleSelected && studentPerformance ? (
-            // Show per-assignment view when a single assignment is selected
-            <StudentPerformanceTable students={studentPerformance} />
+          {isSingleSelected ? (
+            studentPerformance ? (
+              <StudentPerformanceTable students={studentPerformance} />
+            ) : studentPerformanceLoading ? (
+              <Card>
+                <CardContent className="py-8">
+                  <div className="flex items-center justify-center gap-2 text-muted-foreground">
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                    <span>Loading student data...</span>
+                  </div>
+                </CardContent>
+              </Card>
+            ) : null
           ) : allStudents ? (
-            // Show all students across all assignments
             <AllStudentsTable students={allStudents} />
-          ) : (
+          ) : allStudentsLoading ? (
             <Card>
               <CardContent className="py-8">
                 <div className="flex items-center justify-center gap-2 text-muted-foreground">
@@ -599,7 +749,7 @@ export function ClassAnalyticsDashboard({
                 </div>
               </CardContent>
             </Card>
-          )}
+          ) : null}
         </div>
       )}
     </div>

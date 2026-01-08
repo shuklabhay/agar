@@ -1,7 +1,7 @@
 import { v } from "convex/values";
-import { query } from "./_generated/server";
+import { query, QueryCtx } from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
-import { Id } from "./_generated/dataModel";
+import { Doc, Id } from "./_generated/dataModel";
 
 function calculateStats(values: number[]) {
   if (values.length === 0) return null;
@@ -42,6 +42,83 @@ function getTrackedSessions<T extends { sessionMode?: string }>(
   sessions: T[],
 ): T[] {
   return sessions.filter((s) => s.sessionMode !== "teacher_preview");
+}
+
+type ProgressBySession = Map<Id<"studentSessions">, Doc<"studentProgress">[]>;
+type MessagesBySession = Map<Id<"studentSessions">, Doc<"chatMessages">[]>;
+
+async function loadProgressBySession(
+  ctx: QueryCtx,
+  assignmentId: Id<"assignments">,
+  sessionIds: Id<"studentSessions">[],
+): Promise<ProgressBySession> {
+  const progressBySession: ProgressBySession = new Map();
+  sessionIds.forEach((id) => progressBySession.set(id, []));
+  if (sessionIds.length === 0) return progressBySession;
+
+  const progressForAssignment = await ctx.db
+    .query("studentProgress")
+    .withIndex("by_assignmentId", (q) => q.eq("assignmentId", assignmentId))
+    .collect();
+
+  for (const progress of progressForAssignment) {
+    const list = progressBySession.get(progress.sessionId);
+    if (list) {
+      list.push(progress);
+    }
+  }
+
+  // Fallback for older rows without assignmentId denorm
+  const missingSessions = sessionIds.filter(
+    (id) => (progressBySession.get(id)?.length ?? 0) === 0,
+  );
+  for (const sessionId of missingSessions) {
+    const progress = await ctx.db
+      .query("studentProgress")
+      .withIndex("by_sessionId", (q) => q.eq("sessionId", sessionId))
+      .collect();
+    progressBySession.set(sessionId, progress);
+  }
+
+  return progressBySession;
+}
+
+async function loadStudentMessagesBySession(
+  ctx: QueryCtx,
+  assignmentId: Id<"assignments">,
+  sessionIds: Id<"studentSessions">[],
+): Promise<MessagesBySession> {
+  const messagesBySession: MessagesBySession = new Map();
+  sessionIds.forEach((id) => messagesBySession.set(id, []));
+  if (sessionIds.length === 0) return messagesBySession;
+
+  const messagesForAssignment = await ctx.db
+    .query("chatMessages")
+    .withIndex("by_assignmentId", (q) => q.eq("assignmentId", assignmentId))
+    .filter((q) => q.eq(q.field("role"), "student"))
+    .collect();
+
+  for (const msg of messagesForAssignment) {
+    const list = messagesBySession.get(msg.sessionId);
+    if (list) {
+      list.push(msg);
+    }
+  }
+
+  // Fallback for messages missing assignmentId
+  const missingSessions = sessionIds.filter(
+    (id) => (messagesBySession.get(id)?.length ?? 0) === 0,
+  );
+  for (const sessionId of missingSessions) {
+    const messages = await ctx.db
+      .query("chatMessages")
+      .withIndex("by_sessionId", (q) => q.eq("sessionId", sessionId))
+      .filter((q) => q.eq(q.field("role"), "student"))
+      .collect();
+    messagesBySession.set(sessionId, messages);
+  }
+
+  return messagesBySession;
 }
 
 // Get overall class analytics across all assignments
@@ -118,22 +195,27 @@ export const getClassAnalytics = query({
         .collect();
 
       const trackedSessions = getTrackedSessions(sessions);
+      const sessionIds = trackedSessions.map((s) => s._id);
+      const progressBySession = await loadProgressBySession(
+        ctx,
+        assignment._id,
+        sessionIds,
+      );
+      const messagesBySession = await loadStudentMessagesBySession(
+        ctx,
+        assignment._id,
+        sessionIds,
+      );
       const assignmentStudentCompletionRates: number[] = [];
 
       for (const session of trackedSessions) {
         uniqueStudents.add(session.name);
 
         // Get progress for this session
-        const progress = await ctx.db
-          .query("studentProgress")
-          .withIndex("by_sessionId", (q) => q.eq("sessionId", session._id))
-          .collect();
+        const progress = progressBySession.get(session._id) ?? [];
 
         // Get chat messages for this session
-        const chatMessages = await ctx.db
-          .query("chatMessages")
-          .withIndex("by_sessionId", (q) => q.eq("sessionId", session._id))
-          .collect();
+        const chatMessages = messagesBySession.get(session._id) ?? [];
 
         // Count messages per question
         const messagesByQuestion = new Map<string, number>();
@@ -287,17 +369,23 @@ export const getAssignmentAnalytics = query({
     const allTimes: number[] = [];
     const studentCompletionRates: number[] = [];
 
+    const sessionIds = trackedSessions.map((s) => s._id);
+    const progressBySession = await loadProgressBySession(
+      ctx,
+      args.assignmentId,
+      sessionIds,
+    );
+    const messagesBySession = await loadStudentMessagesBySession(
+      ctx,
+      args.assignmentId,
+      sessionIds,
+    );
+
     for (const session of trackedSessions) {
-      const progress = await ctx.db
-        .query("studentProgress")
-        .withIndex("by_sessionId", (q) => q.eq("sessionId", session._id))
-        .collect();
+      const progress = progressBySession.get(session._id) ?? [];
 
       // Get chat messages for this session
-      const chatMessages = await ctx.db
-        .query("chatMessages")
-        .withIndex("by_sessionId", (q) => q.eq("sessionId", session._id))
-        .collect();
+      const chatMessages = messagesBySession.get(session._id) ?? [];
 
       // Count student messages per question
       const messagesByQuestion = new Map<string, number>();
@@ -433,18 +521,23 @@ export const getStudentPerformance = query({
 
     const trackedSessions = getTrackedSessions(sessions);
     const studentRecords = [];
+    const sessionIds = trackedSessions.map((s) => s._id);
+    const progressBySession = await loadProgressBySession(
+      ctx,
+      args.assignmentId,
+      sessionIds,
+    );
+    const messagesBySession = await loadStudentMessagesBySession(
+      ctx,
+      args.assignmentId,
+      sessionIds,
+    );
 
     for (const session of trackedSessions) {
-      const progress = await ctx.db
-        .query("studentProgress")
-        .withIndex("by_sessionId", (q) => q.eq("sessionId", session._id))
-        .collect();
+      const progress = progressBySession.get(session._id) ?? [];
 
       // Get chat messages for this session
-      const chatMessages = await ctx.db
-        .query("chatMessages")
-        .withIndex("by_sessionId", (q) => q.eq("sessionId", session._id))
-        .collect();
+      const chatMessages = messagesBySession.get(session._id) ?? [];
 
       // Count student messages
       const totalMessages = chatMessages.filter(
@@ -536,18 +629,23 @@ export const getAssignmentComparisonBoxPlots = query({
       const trackedSessions = getTrackedSessions(sessions);
       const allMessages: number[] = [];
       const allTimes: number[] = [];
+      const sessionIds = trackedSessions.map((s) => s._id);
+      const progressBySession = await loadProgressBySession(
+        ctx,
+        assignment._id,
+        sessionIds,
+      );
+      const messagesBySession = await loadStudentMessagesBySession(
+        ctx,
+        assignment._id,
+        sessionIds,
+      );
 
       for (const session of trackedSessions) {
-        const progress = await ctx.db
-          .query("studentProgress")
-          .withIndex("by_sessionId", (q) => q.eq("sessionId", session._id))
-          .collect();
+        const progress = progressBySession.get(session._id) ?? [];
 
         // Get chat messages for this session
-        const chatMessages = await ctx.db
-          .query("chatMessages")
-          .withIndex("by_sessionId", (q) => q.eq("sessionId", session._id))
-          .collect();
+        const chatMessages = messagesBySession.get(session._id) ?? [];
 
         // Count messages per question
         const messagesByQuestion = new Map<string, number>();
@@ -619,6 +717,17 @@ export const getQuestionBoxPlots = query({
       .collect();
 
     const trackedSessions = getTrackedSessions(sessions);
+    const sessionIds = trackedSessions.map((s) => s._id);
+    const progressBySession = await loadProgressBySession(
+      ctx,
+      args.assignmentId,
+      sessionIds,
+    );
+    const messagesBySession = await loadStudentMessagesBySession(
+      ctx,
+      args.assignmentId,
+      sessionIds,
+    );
 
     // Collect per-question data
     const questionDataMap = new Map<
@@ -630,16 +739,10 @@ export const getQuestionBoxPlots = query({
     }
 
     for (const session of trackedSessions) {
-      const progress = await ctx.db
-        .query("studentProgress")
-        .withIndex("by_sessionId", (q) => q.eq("sessionId", session._id))
-        .collect();
+      const progress = progressBySession.get(session._id) ?? [];
 
       // Get chat messages for this session
-      const chatMessages = await ctx.db
-        .query("chatMessages")
-        .withIndex("by_sessionId", (q) => q.eq("sessionId", session._id))
-        .collect();
+      const chatMessages = messagesBySession.get(session._id) ?? [];
 
       // Count messages per question
       const messagesByQuestion = new Map<string, number>();
@@ -746,20 +849,24 @@ export const getAllStudentsInClass = query({
         .collect();
 
       const trackedSessions = getTrackedSessions(sessions);
+      const sessionIds = trackedSessions.map((s) => s._id);
+      const progressBySession = await loadProgressBySession(
+        ctx,
+        assignment._id,
+        sessionIds,
+      );
+      const messagesBySession = await loadStudentMessagesBySession(
+        ctx,
+        assignment._id,
+        sessionIds,
+      );
 
       for (const session of trackedSessions) {
         // Get progress
-        const progress = await ctx.db
-          .query("studentProgress")
-          .withIndex("by_sessionId", (q) => q.eq("sessionId", session._id))
-          .collect();
+        const progress = progressBySession.get(session._id) ?? [];
 
         // Get messages
-        const messages = await ctx.db
-          .query("chatMessages")
-          .withIndex("by_sessionId", (q) => q.eq("sessionId", session._id))
-          .filter((q) => q.eq(q.field("role"), "student"))
-          .collect();
+        const messages = messagesBySession.get(session._id) ?? [];
 
         const questionsCompleted = progress.filter(
           (p) => p.status === "correct",

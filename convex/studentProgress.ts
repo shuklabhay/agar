@@ -45,6 +45,9 @@ export const initializeProgress = mutation({
     questionId: v.id("questions"),
   },
   handler: async (ctx, args) => {
+    const session = await ctx.db.get(args.sessionId);
+    const assignmentId = session?.assignmentId;
+
     // Check if already exists
     const existing = await ctx.db
       .query("studentProgress")
@@ -65,6 +68,7 @@ export const initializeProgress = mutation({
     return await ctx.db.insert("studentProgress", {
       sessionId: args.sessionId,
       questionId: args.questionId,
+      assignmentId: assignmentId ?? undefined,
       status: "not_started",
       attempts: 0,
       timeSpentMs: 0,
@@ -269,5 +273,43 @@ export const getProgressForQuestion = query({
         q.eq("sessionId", args.sessionId).eq("questionId", args.questionId)
       )
       .first();
+  },
+});
+
+// PUBLIC: Combined session data (questions + progress) to reduce client subscriptions
+export const getSessionData = query({
+  args: { sessionId: v.id("studentSessions") },
+  handler: async (ctx, args) => {
+    const session = await ctx.db.get(args.sessionId);
+    if (!session) return null;
+
+    const questions = await ctx.db
+      .query("questions")
+      .withIndex("by_assignmentId", (q) =>
+        q.eq("assignmentId", session.assignmentId)
+      )
+      .filter((q) => q.eq(q.field("status"), "approved"))
+      .collect();
+
+    const progress = await ctx.db
+      .query("studentProgress")
+      .withIndex("by_sessionId", (q) => q.eq("sessionId", args.sessionId))
+      .collect();
+
+    return {
+      session,
+      questions: questions
+        .filter((q) => q.questionType !== "skipped")
+        .map((q) => ({
+          _id: q._id,
+          questionNumber: q.questionNumber,
+          extractionOrder: q.extractionOrder,
+          questionText: q.questionText,
+          questionType: q.questionType,
+          answerOptionsMCQ: q.answerOptionsMCQ,
+        }))
+        .sort((a, b) => a.extractionOrder - b.extractionOrder),
+      progress,
+    };
   },
 });
