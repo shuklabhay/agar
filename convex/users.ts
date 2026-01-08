@@ -3,9 +3,10 @@
 // TODO: Remove this entire file when ready for public launch
 // ============================================================================
 
-import { query, mutation } from "./_generated/server";
+import { MutationCtx, query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
+import { Id } from "./_generated/dataModel";
 
 /**
  * TEMPORARY: Check if the current user is whitelisted for beta access.
@@ -32,6 +33,54 @@ export const isWhitelisted = query({
       isWhitelisted: whitelist?.whitelisted ?? false,
       isLoading: false,
     };
+  },
+});
+
+const setWhitelistedForUser = async (ctx: MutationCtx, userId: Id<"users">) => {
+  const existing = await ctx.db
+    .query("userWhitelist")
+    .withIndex("by_userId", (q) => q.eq("userId", userId))
+    .unique();
+
+  if (existing) {
+    await ctx.db.patch(existing._id, { whitelisted: true });
+  } else {
+    await ctx.db.insert("userWhitelist", {
+      userId,
+      whitelisted: true,
+    });
+  }
+};
+
+/**
+ * Allow a signed-in user to unlock access with a 6-letter teacher code.
+ */
+export const claimAccessWithCode = mutation({
+  args: {
+    code: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Not authenticated");
+
+    const configuredCode = process.env.TEACHER_ACCESS_CODE;
+    if (!configuredCode) {
+      throw new Error("Access code is not set. Please contact support.");
+    }
+
+    const input = args.code.trim().toUpperCase();
+    const expected = configuredCode.trim().toUpperCase();
+
+    if (input.length !== 6) {
+      throw new Error("The access code should be 6 characters.");
+    }
+
+    if (input !== expected) {
+      throw new Error("That code did not work. Please double-check and try again.");
+    }
+
+    await setWhitelistedForUser(ctx, userId);
+    return { whitelisted: true };
   },
 });
 

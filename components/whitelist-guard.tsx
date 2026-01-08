@@ -5,12 +5,15 @@
 
 "use client";
 
-import { useQuery } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { ShieldX, LogOut } from "lucide-react";
+import { useState } from "react";
 
 interface WhitelistGuardProps {
   children: React.ReactNode;
@@ -22,7 +25,11 @@ interface WhitelistGuardProps {
  */
 export function WhitelistGuard({ children }: WhitelistGuardProps) {
   const whitelistStatus = useQuery(api.users.isWhitelisted);
+  const claimAccess = useMutation(api.users.claimAccessWithCode);
   const { signOut } = useAuthActions();
+  const [code, setCode] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   // Still loading
   if (whitelistStatus === undefined) {
@@ -47,23 +54,71 @@ export function WhitelistGuard({ children }: WhitelistGuardProps) {
             </div>
             <CardTitle className="text-2xl">Access Not Available</CardTitle>
           </CardHeader>
-          <CardContent className="text-center space-y-4">
-            <p className="text-muted-foreground">
-              Your account hasn&apos;t been granted access yet. This application
-              is currently in limited beta.
-            </p>
-            <p className="text-sm text-muted-foreground">
-              If you believe you should have access, please contact the
-              administrator.
-            </p>
-            <Button
-              variant="outline"
-              onClick={() => signOut()}
-              className="mt-4"
+          <CardContent className="space-y-4 text-left">
+            <div className="space-y-2 text-muted-foreground">
+              <p>
+                This app is in limited beta. If a teacher shared a six-letter
+                access code with you, enter it below to unlock your account.
+              </p>
+              <p className="text-sm">
+                No code? Reach out to the person who invited you.
+              </p>
+            </div>
+
+            <form
+              className="space-y-3"
+              onSubmit={async (event) => {
+                event.preventDefault();
+                setSubmitting(true);
+                setError(null);
+                try {
+                  await claimAccess({ code });
+                  setCode("");
+                } catch (err) {
+                  const message =
+                    err instanceof Error ? err.message : "Something went wrong.";
+                  setError(message);
+                } finally {
+                  setSubmitting(false);
+                }
+              }}
             >
-              <LogOut className="h-4 w-4 mr-2" />
-              Sign Out
-            </Button>
+              <div className="space-y-1">
+                <Label htmlFor="access-code">Access code</Label>
+                <Input
+                  id="access-code"
+                  value={code}
+                  placeholder="ABCDEF"
+                  autoComplete="one-time-code"
+                  maxLength={6}
+                  onChange={(e) =>
+                    setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))
+                  }
+                />
+                <p className="text-xs text-muted-foreground">
+                  Use the six-letter code your teacher provided.
+                </p>
+              </div>
+              {error && (
+                <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
+                  {error}
+                </div>
+              )}
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={submitting || code.length !== 6}
+              >
+                {submitting ? "Checking code..." : "Unlock with code"}
+              </Button>
+            </form>
+
+            <div className="flex justify-center">
+              <Button variant="outline" onClick={() => signOut()}>
+                <LogOut className="h-4 w-4 mr-2" />
+                Sign Out
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </div>
