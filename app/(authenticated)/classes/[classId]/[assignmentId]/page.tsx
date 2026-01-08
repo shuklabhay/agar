@@ -444,7 +444,6 @@ function EditAssignmentView({
 
           // Success - add to uploaded files
           setUploadedFiles((prev) => [
-            ...prev,
             {
               id: fileId,
               storageId: validated.storageId,
@@ -453,6 +452,7 @@ function EditAssignmentView({
               size: validated.size,
               previewUrl,
             },
+            ...prev,
           ]);
 
           // Remove from uploading
@@ -484,6 +484,11 @@ function EditAssignmentView({
     file: UploadedFile,
     category: FileCategory,
   ) => {
+    const confirmed = window.confirm(
+      `Remove "${file.fileName}" from this assignment?`,
+    );
+    if (!confirmed) return;
+
     const setUploadedFiles =
       category === "assignment" ? setAssignmentFiles : setNotesFiles;
     try {
@@ -682,6 +687,8 @@ function EditAssignmentView({
       category === "assignment"
         ? uploadingAssignmentFiles
         : uploadingNotesFiles;
+    const openFilePicker = () => fileInputRef.current?.click();
+
     return (
       <div className="flex-1 space-y-2">
         <Label>{label}</Label>
@@ -691,9 +698,18 @@ function EditAssignmentView({
               ? "border-primary bg-primary/5"
               : "border-muted-foreground/25 hover:border-muted-foreground/50"
           }`}
+          role="button"
+          tabIndex={0}
           onDragOver={(e) => handleDragOver(e, category)}
           onDragLeave={(e) => handleDragLeave(e, category)}
           onDrop={(e) => handleDrop(e, category)}
+          onClick={openFilePicker}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              openFilePicker();
+            }
+          }}
         >
           <input
             ref={fileInputRef}
@@ -710,7 +726,7 @@ function EditAssignmentView({
             Drag and drop files here, or{" "}
             <button
               type="button"
-              onClick={() => fileInputRef.current?.click()}
+              onClick={openFilePicker}
               className="text-primary underline-offset-4 hover:underline"
             >
               browse
@@ -856,12 +872,12 @@ function EditAssignmentView({
           {renderUploadArea(
             "assignment",
             "Assignment",
-            "Upload the assignment (images, PDFs, Word docs)",
+            "Upload assignment files here (images, PDFs, Word docs)",
           )}
           {renderUploadArea(
             "notes",
             "Notes / Reference Materials",
-            "Upload notes & resources for this assignment",
+            "Upload notes & resources here (images, PDFs, Word docs)",
           )}
         </div>
 

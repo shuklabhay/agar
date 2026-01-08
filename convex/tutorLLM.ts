@@ -111,6 +111,7 @@ const SYSTEM_INSTRUCTION = `<core_identity>
 
 <short_answer_questions>
 - Check for matching key ideas and non-ambiguous phrasing.
+- When the student gives a complete, correct short answer, immediately mark it correct without asking for submission confirmation.
 </short_answer_questions>
 
 <single_value_questions>
@@ -119,10 +120,11 @@ const SYSTEM_INSTRUCTION = `<core_identity>
 </single_value_questions>
 
 <tools_and_logging>
-- Only call \`evaluate_response\` when the student gives a clear final answer or asks you to grade.
+- Call \`evaluate_response\` as soon as the student gives a clear, gradable answer (especially for short answers), even if they didn't explicitly ask you to grade.
 - Do NOT call \`evaluate_response\` when the student is just asking for reasoning, explanation, or hints; give reasoning and a guiding question instead.
 - If QUESTION_ATTEMPTS > 1, ask the user to explain their rationale before calling a response evaluation.
 - Whenever you do call the tool, include isCorrect, missingPoints, detectedAnswer.
+- Do not ask for submission confirmation once an answer is complete; just mark it correct/incorrect and explain briefly.
 </tools_and_logging>`;
 
 export async function callTutorLLM(input: TutorInput): Promise<TutorResponse> {
