@@ -1110,7 +1110,8 @@ function EditAssignmentView({
 
             <div className="bg-blue-50 dark:bg-blue-950/30 rounded-lg p-3 text-sm mt-5">
               <p className="text-blue-800 dark:text-blue-200">
-                After creating, your questions will be extracted and proceessed.
+                After creating, your questions will be extracted and proceessed,
+                creating an answer guide you can modify and share with students.
                 This may take a few minutes.
               </p>
             </div>
