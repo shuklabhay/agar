@@ -341,6 +341,7 @@ const EXTRACTION_PROMPT = `<prompt>
 - If the teacher asks to add an extra question (e.g., “add another multiple choice question” or “add a question about respiration”), you MUST create and include that new question. If they specify where to place it, insert it there and set the appropriate questionNumber; otherwise append it at the end with the next logical questionNumber. Use the teacher message/notes to author the question and options.
 - Answer format requirements (e.g., “must be decimal”) go to additionalInstructionsForAnswer.
 - Method/solution requirements (e.g., “use quadratic formula”) go to additionalInstructionsForWork.
+- For free_response / essay tasks, copy ANY response requirements that appear before/with the question (length, thesis requirement, document/evidence counts, point-of-view analysis, rubric bullets, etc.) into additionalInstructionsForWork. Keep questionText focused on the prompt itself; put the response requirements in additionalInstructionsForWork as a concise bullet list or sentences.
 - Teacher specified instructions: {additionalInfo}
 </additional_instructions>
 
@@ -359,7 +360,7 @@ const EXTRACTION_PROMPT = `<prompt>
 - questionType: "multiple_choice" | "single_value" | "short_answer" | "free_response" | "skipped"
 - answerOptionsMCQ: array of choices (MCQ only)
 - additionalInstructionsForAnswer: answer format requirements (e.g., "must be decimal")
-- additionalInstructionsForWork: method requirements (e.g., "use quadratic formula")
+- additionalInstructionsForWork: method requirements OR essay/response requirements (length, evidence/doc counts, thesis/POV checks, structure)
 </output_fields>
 
 <expected_output>
