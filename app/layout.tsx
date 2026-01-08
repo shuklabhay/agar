@@ -3,7 +3,6 @@ import "./globals.css";
 import { ConvexAuthNextjsServerProvider } from "@convex-dev/auth/nextjs/server";
 import ConvexClientProvider from "@/components/ConvexClientProvider";
 import { Toaster } from "@/components/ui/sonner";
-import { CookieBanner } from "@/components/CookieBanner";
 
 export const metadata: Metadata = {
   title: "Agar",
@@ -20,7 +19,6 @@ export default function RootLayout({
       <html lang="en">
         <body className="antialiased">
           <ConvexClientProvider>{children}</ConvexClientProvider>
-          <CookieBanner />
           <Toaster />
         </body>
       </html>
