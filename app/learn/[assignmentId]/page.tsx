@@ -67,6 +67,7 @@ export default function LearnPage() {
     minSize: 25,
     maxSize: 75,
   });
+  const [isMobile, setIsMobile] = useState(false);
 
   // Queries
   const assignment = useQuery(api.studentSessions.getAssignmentForStudent, {
@@ -121,6 +122,25 @@ export default function LearnPage() {
   const allQuestionsComplete =
     totalQuestions > 0 && correctCount === totalQuestions;
 
+  const questionPanelStyle = useMemo(
+    () =>
+      isMobile
+        ? { flexBasis: "55%" }
+        : {
+            flexBasis: `${leftPanelWidth}%`,
+          },
+    [isMobile, leftPanelWidth],
+  );
+  const chatPanelStyle = useMemo(
+    () =>
+      isMobile
+        ? { flexBasis: "45%" }
+        : {
+            flexBasis: `${100 - leftPanelWidth}%`,
+          },
+    [isMobile, leftPanelWidth],
+  );
+
   // Mutations
   const startSession = useMutation(api.studentSessions.startSession);
   const resumeSession = useMutation(api.studentSessions.resumeSession);
@@ -155,6 +175,14 @@ export default function LearnPage() {
     previousStatusMapRef.current = new Map();
     completedQuestionsRef.current = new Set<Id<"questions">>();
   }, [activeSessionId]);
+
+  // Track viewport size to switch to stacked layout on small screens
+  useEffect(() => {
+    const updateIsMobile = () => setIsMobile(window.innerWidth < 768);
+    updateIsMobile();
+    window.addEventListener("resize", updateIsMobile);
+    return () => window.removeEventListener("resize", updateIsMobile);
+  }, []);
 
   // Sync session from query result
   useEffect(() => {
@@ -714,12 +742,15 @@ export default function LearnPage() {
         </header>
 
         {/* Main content - split panel */}
-        <main ref={containerRef} className="flex-1 flex overflow-hidden">
-          {/* Left Panel - Question */}
+        <main
+          ref={isMobile ? undefined : containerRef}
+          className="flex-1 flex overflow-hidden flex-col md:flex-row"
+        >
+          {/* Top Panel (mobile) / Left Panel (desktop) - Question */}
           <div
-            className="overflow-y-auto bg-background"
+            className="overflow-y-auto bg-background flex-shrink-0 w-full"
             ref={questionScrollRef}
-            style={{ width: `${leftPanelWidth}%` }}
+            style={questionPanelStyle}
           >
             <QuestionPanel
               question={currentQuestion}
@@ -739,18 +770,18 @@ export default function LearnPage() {
             />
           </div>
 
-          {/* Draggable Divider */}
+          {/* Draggable Divider (desktop only) */}
           <div
             onMouseDown={handleMouseDown}
-            className="w-1 bg-border hover:bg-primary/50 cursor-col-resize transition-colors shrink-0 relative group"
+            className="hidden md:block w-1 bg-border hover:bg-primary/50 cursor-col-resize transition-colors shrink-0 relative group"
           >
             <div className="absolute inset-y-0 -left-1 -right-1 group-hover:bg-primary/10" />
           </div>
 
-          {/* Right Panel - Chat */}
+          {/* Bottom Panel (mobile) / Right Panel (desktop) - Chat */}
           <div
-            className="overflow-hidden bg-background"
-            style={{ width: `${100 - leftPanelWidth}%` }}
+            className="overflow-hidden bg-background flex-shrink-0 flex w-full"
+            style={chatPanelStyle}
           >
             <ChatPanel
               sessionId={activeSessionId}
