@@ -172,6 +172,24 @@ export function QuestionsReviewPanel({
     try {
       await approveQuestion({ questionId: selectedQuestion._id });
       toast.success("Question approved");
+      const currentIndex = sortedQuestions.findIndex(
+        (q) => q._id === selectedQuestion._id,
+      );
+      const forward = currentIndex >= 0 ? sortedQuestions.slice(currentIndex + 1) : [];
+      const needsReview = (q: ReviewQuestion) => {
+        const status = getQuestionStatus(q);
+        return status !== "approved" && status !== "skipped";
+      };
+      const nextUnapproved =
+        forward.find(needsReview) ||
+        sortedQuestions.find(
+          (q, idx) => idx !== currentIndex && needsReview(q),
+        );
+      const fallbackNext = forward[0];
+      const nextSelection = nextUnapproved?._id || fallbackNext?._id;
+      if (nextSelection) {
+        setSelectedQuestionId(nextSelection);
+      }
     } catch {
       toast.error("Failed to approve question");
     } finally {
@@ -296,7 +314,7 @@ export function QuestionsReviewPanel({
     }
   };
 
-  const handleReject = async () => {
+  const handleRemoveApproval = async () => {
     if (!selectedQuestion) return;
     setIsRejecting(true);
     try {
@@ -1025,7 +1043,7 @@ export function QuestionsReviewPanel({
                             <Button
                               size="sm"
                               variant="destructive"
-                              onClick={handleReject}
+                              onClick={handleRemoveApproval}
                               disabled={
                                 isRejecting || isSkipped || !isApprovedQuestion
                               }
@@ -1036,17 +1054,17 @@ export function QuestionsReviewPanel({
                               ) : isSkipped ? (
                                 <>
                                   <XCircle className="h-4 w-4" />
-                                  Rejected
+                                  Removed
                                 </>
                               ) : (
                                 <>
                                   <XCircle className="h-4 w-4" />
-                                  Reject
+                                  Remove Approval
                                 </>
                               )}
                             </Button>
                           </TooltipTrigger>
-                          <TooltipContent>Reject or remove approval</TooltipContent>
+                          <TooltipContent>Remove approval for this answer</TooltipContent>
                         </Tooltip>
                         <Tooltip>
                           <TooltipTrigger asChild>
