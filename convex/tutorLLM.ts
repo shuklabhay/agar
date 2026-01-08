@@ -14,9 +14,7 @@ function getClient(): GoogleGenAI {
   return new GoogleGenAI({ apiKey });
 }
 
-// Lightweight pre-initialization to avoid first-turn cold start
 export async function warmTutorClient() {
-  // Instantiates the client to prime any lazy initialization
   getClient();
 }
 
