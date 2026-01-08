@@ -38,7 +38,9 @@ export default function Home() {
           Classroom guidance that actually follows the curriculum
         </h1>
         <p className="mt-6 max-w-xl text-lg text-muted-foreground">
-          Teachers upload their assignments and notes. Students get AI-powered help that teaches the right things, the right way—aligned with what&apos;s actually being taught in class.
+          Teachers upload their assignments and notes. Students get AI-powered
+          help that teaches the right things, the right way—aligned with
+          what&apos;s actually being taught in class.
         </p>
         <div className="mt-8 flex flex-col gap-3 sm:flex-row">
           <Button asChild size="lg">
@@ -59,17 +61,20 @@ export default function Home() {
           <h2 className="text-2xl font-semibold mb-6">The Problem</h2>
           <div className="space-y-4 text-muted-foreground">
             <p>
-              AI tools are everywhere in education now—but they&apos;re teaching students the wrong things.
-              Generic AI tutors don&apos;t know your curriculum. They give answers without proper explanation.
-              They skip steps. They overstep.
+              AI tools are everywhere in education now—but they&apos;re teaching
+              students the wrong things. Generic AI tutors don&apos;t know your
+              curriculum. They give answers without proper explanation. They
+              skip steps. They overstep.
             </p>
             <p>
-              Meanwhile, homework has stopped being useful. When students can get answers from AI,
-              teachers lose visibility into how their students are actually learning.
-              The teacher-student connection breaks down.
+              Meanwhile, homework has stopped being useful. When students can
+              get answers from AI, teachers lose visibility into how their
+              students are actually learning. The teacher-student connection
+              breaks down.
             </p>
             <p>
-              Test scores are stagnating. Students aren&apos;t learning—they&apos;re just getting answers.
+              Test scores are stagnating. Students aren&apos;t
+              learning—they&apos;re just getting answers.
             </p>
           </div>
         </div>
@@ -87,7 +92,8 @@ export default function Home() {
               <div>
                 <h3 className="font-medium">Teachers create class hubs</h3>
                 <p className="text-muted-foreground mt-1">
-                  Upload assignments, lecture notes, and curriculum materials to your class space.
+                  Upload assignments, lecture notes, and curriculum materials to
+                  your class space.
                 </p>
               </div>
             </div>
@@ -98,7 +104,8 @@ export default function Home() {
               <div>
                 <h3 className="font-medium">AI guides are generated</h3>
                 <p className="text-muted-foreground mt-1">
-                  We create assignment-specific AI assistance grounded in your actual course content—not generic internet knowledge.
+                  We create assignment-specific AI assistance grounded in your
+                  actual course content—not generic internet knowledge.
                 </p>
               </div>
             </div>
@@ -109,7 +116,8 @@ export default function Home() {
               <div>
                 <h3 className="font-medium">Students learn with guardrails</h3>
                 <p className="text-muted-foreground mt-1">
-                  Students get help that guides them to understanding—not answers handed on a plate. Real learning, real accountability.
+                  Students get help that guides them to understanding—not
+                  answers handed on a plate. Real learning, real accountability.
                 </p>
               </div>
             </div>
@@ -118,9 +126,12 @@ export default function Home() {
                 4
               </div>
               <div>
-                <h3 className="font-medium">Teachers see what&apos;s happening</h3>
+                <h3 className="font-medium">
+                  Teachers see what&apos;s happening
+                </h3>
                 <p className="text-muted-foreground mt-1">
-                  Get insights into how students are actually engaging with material. Homework becomes useful again.
+                  Get insights into how students are actually engaging with
+                  material. Homework becomes useful again.
                 </p>
               </div>
             </div>
@@ -176,7 +187,9 @@ export default function Home() {
       {/* CTA */}
       <section className="px-4 py-16 border-t bg-muted/30">
         <div className="max-w-xl mx-auto text-center">
-          <p className="text-sm text-muted-foreground mb-2">Currently in development</p>
+          <p className="text-sm text-muted-foreground mb-2">
+            Currently in development
+          </p>
           <h2 className="text-2xl font-semibold mb-4">Ready to try Agar?</h2>
           <p className="text-muted-foreground mb-6">
             We&apos;re building the AI-native classroom. Sign up to get started.

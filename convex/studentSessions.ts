@@ -15,7 +15,9 @@ export const getAssignmentForStudent = query({
     // Check if there are any approved questions
     const approvedQuestions = await ctx.db
       .query("questions")
-      .withIndex("by_assignmentId", (q) => q.eq("assignmentId", args.assignmentId))
+      .withIndex("by_assignmentId", (q) =>
+        q.eq("assignmentId", args.assignmentId),
+      )
       .filter((q) => q.eq(q.field("status"), "approved"))
       .first();
 
@@ -41,7 +43,9 @@ export const getExistingStudents = query({
   handler: async (ctx, args) => {
     const sessions = await ctx.db
       .query("studentSessions")
-      .withIndex("by_assignmentId", (q) => q.eq("assignmentId", args.assignmentId))
+      .withIndex("by_assignmentId", (q) =>
+        q.eq("assignmentId", args.assignmentId),
+      )
       .collect();
 
     const studentSessions = sessions.filter(
@@ -111,7 +115,11 @@ export const startSession = mutation({
   handler: async (ctx, args) => {
     // Verify assignment exists and is ready
     const assignment = await ctx.db.get(args.assignmentId);
-    if (!assignment || assignment.isDraft || assignment.processingStatus !== "ready") {
+    if (
+      !assignment ||
+      assignment.isDraft ||
+      assignment.processingStatus !== "ready"
+    ) {
       throw new Error("Assignment not available");
     }
 
@@ -206,9 +214,7 @@ export const startTeacherPreviewSession = mutation({
 
     const user = await ctx.db.get(userId);
     const displayName =
-      user?.name?.trim() ||
-      user?.email?.split("@")[0] ||
-      "Teacher Preview";
+      user?.name?.trim() || user?.email?.split("@")[0] || "Teacher Preview";
 
     const sessionToken = crypto.randomUUID();
 
@@ -232,7 +238,9 @@ export const getSession = query({
   handler: async (ctx, args) => {
     const session = await ctx.db
       .query("studentSessions")
-      .withIndex("by_sessionToken", (q) => q.eq("sessionToken", args.sessionToken))
+      .withIndex("by_sessionToken", (q) =>
+        q.eq("sessionToken", args.sessionToken),
+      )
       .first();
 
     return session;

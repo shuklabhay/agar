@@ -19,12 +19,23 @@ function formatError(error: unknown): string {
 // Process assignment: extract questions then generate answers
 export const processAssignment = action({
   args: { assignmentId: v.id("assignments") },
-  handler: async (ctx, args): Promise<{ success: boolean; questionsExtracted?: number; answersGenerated?: number; error?: string }> => {
+  handler: async (
+    ctx,
+    args,
+  ): Promise<{
+    success: boolean;
+    questionsExtracted?: number;
+    answersGenerated?: number;
+    error?: string;
+  }> => {
     try {
       // Bail out if another run is already in progress
-      const currentStatus = await ctx.runQuery(internal.questions.getAssignmentStatus, {
-        assignmentId: args.assignmentId,
-      });
+      const currentStatus = await ctx.runQuery(
+        internal.questions.getAssignmentStatus,
+        {
+          assignmentId: args.assignmentId,
+        },
+      );
       if (
         currentStatus?.status === "extracting" ||
         currentStatus?.status === "generating_answers"
@@ -38,9 +49,12 @@ export const processAssignment = action({
       // Step 1: Extract questions
       let extractResult;
       try {
-        extractResult = await ctx.runAction(api.questionExtraction.extractQuestions, {
-          assignmentId: args.assignmentId,
-        });
+        extractResult = await ctx.runAction(
+          api.questionExtraction.extractQuestions,
+          {
+            assignmentId: args.assignmentId,
+          },
+        );
       } catch (error) {
         throw new Error(`Extraction threw: ${formatError(error)}`);
       }
@@ -67,9 +81,12 @@ export const processAssignment = action({
       // Step 2: Generate answers
       let generateResult;
       try {
-        generateResult = await ctx.runAction(api.answerGeneration.generateAnswers, {
-          assignmentId: args.assignmentId,
-        });
+        generateResult = await ctx.runAction(
+          api.answerGeneration.generateAnswers,
+          {
+            assignmentId: args.assignmentId,
+          },
+        );
       } catch (error) {
         throw new Error(`Answer generation threw: ${formatError(error)}`);
       }

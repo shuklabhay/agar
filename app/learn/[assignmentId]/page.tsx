@@ -473,8 +473,7 @@ export default function LearnPage() {
       ready: "Awaiting teacher approval",
       error: "Processing error",
     };
-    const friendlyStatus =
-      statusLabel[status] || "Assignment processing";
+    const friendlyStatus = statusLabel[status] || "Assignment processing";
     const detail =
       status === "error"
         ? assignment.processingError ||
@@ -528,8 +527,7 @@ export default function LearnPage() {
   }
 
   const waitingForTeacherCheck =
-    (isAuthLoading ||
-      (isAuthenticated && teacherPreview === undefined)) &&
+    (isAuthLoading || (isAuthenticated && teacherPreview === undefined)) &&
     !sessionToken &&
     !activeSessionId;
 
@@ -588,7 +586,10 @@ export default function LearnPage() {
           <div className="bg-amber-100 border-b border-amber-200 text-amber-900 px-4 py-2">
             <div className="max-w-7xl mx-auto flex items-center justify-center gap-2 text-sm font-medium text-center">
               <ShieldCheck className="h-4 w-4" />
-              <span>Teacher mode — actions here don&apos;t affect student data or analytics.</span>
+              <span>
+                Teacher mode — actions here don&apos;t affect student data or
+                analytics.
+              </span>
             </div>
           </div>
         )}

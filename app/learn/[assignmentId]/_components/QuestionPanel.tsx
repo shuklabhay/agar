@@ -180,7 +180,6 @@ export function QuestionPanel({
     }
   };
 
-
   if (!question) {
     return (
       <div className="h-full flex flex-col">
@@ -204,7 +203,9 @@ export function QuestionPanel({
     );
   }
 
-  const knownCompleted = questionId ? completedQuestions.has(questionId) : false;
+  const knownCompleted = questionId
+    ? completedQuestions.has(questionId)
+    : false;
   const isCorrect =
     knownCompleted ||
     progress?.status === "correct" ||
@@ -220,105 +221,104 @@ export function QuestionPanel({
           className="flex flex-col question-fade"
           style={{ willChange: "opacity, transform" }}
         >
-        {/* Question header */}
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-sm text-muted-foreground font-medium">
-            Question {question.questionNumber} ({questionIndex + 1} of{" "}
-            {totalQuestions})
-          </span>
-          {isCorrect && (
-            <Badge className="bg-emerald-100 text-emerald-900 border border-emerald-300 dark:bg-emerald-900/40 dark:text-emerald-100 dark:border-emerald-700">
-              <Check className="h-3 w-3 mr-1" /> Correct
-            </Badge>
-          )}
-          {isIncorrect && null}
-        </div>
-
-        {/* Question text */}
-        <p className="text-base text-md leading-relaxed whitespace-pre-wrap mb-6">
-          {question.questionText}
-        </p>
-
-        {/* Answer Input */}
-        <div className="space-y-3 flex-1 flex flex-col">
-          {/* MCQ Options */}
-          {question.questionType === "multiple_choice" &&
-            question.answerOptionsMCQ && (
-              <div className="space-y-2">
-                {question.answerOptionsMCQ.map((option, i) => {
-                  const letter = String.fromCharCode(65 + i);
-                  const isSelected = selectedOption === letter;
-                  const isCorrectSelection = isSelected && isCorrect;
-                  const isDisabled =
-                    incorrectOptions.includes(letter) || isCorrect;
-                  return (
-                    <Button
-                      key={i}
-                      variant="outline"
-                      className={cn(
-                        "w-full justify-start text-left h-auto py-3 px-4",
-                        isSelected &&
-                          (isCorrect
-                            ? "border-transparent text-emerald-900 bg-emerald-100 hover:bg-emerald-100 shadow-sm ring-1 ring-emerald-500/80 dark:text-emerald-100 dark:bg-emerald-900/30 dark:hover:bg-emerald-900/30 dark:ring-emerald-600/80"
-                            : "border-transparent text-foreground bg-white hover:bg-white shadow-sm ring-1 ring-foreground/45 dark:text-foreground dark:bg-foreground/5 dark:hover:bg-foreground/5 dark:ring-foreground/55"),
-                        incorrectOptions.includes(letter) &&
-                          "border-muted text-muted-foreground bg-muted/30 ring-0",
-                        isCorrectSelection && "disabled:opacity-100",
-                      )}
-                      onClick={() => {
-                        handleInteraction();
-                        setSelectedOption(letter);
-                      }}
-                      disabled={isDisabled}
-                    >
-                      <span className="font-semibold mr-3 shrink-0">
-                        {letter}.
-                      </span>
-                      <span className="text-left whitespace-normal break-words">
-                        {option}
-                      </span>
-                    </Button>
-                  );
-                })}
-              </div>
+          {/* Question header */}
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm text-muted-foreground font-medium">
+              Question {question.questionNumber} ({questionIndex + 1} of{" "}
+              {totalQuestions})
+            </span>
+            {isCorrect && (
+              <Badge className="bg-emerald-100 text-emerald-900 border border-emerald-300 dark:bg-emerald-900/40 dark:text-emerald-100 dark:border-emerald-700">
+                <Check className="h-3 w-3 mr-1" /> Correct
+              </Badge>
             )}
+            {isIncorrect && null}
+          </div>
 
-          {/* Single value input */}
-          {question.questionType === "single_value" && (
-            <Input
-              type="text"
-              placeholder="Enter your answer..."
-              value={textAnswer}
-              onChange={(e) => {
-                handleInteraction();
-                setTextAnswer(e.target.value);
-              }}
-              disabled={isCorrect}
-              className="text-lg"
-            />
-          )}
+          {/* Question text */}
+          <p className="text-base text-md leading-relaxed whitespace-pre-wrap mb-6">
+            {question.questionText}
+          </p>
 
-          {/* Short Answer / FRQ */}
-          {(question.questionType === "short_answer" ||
-            question.questionType === "free_response") && (
-            <>
-              <Textarea
-                placeholder="Type your answer here..."
+          {/* Answer Input */}
+          <div className="space-y-3 flex-1 flex flex-col">
+            {/* MCQ Options */}
+            {question.questionType === "multiple_choice" &&
+              question.answerOptionsMCQ && (
+                <div className="space-y-2">
+                  {question.answerOptionsMCQ.map((option, i) => {
+                    const letter = String.fromCharCode(65 + i);
+                    const isSelected = selectedOption === letter;
+                    const isCorrectSelection = isSelected && isCorrect;
+                    const isDisabled =
+                      incorrectOptions.includes(letter) || isCorrect;
+                    return (
+                      <Button
+                        key={i}
+                        variant="outline"
+                        className={cn(
+                          "w-full justify-start text-left h-auto py-3 px-4",
+                          isSelected &&
+                            (isCorrect
+                              ? "border-transparent text-emerald-900 bg-emerald-100 hover:bg-emerald-100 shadow-sm ring-1 ring-emerald-500/80 dark:text-emerald-100 dark:bg-emerald-900/30 dark:hover:bg-emerald-900/30 dark:ring-emerald-600/80"
+                              : "border-transparent text-foreground bg-white hover:bg-white shadow-sm ring-1 ring-foreground/45 dark:text-foreground dark:bg-foreground/5 dark:hover:bg-foreground/5 dark:ring-foreground/55"),
+                          incorrectOptions.includes(letter) &&
+                            "border-muted text-muted-foreground bg-muted/30 ring-0",
+                          isCorrectSelection && "disabled:opacity-100",
+                        )}
+                        onClick={() => {
+                          handleInteraction();
+                          setSelectedOption(letter);
+                        }}
+                        disabled={isDisabled}
+                      >
+                        <span className="font-semibold mr-3 shrink-0">
+                          {letter}.
+                        </span>
+                        <span className="text-left whitespace-normal break-words">
+                          {option}
+                        </span>
+                      </Button>
+                    );
+                  })}
+                </div>
+              )}
+
+            {/* Single value input */}
+            {question.questionType === "single_value" && (
+              <Input
+                type="text"
+                placeholder="Enter your answer..."
                 value={textAnswer}
                 onChange={(e) => {
                   handleInteraction();
                   setTextAnswer(e.target.value);
                 }}
                 disabled={isCorrect}
-                className={cn(
-                  "min-h-[200px] resize-none",
-                  !isCorrect && "flex-1",
-                )}
+                className="text-lg"
               />
-            </>
-          )}
-        </div>
+            )}
 
+            {/* Short Answer / FRQ */}
+            {(question.questionType === "short_answer" ||
+              question.questionType === "free_response") && (
+              <>
+                <Textarea
+                  placeholder="Type your answer here..."
+                  value={textAnswer}
+                  onChange={(e) => {
+                    handleInteraction();
+                    setTextAnswer(e.target.value);
+                  }}
+                  disabled={isCorrect}
+                  className={cn(
+                    "min-h-[200px] resize-none",
+                    !isCorrect && "flex-1",
+                  )}
+                />
+              </>
+            )}
+          </div>
         </div>
       </div>
 
@@ -380,7 +380,7 @@ export function QuestionPanel({
             <ChevronRight className="h-4 w-4 ml-1" />
           </Button>
         </div>
-        </div>
+      </div>
 
       <style jsx>{`
         @keyframes question-fade {

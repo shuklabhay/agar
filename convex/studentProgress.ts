@@ -7,7 +7,9 @@ export const getQuestionsForStudent = query({
   handler: async (ctx, args) => {
     const questions = await ctx.db
       .query("questions")
-      .withIndex("by_assignmentId", (q) => q.eq("assignmentId", args.assignmentId))
+      .withIndex("by_assignmentId", (q) =>
+        q.eq("assignmentId", args.assignmentId),
+      )
       .filter((q) => q.eq(q.field("status"), "approved"))
       .collect();
 
@@ -52,7 +54,7 @@ export const initializeProgress = mutation({
     const existing = await ctx.db
       .query("studentProgress")
       .withIndex("by_sessionId_questionId", (q) =>
-        q.eq("sessionId", args.sessionId).eq("questionId", args.questionId)
+        q.eq("sessionId", args.sessionId).eq("questionId", args.questionId),
       )
       .first();
 
@@ -87,7 +89,7 @@ export const recordTimeSpent = mutation({
     const progress = await ctx.db
       .query("studentProgress")
       .withIndex("by_sessionId_questionId", (q) =>
-        q.eq("sessionId", args.sessionId).eq("questionId", args.questionId)
+        q.eq("sessionId", args.sessionId).eq("questionId", args.questionId),
       )
       .first();
 
@@ -114,7 +116,7 @@ export const restartTimeTracking = mutation({
     const progress = await ctx.db
       .query("studentProgress")
       .withIndex("by_sessionId_questionId", (q) =>
-        q.eq("sessionId", args.sessionId).eq("questionId", args.questionId)
+        q.eq("sessionId", args.sessionId).eq("questionId", args.questionId),
       )
       .first();
 
@@ -140,7 +142,7 @@ export const submitDirectAnswer = mutation({
     const progress = await ctx.db
       .query("studentProgress")
       .withIndex("by_sessionId_questionId", (q) =>
-        q.eq("sessionId", args.sessionId).eq("questionId", args.questionId)
+        q.eq("sessionId", args.sessionId).eq("questionId", args.questionId),
       )
       .first();
 
@@ -159,14 +161,14 @@ export const submitDirectAnswer = mutation({
       ? question.answer[0]
       : question.answer;
 
-    const normalize = (val: string | undefined) => val?.trim().toLowerCase() ?? "";
+    const normalize = (val: string | undefined) =>
+      val?.trim().toLowerCase() ?? "";
     const studentAnswer = normalize(args.answer);
     const expectedRaw = (correctAnswer ?? "").toString();
     const expected = normalize(expectedRaw);
 
     const bothNumeric =
-      !isNaN(Number(args.answer)) &&
-      !isNaN(Number(expectedRaw));
+      !isNaN(Number(args.answer)) && !isNaN(Number(expectedRaw));
 
     const isCorrect = bothNumeric
       ? Number(args.answer) === Number(expectedRaw)
@@ -200,7 +202,7 @@ export const markInProgress = mutation({
     const progress = await ctx.db
       .query("studentProgress")
       .withIndex("by_sessionId_questionId", (q) =>
-        q.eq("sessionId", args.sessionId).eq("questionId", args.questionId)
+        q.eq("sessionId", args.sessionId).eq("questionId", args.questionId),
       )
       .first();
 
@@ -218,7 +220,7 @@ export const updateProgressStatus = internalMutation({
       v.literal("not_started"),
       v.literal("in_progress"),
       v.literal("correct"),
-      v.literal("incorrect")
+      v.literal("incorrect"),
     ),
     submittedText: v.optional(v.string()),
     selectedAnswer: v.optional(v.string()),
@@ -270,7 +272,7 @@ export const getProgressForQuestion = query({
     return await ctx.db
       .query("studentProgress")
       .withIndex("by_sessionId_questionId", (q) =>
-        q.eq("sessionId", args.sessionId).eq("questionId", args.questionId)
+        q.eq("sessionId", args.sessionId).eq("questionId", args.questionId),
       )
       .first();
   },
@@ -286,7 +288,7 @@ export const getSessionData = query({
     const questions = await ctx.db
       .query("questions")
       .withIndex("by_assignmentId", (q) =>
-        q.eq("assignmentId", session.assignmentId)
+        q.eq("assignmentId", session.assignmentId),
       )
       .filter((q) => q.eq(q.field("status"), "approved"))
       .collect();

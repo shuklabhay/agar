@@ -10,17 +10,20 @@ import { cn } from "@/lib/utils";
 import { ClassAnalyticsDashboard } from "../classes/[classId]/_components/analytics/ClassAnalyticsDashboard";
 
 export default function AnalyticsPage() {
-  const [selectedClassId, setSelectedClassId] = useState<Id<"classes"> | null>(null);
+  const [selectedClassId, setSelectedClassId] = useState<Id<"classes"> | null>(
+    null,
+  );
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   const classes = useQuery(api.classes.listClasses);
 
   // Auto-select first class if none selected (derived state)
-  const effectiveClassId = selectedClassId ?? (classes && classes.length > 0 ? classes[0]._id : null);
+  const effectiveClassId =
+    selectedClassId ?? (classes && classes.length > 0 ? classes[0]._id : null);
 
   const assignments = useQuery(
     api.assignments.listAssignments,
-    effectiveClassId ? { classId: effectiveClassId } : "skip"
+    effectiveClassId ? { classId: effectiveClassId } : "skip",
   );
 
   const selectedClass = classes?.find((c) => c._id === effectiveClassId);
@@ -83,7 +86,7 @@ export default function AnalyticsPage() {
             <ChevronDown
               className={cn(
                 "h-4 w-4 transition-transform shrink-0",
-                isDropdownOpen && "rotate-180"
+                isDropdownOpen && "rotate-180",
               )}
             />
           </button>
@@ -106,7 +109,7 @@ export default function AnalyticsPage() {
                       }}
                       className={cn(
                         "w-full px-3 py-2 text-sm text-left hover:bg-muted/50 flex items-center gap-2",
-                        isSelected && "bg-muted/30"
+                        isSelected && "bg-muted/30",
                       )}
                     >
                       <div
@@ -114,7 +117,7 @@ export default function AnalyticsPage() {
                           "w-4 h-4 rounded-full border flex items-center justify-center shrink-0",
                           isSelected
                             ? "bg-primary border-primary"
-                            : "border-muted-foreground"
+                            : "border-muted-foreground",
                         )}
                       >
                         {isSelected && (

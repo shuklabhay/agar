@@ -10,7 +10,8 @@ const BATCH_SIZE = 4;
 const MAX_PARALLEL_BATCHES = 2;
 
 function formatError(error: unknown): string {
-  if (error instanceof Error) return error.message || error.name || "Unknown error";
+  if (error instanceof Error)
+    return error.message || error.name || "Unknown error";
   if (typeof error === "string") return error;
   try {
     return JSON.stringify(error);
@@ -21,13 +22,22 @@ function formatError(error: unknown): string {
 
 export const generateAnswers = action({
   args: { assignmentId: v.id("assignments") },
-  handler: async (ctx, args): Promise<{ success: boolean; processed?: number; error?: string }> => {
+  handler: async (
+    ctx,
+    args,
+  ): Promise<{ success: boolean; processed?: number; error?: string }> => {
     try {
-      const currentStatus = await ctx.runQuery(internal.questions.getAssignmentStatus, {
-        assignmentId: args.assignmentId,
-      });
+      const currentStatus = await ctx.runQuery(
+        internal.questions.getAssignmentStatus,
+        {
+          assignmentId: args.assignmentId,
+        },
+      );
       if (currentStatus?.status === "error") {
-        return { success: false, error: currentStatus.error ?? "Processing stopped" };
+        return {
+          success: false,
+          error: currentStatus.error ?? "Processing stopped",
+        };
       }
 
       // Get pending questions
@@ -74,7 +84,9 @@ export const generateAnswers = action({
         (assignment.assignmentFiles || [])
           .filter((f) => f.url)
           .map(async (file) => {
-            const { data, mimeType } = await fetchFileAsBase64(file.url as string);
+            const { data, mimeType } = await fetchFileAsBase64(
+              file.url as string,
+            );
             return { inlineData: { data, mimeType } };
           }),
       );
@@ -98,9 +110,12 @@ export const generateAnswers = action({
         let batchAborted: string | null = null;
 
         for (const q of batch) {
-          const status = await ctx.runQuery(internal.questions.getAssignmentStatus, {
-            assignmentId: args.assignmentId,
-          });
+          const status = await ctx.runQuery(
+            internal.questions.getAssignmentStatus,
+            {
+              assignmentId: args.assignmentId,
+            },
+          );
           if (status?.status === "error") {
             batchAborted = status.error ?? "Processing stopped";
             break;
@@ -161,7 +176,10 @@ export const generateAnswers = action({
 
             batchProcessed++;
           } catch (error) {
-            console.error(`Error generating answer for Q${q.questionNumber}:`, error);
+            console.error(
+              `Error generating answer for Q${q.questionNumber}:`,
+              error,
+            );
             batchErrors++;
 
             // Reset question to pending so it can be retried cleanly
@@ -179,7 +197,7 @@ export const generateAnswers = action({
       };
 
       // Chunk questions into batches of BATCH_SIZE
-      const batches: typeof questions[] = [];
+      const batches: (typeof questions)[] = [];
       for (let i = 0; i < questions.length; i += BATCH_SIZE) {
         batches.push(questions.slice(i, i + BATCH_SIZE));
       }
@@ -205,7 +223,10 @@ export const generateAnswers = action({
         active.push(wrapped);
       };
 
-      while ((nextBatch < batches.length || active.length > 0) && !abortedMessage) {
+      while (
+        (nextBatch < batches.length || active.length > 0) &&
+        !abortedMessage
+      ) {
         while (
           active.length < MAX_PARALLEL_BATCHES &&
           nextBatch < batches.length &&
@@ -278,9 +299,12 @@ export const regenerateAnswer = action({
     });
 
     // Get notes file URLs
-    const notesUrls = await ctx.runQuery(internal.questions.getNotesForAssignment, {
-      assignmentId: question.assignmentId,
-    });
+    const notesUrls = await ctx.runQuery(
+      internal.questions.getNotesForAssignment,
+      {
+        assignmentId: question.assignmentId,
+      },
+    );
 
     try {
       // Prepare notes parts
@@ -316,7 +340,8 @@ export const regenerateAnswer = action({
       const client = new GoogleGenAI({ apiKey });
 
       // Build teacher info with feedback if provided
-      let additionalInstructionsForAnswer = question.additionalInstructionsForAnswer || "";
+      let additionalInstructionsForAnswer =
+        question.additionalInstructionsForAnswer || "";
       if (args.feedback) {
         additionalInstructionsForAnswer = additionalInstructionsForAnswer
           ? `${additionalInstructionsForAnswer}\n\nTeacher feedback for regeneration: ${args.feedback}`

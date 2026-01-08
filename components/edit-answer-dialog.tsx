@@ -197,13 +197,19 @@ export function EditAnswerDialog({
                       setKeyPoints(next);
                     }}
                   >
-                    {["notes", "passage", "figure", "table", "chart", "website", "unknown"].map(
-                      (type) => (
-                        <option key={type} value={type}>
-                          {type}
-                        </option>
-                      ),
-                    )}
+                    {[
+                      "notes",
+                      "passage",
+                      "figure",
+                      "table",
+                      "chart",
+                      "website",
+                      "unknown",
+                    ].map((type) => (
+                      <option key={type} value={type}>
+                        {type}
+                      </option>
+                    ))}
                   </select>
                   {keyPoints.length > 1 && (
                     <Button

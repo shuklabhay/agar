@@ -10,8 +10,10 @@ const classSchema = v.object({
   teacherId: v.id("users"),
   preferences: v.optional(
     v.object({
-      defaultMetric: v.optional(v.union(v.literal("mean"), v.literal("median"))),
-    })
+      defaultMetric: v.optional(
+        v.union(v.literal("mean"), v.literal("median")),
+      ),
+    }),
   ),
 });
 
@@ -85,7 +87,10 @@ export const renameClass = mutation({
       throw new Error("Class not found or access denied");
     }
 
-    await ctx.db.patch(args.classId, { name: args.name, section: args.section });
+    await ctx.db.patch(args.classId, {
+      name: args.name,
+      section: args.section,
+    });
     return null;
   },
 });
@@ -114,7 +119,9 @@ export const deleteClass = mutation({
       // Delete questions for this assignment
       const questions = await ctx.db
         .query("questions")
-        .withIndex("by_assignmentId", (q) => q.eq("assignmentId", assignment._id))
+        .withIndex("by_assignmentId", (q) =>
+          q.eq("assignmentId", assignment._id),
+        )
         .collect();
 
       for (const question of questions) {
@@ -122,7 +129,10 @@ export const deleteClass = mutation({
       }
 
       // Delete storage files
-      for (const file of [...assignment.assignmentFiles, ...assignment.notesFiles]) {
+      for (const file of [
+        ...assignment.assignmentFiles,
+        ...assignment.notesFiles,
+      ]) {
         await ctx.storage.delete(file.storageId);
       }
 
@@ -141,7 +151,9 @@ export const updatePreferences = mutation({
   args: {
     classId: v.id("classes"),
     preferences: v.object({
-      defaultMetric: v.optional(v.union(v.literal("mean"), v.literal("median"))),
+      defaultMetric: v.optional(
+        v.union(v.literal("mean"), v.literal("median")),
+      ),
     }),
   },
   returns: v.null(),

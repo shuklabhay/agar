@@ -853,15 +853,20 @@ export function QuestionsReviewPanel({
                           </summary>
                           <div className="mt-2 space-y-2 pl-6 overflow-hidden">
                             {normalizedKeyPoints.map((keyPoint, i) => {
-                              const rawSourceType = (keyPoint.sourceType || "").trim();
-                              const normalizedSourceType = rawSourceType.toLowerCase();
+                              const rawSourceType = (
+                                keyPoint.sourceType || ""
+                              ).trim();
+                              const normalizedSourceType =
+                                rawSourceType.toLowerCase();
                               const rawUrl = keyPoint.url?.trim();
                               const fallbackUrl =
                                 !rawUrl &&
                                 normalizedSourceType === "website" &&
                                 Array.isArray(selectedQuestion?.source)
                                   ? selectedQuestion.source.find(
-                                      (u) => typeof u === "string" && u.trim().length > 0,
+                                      (u) =>
+                                        typeof u === "string" &&
+                                        u.trim().length > 0,
                                     )
                                   : undefined;
                               const sourceUrl =
@@ -892,14 +897,21 @@ export function QuestionsReviewPanel({
                                 : formatSourceLabel(rawSourceType || "unknown");
                               const typeLabel =
                                 normalizedSourceType !== "website"
-                                  ? formatSourceLabel(normalizedSourceType || "unknown")
+                                  ? formatSourceLabel(
+                                      normalizedSourceType || "unknown",
+                                    )
                                   : "";
                               const hasSourceDisplay = Boolean(
                                 displayLabel || typeLabel || sourceUrl,
                               );
                               const isAssociated =
                                 typeLabel &&
-                                ["Passage", "Figure", "Table", "Chart"].includes(typeLabel);
+                                [
+                                  "Passage",
+                                  "Figure",
+                                  "Table",
+                                  "Chart",
+                                ].includes(typeLabel);
 
                               return (
                                 <div

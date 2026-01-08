@@ -127,10 +127,7 @@ export function QuestionDifficultyTable({
     let comparison = 0;
     switch (sortField) {
       case "questionNumber":
-        comparison = compareQuestionNumbers(
-          a.questionNumber,
-          b.questionNumber,
-        );
+        comparison = compareQuestionNumbers(a.questionNumber, b.questionNumber);
         break;
       case "successRate":
         comparison = a.successRate - b.successRate;

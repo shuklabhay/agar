@@ -76,7 +76,9 @@ export function WhitelistGuard({ children }: WhitelistGuardProps) {
                   setCode("");
                 } catch (err) {
                   const message =
-                    err instanceof Error ? err.message : "Something went wrong.";
+                    err instanceof Error
+                      ? err.message
+                      : "Something went wrong.";
                   setError(message);
                 } finally {
                   setSubmitting(false);
@@ -92,7 +94,9 @@ export function WhitelistGuard({ children }: WhitelistGuardProps) {
                   autoComplete="one-time-code"
                   maxLength={6}
                   onChange={(e) =>
-                    setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))
+                    setCode(
+                      e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""),
+                    )
                   }
                 />
                 <p className="text-xs text-muted-foreground">

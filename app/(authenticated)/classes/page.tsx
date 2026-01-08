@@ -43,9 +43,16 @@ export default function ClassesPage() {
   const [section, setSection] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const [deleteTarget, setDeleteTarget] = useState<{ id: Id<"classes">; name: string } | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{
+    id: Id<"classes">;
+    name: string;
+  } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [renameTarget, setRenameTarget] = useState<{ id: Id<"classes">; name: string; section?: string } | null>(null);
+  const [renameTarget, setRenameTarget] = useState<{
+    id: Id<"classes">;
+    name: string;
+    section?: string;
+  } | null>(null);
   const [editName, setEditName] = useState("");
   const [editSection, setEditSection] = useState("");
   const [isRenaming, setIsRenaming] = useState(false);
@@ -223,7 +230,11 @@ export default function ClassesPage() {
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    setRenameTarget({ id: classItem._id, name: classItem.name, section: classItem.section });
+                    setRenameTarget({
+                      id: classItem._id,
+                      name: classItem.name,
+                      section: classItem.section,
+                    });
                     setEditName(classItem.name);
                     setEditSection(classItem.section || "");
                   }}
@@ -237,7 +248,10 @@ export default function ClassesPage() {
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    setDeleteTarget({ id: classItem._id, name: classItem.name });
+                    setDeleteTarget({
+                      id: classItem._id,
+                      name: classItem.name,
+                    });
                   }}
                 >
                   <Trash2 className="h-4 w-4" />
@@ -249,13 +263,22 @@ export default function ClassesPage() {
       )}
 
       {/* Delete Confirmation Dialog */}
-      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+      <AlertDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Class</AlertDialogTitle>
             <AlertDialogDescription className="space-y-2">
-              <span className="block">Are you sure you want to delete &quot;{deleteTarget?.name}&quot;?</span>
-              <span className="block">This will permanently delete all assignments, files, and questions. This action cannot be undone.</span>
+              <span className="block">
+                Are you sure you want to delete &quot;{deleteTarget?.name}
+                &quot;?
+              </span>
+              <span className="block">
+                This will permanently delete all assignments, files, and
+                questions. This action cannot be undone.
+              </span>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -279,7 +302,10 @@ export default function ClassesPage() {
       </AlertDialog>
 
       {/* Rename Dialog */}
-      <Dialog open={!!renameTarget} onOpenChange={(open) => !open && setRenameTarget(null)}>
+      <Dialog
+        open={!!renameTarget}
+        onOpenChange={(open) => !open && setRenameTarget(null)}
+      >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Rename Class</DialogTitle>
@@ -308,8 +334,13 @@ export default function ClassesPage() {
             <Button variant="outline" onClick={() => setRenameTarget(null)}>
               Cancel
             </Button>
-            <Button onClick={handleRename} disabled={isRenaming || !editName.trim()}>
-              {isRenaming ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+            <Button
+              onClick={handleRename}
+              disabled={isRenaming || !editName.trim()}
+            >
+              {isRenaming ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : null}
               Save
             </Button>
           </DialogFooter>

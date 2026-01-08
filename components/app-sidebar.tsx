@@ -137,9 +137,12 @@ export function AppSidebar() {
   const shortCommitHash =
     fullCommitHash === "dev" ? "dev" : fullCommitHash.slice(0, 7);
 
-  const handleMetricChange = useCallback((metric: "mean" | "median") => {
-    updatePreferences({ defaultMetric: metric });
-  }, [updatePreferences]);
+  const handleMetricChange = useCallback(
+    (metric: "mean" | "median") => {
+      updatePreferences({ defaultMetric: metric });
+    },
+    [updatePreferences],
+  );
 
   const isLoading = classesLoading;
 
@@ -286,7 +289,7 @@ export function AppSidebar() {
                               "px-3 py-1.5 text-sm font-medium rounded-md transition-colors",
                               defaultMetric === "mean"
                                 ? "bg-background text-foreground shadow-sm"
-                                : "text-muted-foreground hover:text-foreground"
+                                : "text-muted-foreground hover:text-foreground",
                             )}
                           >
                             Mean
@@ -297,7 +300,7 @@ export function AppSidebar() {
                               "px-3 py-1.5 text-sm font-medium rounded-md transition-colors",
                               defaultMetric === "median"
                                 ? "bg-background text-foreground shadow-sm"
-                                : "text-muted-foreground hover:text-foreground"
+                                : "text-muted-foreground hover:text-foreground",
                             )}
                           >
                             Median

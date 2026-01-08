@@ -616,46 +616,46 @@ export function ClassAnalyticsDashboard({
             {boxPlotView === "per-assignment" &&
               filteredAssignmentComparison && (
                 <>
-                <HorizontalBoxPlot
-                  title="Messages per Assignment"
-                  data={filteredAssignmentComparison.map((a: any) => ({
-                    name:
-                      a.assignmentName.length > 20
-                        ? a.assignmentName.slice(0, 20) + "..."
-                        : a.assignmentName,
-                    boxPlot: a.messagesBoxPlot,
-                  }))}
-                  formatValue={(v) => v.toFixed(1)}
-                  color="#6366f1"
-                  unit=" msgs"
-                  showOutliers={false}
-                />
-                <HorizontalBoxPlot
-                  title="Time per Assignment"
-                  data={filteredAssignmentComparison.map((a: any) => ({
-                    name:
-                      a.assignmentName.length > 20
-                        ? a.assignmentName.slice(0, 20) + "..."
-                        : a.assignmentName,
-                    boxPlot: a.timeBoxPlot
-                      ? {
-                          ...a.timeBoxPlot,
-                          min: a.timeBoxPlot.min / 1000,
-                          q1: a.timeBoxPlot.q1 / 1000,
-                          median: a.timeBoxPlot.median / 1000,
-                          q3: a.timeBoxPlot.q3 / 1000,
-                          max: a.timeBoxPlot.max / 1000,
-                          mean: a.timeBoxPlot.mean / 1000,
-                        }
-                      : null,
-                  }))}
-                  formatValue={formatSecondsValue}
-                  color="#10b981"
-                  unit=""
-                  showOutliers={false}
-                />
-              </>
-            )}
+                  <HorizontalBoxPlot
+                    title="Messages per Assignment"
+                    data={filteredAssignmentComparison.map((a: any) => ({
+                      name:
+                        a.assignmentName.length > 20
+                          ? a.assignmentName.slice(0, 20) + "..."
+                          : a.assignmentName,
+                      boxPlot: a.messagesBoxPlot,
+                    }))}
+                    formatValue={(v) => v.toFixed(1)}
+                    color="#6366f1"
+                    unit=" msgs"
+                    showOutliers={false}
+                  />
+                  <HorizontalBoxPlot
+                    title="Time per Assignment"
+                    data={filteredAssignmentComparison.map((a: any) => ({
+                      name:
+                        a.assignmentName.length > 20
+                          ? a.assignmentName.slice(0, 20) + "..."
+                          : a.assignmentName,
+                      boxPlot: a.timeBoxPlot
+                        ? {
+                            ...a.timeBoxPlot,
+                            min: a.timeBoxPlot.min / 1000,
+                            q1: a.timeBoxPlot.q1 / 1000,
+                            median: a.timeBoxPlot.median / 1000,
+                            q3: a.timeBoxPlot.q3 / 1000,
+                            max: a.timeBoxPlot.max / 1000,
+                            mean: a.timeBoxPlot.mean / 1000,
+                          }
+                        : null,
+                    }))}
+                    formatValue={formatSecondsValue}
+                    color="#10b981"
+                    unit=""
+                    showOutliers={false}
+                  />
+                </>
+              )}
 
             {boxPlotView === "all" && classAnalytics && (
               <>

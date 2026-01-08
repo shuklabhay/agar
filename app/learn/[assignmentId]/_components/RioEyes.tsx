@@ -55,10 +55,38 @@ export function RioEyes({
   }, [mood, idleLookDirection]);
 
   const sizes = {
-    sm: { container: "w-6 h-6", eyeW: 3, eyeH: 8, eyeBlink: 2, eyeCorrect: 7, gap: 2 },
-    md: { container: "w-7 h-7", eyeW: 3, eyeH: 10, eyeBlink: 2, eyeCorrect: 8, gap: 3 },
-    lg: { container: "w-10 h-10", eyeW: 4, eyeH: 14, eyeBlink: 3, eyeCorrect: 11, gap: 3.5 },
-    xl: { container: "w-16 h-16", eyeW: 6, eyeH: 20, eyeBlink: 4, eyeCorrect: 16, gap: 4 },
+    sm: {
+      container: "w-6 h-6",
+      eyeW: 3,
+      eyeH: 8,
+      eyeBlink: 2,
+      eyeCorrect: 7,
+      gap: 2,
+    },
+    md: {
+      container: "w-7 h-7",
+      eyeW: 3,
+      eyeH: 10,
+      eyeBlink: 2,
+      eyeCorrect: 8,
+      gap: 3,
+    },
+    lg: {
+      container: "w-10 h-10",
+      eyeW: 4,
+      eyeH: 14,
+      eyeBlink: 3,
+      eyeCorrect: 11,
+      gap: 3.5,
+    },
+    xl: {
+      container: "w-16 h-16",
+      eyeW: 6,
+      eyeH: 20,
+      eyeBlink: 4,
+      eyeCorrect: 16,
+      gap: 4,
+    },
   } as const;
 
   const sizeSpec = sizes[size] ?? sizes.md;
@@ -100,7 +128,9 @@ export function RioEyes({
             width: sizeSpec.eyeW,
             height: eyeHeight,
             borderRadius: sizeSpec.eyeW,
-            ...(mood === "correct" ? { borderTopLeftRadius: 0, borderTopRightRadius: 0 } : {}),
+            ...(mood === "correct"
+              ? { borderTopLeftRadius: 0, borderTopRightRadius: 0 }
+              : {}),
             transform: `translate(${lookDirection.x}px, ${lookDirection.y}px)`,
           }}
         />
@@ -114,7 +144,9 @@ export function RioEyes({
             width: sizeSpec.eyeW,
             height: eyeHeight,
             borderRadius: sizeSpec.eyeW,
-            ...(mood === "correct" ? { borderTopLeftRadius: 0, borderTopRightRadius: 0 } : {}),
+            ...(mood === "correct"
+              ? { borderTopLeftRadius: 0, borderTopRightRadius: 0 }
+              : {}),
             transform: `translate(${lookDirection.x}px, ${lookDirection.y}px)`,
           }}
         />

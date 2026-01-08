@@ -67,7 +67,7 @@ export function ProgressBar({
         <div
           className={cn(
             "absolute left-0 top-0 bottom-0 w-10 bg-gradient-to-r from-background via-background/80 to-transparent z-10 pointer-events-none flex items-center justify-start pl-1 transition-opacity duration-200",
-            canScrollLeft ? "opacity-100" : "opacity-0"
+            canScrollLeft ? "opacity-100" : "opacity-0",
           )}
         >
           <ChevronLeft className="h-4 w-4 text-muted-foreground/60" />
@@ -77,7 +77,7 @@ export function ProgressBar({
         <div
           className={cn(
             "absolute right-0 top-0 bottom-0 w-10 bg-gradient-to-l from-background via-background/80 to-transparent z-10 pointer-events-none flex items-center justify-end pr-1 transition-opacity duration-200",
-            canScrollRight ? "opacity-100" : "opacity-0"
+            canScrollRight ? "opacity-100" : "opacity-0",
           )}
         >
           <ChevronRight className="h-4 w-4 text-muted-foreground/60" />
@@ -102,8 +102,12 @@ export function ProgressBar({
                   "hover:opacity-80 focus:outline-none",
                   isCurrent && "ring-2 ring-offset-1 ring-foreground",
                   isCorrect && "bg-green-500 text-white",
-                  isInProgress && !isCorrect && "bg-muted-foreground/20 text-foreground",
-                  !isCorrect && !isInProgress && "bg-muted text-muted-foreground"
+                  isInProgress &&
+                    !isCorrect &&
+                    "bg-muted-foreground/20 text-foreground",
+                  !isCorrect &&
+                    !isInProgress &&
+                    "bg-muted text-muted-foreground",
                 )}
                 title={`Question ${q.questionNumber}${isCorrect ? " - Correct" : isInProgress ? " - Started" : ""}`}
               >

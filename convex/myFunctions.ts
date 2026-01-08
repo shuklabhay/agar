@@ -69,9 +69,11 @@ export const getUserPreferences = query({
   args: {},
   returns: v.union(
     v.object({
-      defaultMetric: v.optional(v.union(v.literal("mean"), v.literal("median"))),
+      defaultMetric: v.optional(
+        v.union(v.literal("mean"), v.literal("median")),
+      ),
     }),
-    v.null()
+    v.null(),
   ),
   handler: async (ctx) => {
     const userId = await getAuthUserId(ctx);
@@ -82,7 +84,9 @@ export const getUserPreferences = query({
       .withIndex("by_userId", (q) => q.eq("userId", userId))
       .first();
 
-    return prefs ? { defaultMetric: prefs.defaultMetric } : { defaultMetric: undefined };
+    return prefs
+      ? { defaultMetric: prefs.defaultMetric }
+      : { defaultMetric: undefined };
   },
 });
 

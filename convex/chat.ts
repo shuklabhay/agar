@@ -1,5 +1,10 @@
 import { v } from "convex/values";
-import { query, action, internalMutation, internalQuery } from "./_generated/server";
+import {
+  query,
+  action,
+  internalMutation,
+  internalQuery,
+} from "./_generated/server";
 import type { ActionCtx } from "./_generated/server";
 import { internal, api } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
@@ -13,7 +18,8 @@ const MAX_CONTEXT_FILE_BYTES = 5 * 1024 * 1024; // 5MB limit for LLM context att
 
 type RateLimitScope = "minute" | "day";
 
-const BASE64_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+const BASE64_CHARS =
+  "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
 // Lightweight base64 decoder that works in the Convex default runtime
 function base64ToUint8Array(base64: string): Uint8Array {
@@ -75,7 +81,10 @@ function uint8ArrayToBase64(bytes: Uint8Array): string {
   return output;
 }
 
-function detectMCQOption(message: string, options?: string[]): string | undefined {
+function detectMCQOption(
+  message: string,
+  options?: string[],
+): string | undefined {
   if (!options || options.length === 0) return;
   const lower = message.toLowerCase();
 
@@ -123,7 +132,10 @@ function deriveCorrectLetters(answer: unknown, options?: string[]): string[] {
   return letters;
 }
 
-async function loadAssignmentContextFile(ctx: ActionCtx, assignmentId: Id<"assignments">) {
+async function loadAssignmentContextFile(
+  ctx: ActionCtx,
+  assignmentId: Id<"assignments">,
+) {
   const assignment = await ctx.runQuery(
     internal.questions.getAssignmentForProcessing,
     { assignmentId },
@@ -150,7 +162,11 @@ async function loadAssignmentContextFile(ctx: ActionCtx, assignmentId: Id<"assig
 async function checkRateLimit(
   ctx: ActionCtx,
   sessionId: Id<"studentSessions">,
-): Promise<{ scope: RateLimitScope; retryAfterMs: number; limit: number } | null> {
+): Promise<{
+  scope: RateLimitScope;
+  retryAfterMs: number;
+  limit: number;
+} | null> {
   const now = Date.now();
   const minuteAgo = now - 60_000;
   const dayAgo = now - 86_400_000;
@@ -191,7 +207,7 @@ export const getChatHistory = query({
     const messages = await ctx.db
       .query("chatMessages")
       .withIndex("by_session_question", (q) =>
-        q.eq("sessionId", args.sessionId).eq("questionId", args.questionId)
+        q.eq("sessionId", args.sessionId).eq("questionId", args.questionId),
       )
       .collect();
 
@@ -297,14 +313,18 @@ export const addMessage = internalMutation({
     questionId: v.id("questions"),
     assignmentId: v.optional(v.id("assignments")),
     classId: v.optional(v.id("classes")),
-    role: v.union(v.literal("student"), v.literal("tutor"), v.literal("system")),
+    role: v.union(
+      v.literal("student"),
+      v.literal("tutor"),
+      v.literal("system"),
+    ),
     content: v.string(),
     toolCall: v.optional(
       v.object({
         name: v.string(),
         args: v.any(),
         result: v.optional(v.any()),
-      })
+      }),
     ),
     attachments: v.optional(
       v.array(
@@ -356,7 +376,7 @@ export const getProgressForTutor = internalQuery({
     return await ctx.db
       .query("studentProgress")
       .withIndex("by_sessionId_questionId", (q) =>
-        q.eq("sessionId", args.sessionId).eq("questionId", args.questionId)
+        q.eq("sessionId", args.sessionId).eq("questionId", args.questionId),
       )
       .first();
   },
@@ -375,14 +395,21 @@ export const sendMessageToTutor = action({
           name: v.string(),
           type: v.string(),
           data: v.string(), // base64 data URL
-        })
-      )
+        }),
+      ),
     ),
   },
-  handler: async (ctx, args): Promise<{
+  handler: async (
+    ctx,
+    args,
+  ): Promise<{
     message: string;
     toolCalls?: Array<{ name: string; args: Record<string, unknown> }>;
-    rateLimited?: { scope: RateLimitScope; retryAfterMs: number; limit: number };
+    rateLimited?: {
+      scope: RateLimitScope;
+      retryAfterMs: number;
+      limit: number;
+    };
   }> => {
     const rateLimit = await checkRateLimit(ctx, args.sessionId);
     if (rateLimit) {
@@ -442,7 +469,9 @@ export const sendMessageToTutor = action({
         const base64Data = file.data.split(",")[1] || file.data;
         const binary = base64ToUint8Array(base64Data);
         const copy = Uint8Array.from(binary);
-        const storageId = await ctx.storage.store(new Blob([copy], { type: file.type }));
+        const storageId = await ctx.storage.store(
+          new Blob([copy], { type: file.type }),
+        );
         storedAttachments.push({
           name: file.name,
           type: file.type,
@@ -471,8 +500,8 @@ export const sendMessageToTutor = action({
 
     const parsedSelectedOption =
       question.questionType === "multiple_choice"
-        ? args.selectedOption ??
-          detectMCQOption(args.message, question.answerOptionsMCQ)
+        ? (args.selectedOption ??
+          detectMCQOption(args.message, question.answerOptionsMCQ))
         : undefined;
 
     // Call the tutor LLM
@@ -515,7 +544,7 @@ export const sendMessageToTutor = action({
             question.answerOptionsMCQ,
           );
           const answerLetter = isMCQ
-            ? detectedAnswer ?? parsedSelectedOption
+            ? (detectedAnswer ?? parsedSelectedOption)
             : undefined;
 
           // Only log MCQ attempts when a letter guess is present

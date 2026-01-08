@@ -76,7 +76,9 @@ export const claimAccessWithCode = mutation({
     }
 
     if (input !== expected) {
-      throw new Error("That code did not work. Please double-check and try again.");
+      throw new Error(
+        "That code did not work. Please double-check and try again.",
+      );
     }
 
     await setWhitelistedForUser(ctx, userId);

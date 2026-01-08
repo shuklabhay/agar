@@ -143,9 +143,7 @@ export function HorizontalBoxPlot({
 
   return (
     <div className="py-4">
-      {title ? (
-        <h3 className="text-sm font-medium mb-4">{title}</h3>
-      ) : null}
+      {title ? <h3 className="text-sm font-medium mb-4">{title}</h3> : null}
       <div className="flex gap-3">
         {/* Labels column */}
         <div className="w-28 shrink-0 flex flex-col">
@@ -251,11 +249,11 @@ export function HorizontalBoxPlot({
                 />
                 {/* Max whisker cap - hover zone */}
                 <div
-                    className="absolute top-0 w-6 h-full cursor-pointer z-10"
-                    style={{
-                      left: `${whiskerMaxPos}%`,
-                      transform: "translateX(-50%)",
-                    }}
+                  className="absolute top-0 w-6 h-full cursor-pointer z-10"
+                  style={{
+                    left: `${whiskerMaxPos}%`,
+                    transform: "translateX(-50%)",
+                  }}
                   onMouseEnter={() => setHoveredElement({ index, type: "max" })}
                   onMouseLeave={() => setHoveredElement(null)}
                 />
@@ -265,7 +263,7 @@ export function HorizontalBoxPlot({
                   <>
                     {/* Visual */}
                     <div
-                    className="absolute w-2.5 h-2.5 rounded-full transition-transform pointer-events-none"
+                      className="absolute w-2.5 h-2.5 rounded-full transition-transform pointer-events-none"
                       style={{
                         left: `${minPos}%`,
                         top: "50%",

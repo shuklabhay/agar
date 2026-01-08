@@ -1,5 +1,10 @@
 import { v } from "convex/values";
-import { internalMutation, internalQuery, query, mutation } from "./_generated/server";
+import {
+  internalMutation,
+  internalQuery,
+  query,
+  mutation,
+} from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { Id } from "./_generated/dataModel";
 
@@ -110,7 +115,9 @@ export const getQuestionsByAssignment = internalQuery({
   handler: async (ctx, args) => {
     return await ctx.db
       .query("questions")
-      .withIndex("by_assignmentId", (q) => q.eq("assignmentId", args.assignmentId))
+      .withIndex("by_assignmentId", (q) =>
+        q.eq("assignmentId", args.assignmentId),
+      )
       .collect();
   },
 });
@@ -131,7 +138,9 @@ export const listQuestions = query({
 
     return await ctx.db
       .query("questions")
-      .withIndex("by_assignmentId", (q) => q.eq("assignmentId", args.assignmentId))
+      .withIndex("by_assignmentId", (q) =>
+        q.eq("assignmentId", args.assignmentId),
+      )
       .collect();
   },
 });
@@ -160,7 +169,9 @@ export const getPendingQuestions = internalQuery({
   handler: async (ctx, args) => {
     const questions = await ctx.db
       .query("questions")
-      .withIndex("by_assignmentId", (q) => q.eq("assignmentId", args.assignmentId))
+      .withIndex("by_assignmentId", (q) =>
+        q.eq("assignmentId", args.assignmentId),
+      )
       .filter((q) => q.eq(q.field("status"), "pending"))
       .collect();
 
@@ -221,7 +232,9 @@ export const deleteQuestionsForAssignment = internalMutation({
   handler: async (ctx, args) => {
     const questions = await ctx.db
       .query("questions")
-      .withIndex("by_assignmentId", (q) => q.eq("assignmentId", args.assignmentId))
+      .withIndex("by_assignmentId", (q) =>
+        q.eq("assignmentId", args.assignmentId),
+      )
       .collect();
 
     for (const q of questions) {
@@ -328,7 +341,9 @@ export const approveAllQuestions = mutation({
 
     const questions = await ctx.db
       .query("questions")
-      .withIndex("by_assignmentId", (q) => q.eq("assignmentId", args.assignmentId))
+      .withIndex("by_assignmentId", (q) =>
+        q.eq("assignmentId", args.assignmentId),
+      )
       .collect();
 
     let approved = 0;

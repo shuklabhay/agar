@@ -89,7 +89,8 @@ export function WelcomeDialog({
             />
             {nameTaken && (
               <p className="text-xs text-destructive text-center">
-                That name is already in use. Add a last initial to make it unique (e.g., “{trimmedName} S.”).
+                That name is already in use. Add a last initial to make it
+                unique (e.g., “{trimmedName} S.”).
               </p>
             )}
             <Button
