@@ -516,37 +516,46 @@ export function QuestionsReviewPanel({
                 </Button>
               ) : (
                 <>
-                  <Button
-                    size="sm"
-                    onClick={
-                      hasUnapprovedWebSources
-                        ? navigateToFirstWebSourced
-                        : handleApproveNotesOnly
-                    }
-                    disabled={
-                      !hasUnapprovedWebSources &&
-                      (isApprovingAll || readyNotesOnly.length === 0)
-                    }
-                    className={cn(
-                      "rounded-r-none",
-                      hasUnapprovedWebSources &&
-                        "bg-amber-500 hover:bg-amber-600",
-                    )}
-                  >
-                    {isApprovingAll ? (
-                      <Loader2 className="h-4 w-4 animate-spin mr-1" />
-                    ) : hasUnapprovedWebSources ? (
-                      <>
-                        <AlertTriangle className="h-4 w-4 mr-1" />
-                        Review Outside Sources ({unapprovedWebSourced.length})
-                      </>
-                    ) : (
-                      <>
-                        <CheckCheck className="h-4 w-4 mr-1" />
-                        Approve from Notes ({readyNotesOnly.length})
-                      </>
-                    )}
-                  </Button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        size="sm"
+                        onClick={
+                          hasUnapprovedWebSources
+                            ? navigateToFirstWebSourced
+                            : handleApproveNotesOnly
+                        }
+                        disabled={
+                          !hasUnapprovedWebSources &&
+                          (isApprovingAll || readyNotesOnly.length === 0)
+                        }
+                        className={cn(
+                          "rounded-r-none",
+                          hasUnapprovedWebSources &&
+                            "bg-amber-500 hover:bg-amber-600",
+                        )}
+                      >
+                        {isApprovingAll ? (
+                          <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                        ) : hasUnapprovedWebSources ? (
+                          <>
+                            <AlertTriangle className="h-4 w-4 mr-1" />
+                            Review Outside Sources ({unapprovedWebSourced.length})
+                          </>
+                        ) : (
+                          <>
+                            <CheckCheck className="h-4 w-4 mr-1" />
+                            Approve from Notes ({readyNotesOnly.length})
+                          </>
+                        )}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      {hasUnapprovedWebSources
+                        ? "Jump to web-sourced questions that need review"
+                        : "Approve all ready answers sourced from notes"}
+                    </TooltipContent>
+                  </Tooltip>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button
@@ -562,24 +571,38 @@ export function QuestionsReviewPanel({
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="min-w-[220px]">
-                      <DropdownMenuItem
-                        onClick={handleApproveNotesOnly}
-                        disabled={readyNotesOnly.length === 0}
-                        className="gap-2"
-                      >
-                        <CheckCheck className="h-4 w-4" />
-                        <span>
-                          Approve from Notes ({readyNotesOnly.length})
-                        </span>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={handleApproveAll}
-                        disabled={readyAll.length === 0}
-                        className="gap-2"
-                      >
-                        <CheckCheck className="h-4 w-4" />
-                        <span>Approve All incl. Web ({readyAll.length})</span>
-                      </DropdownMenuItem>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <DropdownMenuItem
+                            onClick={handleApproveNotesOnly}
+                            disabled={readyNotesOnly.length === 0}
+                            className="gap-2"
+                          >
+                            <CheckCheck className="h-4 w-4" />
+                            <span>
+                              Approve from Notes ({readyNotesOnly.length})
+                            </span>
+                          </DropdownMenuItem>
+                        </TooltipTrigger>
+                        <TooltipContent side="left">
+                          Approve all ready answers sourced from notes
+                        </TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <DropdownMenuItem
+                            onClick={handleApproveAll}
+                            disabled={readyAll.length === 0}
+                            className="gap-2"
+                          >
+                            <CheckCheck className="h-4 w-4" />
+                            <span>Approve All incl. Web ({readyAll.length})</span>
+                          </DropdownMenuItem>
+                        </TooltipTrigger>
+                        <TooltipContent side="left">
+                          Approve every ready answer, including web sources
+                        </TooltipContent>
+                      </Tooltip>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </>
