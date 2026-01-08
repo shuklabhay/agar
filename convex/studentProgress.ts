@@ -311,7 +311,16 @@ export const getSessionData = query({
           answerOptionsMCQ: q.answerOptionsMCQ,
         }))
         .sort((a, b) => a.extractionOrder - b.extractionOrder),
-      progress,
+      progress: progress.map((p) => ({
+        _id: p._id,
+        questionId: p.questionId,
+        status: p.status,
+        selectedAnswer: p.selectedAnswer,
+        submittedText: p.submittedText,
+        attempts: p.attempts,
+        advanceOnCorrect: p.advanceOnCorrect,
+        timeSpentMs: p.timeSpentMs,
+      })),
     };
   },
 });

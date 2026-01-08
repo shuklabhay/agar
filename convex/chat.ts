@@ -229,7 +229,21 @@ export const getChatHistory = query({
       }),
     );
 
-    return withUrls;
+    return withUrls.sort((a, b) => a.timestamp - b.timestamp);
+  },
+});
+
+// INTERNAL: Check if session has any messages (cheap existence check)
+export const sessionHasMessages = internalQuery({
+  args: {
+    sessionId: v.id("studentSessions"),
+  },
+  handler: async (ctx, args) => {
+    const firstMessage = await ctx.db
+      .query("chatMessages")
+      .withIndex("by_sessionId", (q) => q.eq("sessionId", args.sessionId))
+      .first();
+    return Boolean(firstMessage);
   },
 });
 
@@ -258,6 +272,7 @@ export const recordStudentUpload = internalMutation({
 export const getSessionChatHistory = query({
   args: {
     sessionId: v.id("studentSessions"),
+    includeAttachments: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     // Get all messages for this session using index, sorted by timestamp
@@ -265,6 +280,10 @@ export const getSessionChatHistory = query({
       .query("chatMessages")
       .withIndex("by_sessionId", (q) => q.eq("sessionId", args.sessionId))
       .collect();
+
+    if (!args.includeAttachments) {
+      return messages.sort((a, b) => a.timestamp - b.timestamp);
+    }
 
     const withUrls = await Promise.all(
       messages.map(async (m) => {
@@ -451,10 +470,12 @@ export const sendMessageToTutor = action({
     }
 
     // Only attach the source file on the very first chat turn for this session
-    const sessionChat = await ctx.runQuery(api.chat.getSessionChatHistory, {
-      sessionId: args.sessionId,
-    });
-    const hasSessionChat = sessionChat.length > 0;
+    const hasSessionChat = await ctx.runQuery(
+      internal.chat.sessionHasMessages,
+      {
+        sessionId: args.sessionId,
+      },
+    );
 
     const contextFile =
       !hasSessionChat &&

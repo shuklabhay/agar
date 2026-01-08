@@ -136,12 +136,26 @@ export const listQuestions = query({
     const classDoc = await ctx.db.get(assignment.classId);
     if (!classDoc || classDoc.teacherId !== userId) return [];
 
-    return await ctx.db
+    const questions = await ctx.db
       .query("questions")
       .withIndex("by_assignmentId", (q) =>
         q.eq("assignmentId", args.assignmentId),
       )
       .collect();
+
+    return questions
+      .map((q) => ({
+        _id: q._id,
+        questionNumber: q.questionNumber,
+        extractionOrder: q.extractionOrder,
+        questionText: q.questionText,
+        questionType: q.questionType,
+        answer: q.answer,
+        keyPoints: q.keyPoints,
+        source: q.source,
+        status: q.status,
+      }))
+      .sort((a, b) => a.extractionOrder - b.extractionOrder);
   },
 });
 

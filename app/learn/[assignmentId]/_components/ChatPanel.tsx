@@ -63,6 +63,16 @@ export function ChatPanel({
     url?: string;
   };
 
+  // Live chat data for current question
+  const chatHistory = useQuery(
+    api.chat.getSessionChatHistory,
+    sessionId ? { sessionId, includeAttachments: true } : "skip",
+  );
+  type ChatHistoryItem = NonNullable<typeof chatHistory>[number];
+  const [displayMessages, setDisplayMessages] = useState<ChatHistoryItem[]>(
+    [],
+  );
+
   const addFiles = (files: File[]) => {
     if (!files.length) return;
     setAttachedFiles((prev) => {
@@ -76,27 +86,31 @@ export function ChatPanel({
     return questions.find((q) => q._id === qId)?.questionNumber;
   };
 
-  // Get all chat history for the session (persists across questions)
-  const chatHistory = useQuery(
-    api.chat.getSessionChatHistory,
-    sessionId ? { sessionId } : "skip",
-  );
-
   const sendMessage = useAction(api.chat.sendMessageToTutor);
   const warmTutor = useAction(api.chat.warmTutorClient);
   const isInitialMount = useRef(true);
   const hasWarmedTutorClient = useRef(false);
 
+  // Sync live query results into local display list (resets on question change)
+  useEffect(() => {
+    setDisplayMessages(chatHistory ?? []);
+  }, [chatHistory, questionId]);
+
+  const lastChatQuestionId =
+    displayMessages.length > 0
+      ? displayMessages[displayMessages.length - 1]?.questionId
+      : null;
+
   // Scroll to bottom on new messages or question change (for divider visibility)
   useEffect(() => {
     const timer = setTimeout(() => {
       messagesEndRef.current?.scrollIntoView({
-        behavior: isInitialMount.current ? "instant" : "smooth",
+        behavior: "instant",
       });
       isInitialMount.current = false;
-    }, 150);
+    }, 50);
     return () => clearTimeout(timer);
-  }, [chatHistory, questionId]);
+  }, [displayMessages, questionId]);
 
   // Warm the tutor client on mount to reduce first-turn latency
   useEffect(() => {
@@ -190,8 +204,24 @@ export function ChatPanel({
     setIsSending(true);
     setRateLimitInfo(null);
 
+    const filesToSend = attachedFiles;
+    const optimisticId = `optimistic-${Date.now()}-${Math.random().toString(16).slice(2)}` as unknown as Id<"chatMessages">;
+    const optimisticMessage: ChatHistoryItem = {
+      _id: optimisticId,
+      _creationTime: Date.now(),
+      sessionId,
+      questionId,
+      role: "student" as const,
+      content: messageToSend,
+      timestamp: Date.now(),
+    };
+    let optimisticAdded = false;
+
     try {
-      const filesToSend = attachedFiles;
+      setDisplayMessages((prev) => {
+        optimisticAdded = true;
+        return [...prev, optimisticMessage];
+      });
 
       // Convert files to base64 for sending to LLM
       const fileData = await Promise.all(
@@ -221,11 +251,23 @@ export function ChatPanel({
         // Restore attachments for retry
         setAttachedFiles(filesToSend);
         setInput(rawInput);
+        // Remove optimistic bubble
+        if (optimisticAdded) {
+          setDisplayMessages((prev) =>
+            prev.filter((m) => m._id !== optimisticId),
+          );
+        }
         return;
       }
     } catch (error) {
       console.error("Failed to send message:", error);
       setInput(rawInput);
+      // Remove optimistic bubble on failure
+      if (optimisticAdded) {
+        setDisplayMessages((prev) =>
+          prev.filter((m) => m._id !== optimisticId),
+        );
+      }
     } finally {
       setIsSending(false);
       textareaRef.current?.focus();
@@ -302,10 +344,12 @@ export function ChatPanel({
         )}
         {/* Messages */}
         <div className="flex-1 overflow-y-auto p-4 pb-1.5 space-y-4">
-          {chatHistory?.map((msg, index) => {
-            const prevMsg = index > 0 ? chatHistory[index - 1] : null;
+          {displayMessages?.map((msg, index) => {
+            const prevMsg = index > 0 ? displayMessages[index - 1] : null;
             const nextMsg =
-              index < chatHistory.length - 1 ? chatHistory[index + 1] : null;
+              index < displayMessages.length - 1
+                ? displayMessages[index + 1]
+                : null;
             const showDivider =
               prevMsg && prevMsg.questionId !== msg.questionId;
             const questionNum = getQuestionNumber(msg.questionId);
@@ -313,7 +357,7 @@ export function ChatPanel({
             // Show Rio only on the last tutor message
             const isLastTutorMessage =
               msg.role === "tutor" &&
-              !chatHistory.slice(index + 1).some((m) => m.role === "tutor");
+              !displayMessages.slice(index + 1).some((m) => m.role === "tutor");
 
             // Check if this is the last message from this sender (next message is different role or doesn't exist)
             const isLastFromSender = !nextMsg || nextMsg.role !== msg.role;
@@ -370,12 +414,10 @@ export function ChatPanel({
             </div>
           )}
 
-          {/* Show divider for current question if no messages yet or different from last message */}
           {question &&
-            chatHistory &&
-            (chatHistory.length === 0 ||
-              chatHistory[chatHistory.length - 1]?.questionId !==
-                questionId) && (
+            displayMessages &&
+            lastChatQuestionId &&
+            lastChatQuestionId !== questionId && (
               <div className="flex items-center gap-3 py-2">
                 <div className="flex-1 h-px bg-border" />
                 <span className="text-xs text-muted-foreground font-medium px-2">
@@ -385,6 +427,7 @@ export function ChatPanel({
               </div>
             )}
 
+          {/* Show divider for current question if no messages yet or different from last message */}
           <div ref={messagesEndRef} />
         </div>
 

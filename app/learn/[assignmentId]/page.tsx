@@ -50,6 +50,9 @@ export default function LearnPage() {
   const [isLeaving, setIsLeaving] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
   const [hasShownCelebration, setHasShownCelebration] = useState(false);
+  const [showIdentityConfirm, setShowIdentityConfirm] = useState(false);
+  const [showStudentSwitchConfirm, setShowStudentSwitchConfirm] =
+    useState(false);
 
   // Question navigation
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -405,6 +408,7 @@ export default function LearnPage() {
       setSessionId(result.sessionId);
       setTeacherSessionId(null);
       setShowWelcome(false);
+      setShowIdentityConfirm(true);
     } catch (error) {
       console.error("Failed to start session:", error);
     } finally {
@@ -425,6 +429,7 @@ export default function LearnPage() {
       setSessionId(result.sessionId);
       setTeacherSessionId(null);
       setShowWelcome(false);
+      setShowIdentityConfirm(true);
     } catch (error) {
       console.error("Failed to resume session:", error);
     } finally {
@@ -449,6 +454,16 @@ export default function LearnPage() {
       setShowLeaveConfirm(false);
       router.push("/");
     }
+  };
+
+  const handleSwitchStudent = () => {
+    Cookies.remove(`${COOKIE_PREFIX}${assignmentId}`);
+    setSessionToken(null);
+    setSessionId(null);
+    setTeacherSessionId(null);
+    setShowWelcome(true);
+    setShowIdentityConfirm(false);
+    setShowStudentSwitchConfirm(false);
   };
 
   // Loading state
@@ -594,57 +609,107 @@ export default function LearnPage() {
           </div>
         )}
         {/* Header */}
-        <header className="border-b px-4 py-3 bg-background shrink-0">
-          <div className="max-w-7xl mx-auto space-y-2">
-            <div className="flex items-center gap-2">
-              <AlertDialog
-                open={showLeaveConfirm}
-                onOpenChange={setShowLeaveConfirm}
-              >
-                <AlertDialogTrigger asChild>
-                  <button
-                    type="button"
-                    onClick={() => setShowLeaveConfirm(true)}
-                    className="rounded-md hover:bg-muted transition-colors"
-                    aria-label="Back to landing"
-                  >
-                    <BookOpen className="h-5 w-5 text-primary" />
-                  </button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>
-                      Are you sure you want to leave?
-                    </AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Your session will pause and you&apos;ll be taken to the
-                      landing page.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel disabled={isLeaving}>
-                      Stay here
-                    </AlertDialogCancel>
-                    <AlertDialogAction
-                      onClick={handleLeavePage}
-                      disabled={isLeaving}
+        <header className="border-b px-4 py-2 bg-background shrink-0">
+          <div className="w-full grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <AlertDialog
+                  open={showLeaveConfirm}
+                  onOpenChange={setShowLeaveConfirm}
+                >
+                  <AlertDialogTrigger asChild>
+                    <button
+                      type="button"
+                      onClick={() => setShowLeaveConfirm(true)}
+                      className="rounded-md hover:bg-muted transition-colors"
+                      aria-label="Back to landing"
                     >
-                      {isLeaving ? "Leaving..." : "Leave page"}
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-              <h1 className="text-lg font-semibold">{assignment.name}</h1>
-              <span className="text-sm text-muted-foreground">
-                {assignment.className}
-              </span>
+                      <BookOpen className="h-5 w-5 text-primary" />
+                    </button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>
+                        Are you sure you want to leave?
+                      </AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Your session will pause and you'll be taken to the home
+                        page.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel disabled={isLeaving}>
+                        Stay here
+                      </AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={handleLeavePage}
+                        disabled={isLeaving}
+                      >
+                        {isLeaving ? "Leaving..." : "Leave page"}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+                <div className="flex items-baseline gap-2">
+                  <h1 className="text-lg font-semibold leading-none">
+                    {assignment.name}
+                  </h1>
+                  <span className="text-sm text-muted-foreground leading-none translate-y-[1px]">
+                    {assignment.className}
+                  </span>
+                </div>
+              </div>
+              <ProgressBar
+                questions={questions ?? []}
+                progress={progress ?? []}
+                currentIndex={currentQuestionIndex}
+                onQuestionClick={setCurrentQuestionIndex}
+              />
             </div>
-            <ProgressBar
-              questions={questions ?? []}
-              progress={progress ?? []}
-              currentIndex={currentQuestionIndex}
-              onQuestionClick={setCurrentQuestionIndex}
-            />
+
+            {!isTeacherView && activeSessionId && (
+              <div className="flex items-center">
+                <AlertDialog
+                  open={showStudentSwitchConfirm}
+                  onOpenChange={setShowStudentSwitchConfirm}
+                >
+                  <AlertDialogTrigger asChild>
+                    <button
+                      type="button"
+                      className="inline-flex flex-col items-end text-right text-sm leading-tight px-2 py-1 text-muted-foreground transition-colors whitespace-nowrap hover:text-primary"
+                    >
+                      <span className="text-sm font-semibold text-foreground leading-tight">
+                        Not {sessionData?.session?.name || "you"}?
+                      </span>
+                      <span className="text-primary text-xs leading-tight">
+                        Press here to switch
+                      </span>
+                    </button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>
+                        Switch to a different student?
+                      </AlertDialogTitle>
+                      <AlertDialogDescription>
+                        You&apos;ll return to the student selection screen and
+                        can choose the right name.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel
+                        onClick={() => setShowStudentSwitchConfirm(false)}
+                      >
+                        Stay here
+                      </AlertDialogCancel>
+                      <AlertDialogAction onClick={handleSwitchStudent}>
+                        Switch student
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
+            )}
           </div>
         </header>
 
@@ -702,6 +767,40 @@ export default function LearnPage() {
           totalQuestions={totalQuestions}
           onClose={() => setShowCelebration(false)}
         />
+      )}
+
+      {/* Identity confirmation before entering student view */}
+      {!isTeacherView && activeSessionId && (
+        <AlertDialog
+          open={showIdentityConfirm}
+          onOpenChange={setShowIdentityConfirm}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Is this you?</AlertDialogTitle>
+              <AlertDialogDescription>
+                You&apos;re about to continue as{" "}
+                <span className="font-semibold">
+                  {sessionData?.session?.name || "this student"}
+                </span>
+                . If that&apos;s not correct, go back and pick the right name.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel
+                onClick={() => {
+                  setShowIdentityConfirm(false);
+                  handleSwitchStudent();
+                }}
+              >
+                Not me
+              </AlertDialogCancel>
+              <AlertDialogAction onClick={() => setShowIdentityConfirm(false)}>
+                Continue
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       )}
     </>
   );
