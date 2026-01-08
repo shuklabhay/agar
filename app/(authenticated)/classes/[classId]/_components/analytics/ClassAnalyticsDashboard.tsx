@@ -468,7 +468,7 @@ export function ClassAnalyticsDashboard({
           {/* Metric Cards */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <MetricCard
-              title="Total Students"
+              title="Students"
               value={
                 isSingleSelected
                   ? (assignmentAnalytics?.totalStudents ?? 0)

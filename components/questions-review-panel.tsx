@@ -15,6 +15,11 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -989,82 +994,106 @@ export function QuestionsReviewPanel({
                     {!isPending && (
                       <div className="flex flex-wrap items-center gap-2 pt-2 border-t">
                         {!isSkipped && (
-                          <Button
-                            size="sm"
-                            onClick={handleApprove}
-                            disabled={isApproving || isApprovedQuestion}
-                            className="gap-1"
-                          >
-                            {isApproving ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : isApprovedQuestion ? (
-                              <>
-                                <Check className="h-4 w-4" />
-                                Approved
-                              </>
-                            ) : (
-                              <>
-                                <Check className="h-4 w-4" />
-                                Approve
-                              </>
-                            )}
-                          </Button>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                size="sm"
+                                onClick={handleApprove}
+                                disabled={isApproving || isApprovedQuestion}
+                                className="gap-1"
+                              >
+                                {isApproving ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : isApprovedQuestion ? (
+                                  <>
+                                    <Check className="h-4 w-4" />
+                                    Approved
+                                  </>
+                                ) : (
+                                  <>
+                                    <Check className="h-4 w-4" />
+                                    Approve
+                                  </>
+                                )}
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Approve this answer</TooltipContent>
+                          </Tooltip>
                         )}
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          onClick={handleReject}
-                          disabled={
-                            isRejecting || isSkipped || !isApprovedQuestion
-                          }
-                          className="gap-1"
-                        >
-                          {isRejecting ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : isSkipped ? (
-                            <>
-                              <XCircle className="h-4 w-4" />
-                              Rejected
-                            </>
-                          ) : (
-                            <>
-                              <XCircle className="h-4 w-4" />
-                              Reject
-                            </>
-                          )}
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => onEdit(selectedQuestion)}
-                        >
-                          <Pencil className="h-4 w-4" />
-                          Edit
-                        </Button>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={handleReject}
+                              disabled={
+                                isRejecting || isSkipped || !isApprovedQuestion
+                              }
+                              className="gap-1"
+                            >
+                              {isRejecting ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : isSkipped ? (
+                                <>
+                                  <XCircle className="h-4 w-4" />
+                                  Rejected
+                                </>
+                              ) : (
+                                <>
+                                  <XCircle className="h-4 w-4" />
+                                  Reject
+                                </>
+                              )}
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Reject or remove approval</TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => onEdit(selectedQuestion)}
+                            >
+                              <Pencil className="h-4 w-4" />
+                              Edit
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Edit the question and answer</TooltipContent>
+                        </Tooltip>
                         <Popover
                           open={changePopoverOpen}
                           onOpenChange={setChangePopoverOpen}
                         >
-                          <PopoverTrigger asChild>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              disabled={!!isQueuedForSelected}
-                            >
-                              {isCurrentRegenerating ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                              ) : (
-                                <RefreshCw className="h-4 w-4" />
-                              )}
-                              {isCurrentRegenerating
-                                ? "Regenerating..."
-                                : isQueuedForSelected
-                                  ? "Queued"
-                                  : isSkipped
-                                    ? "Generate"
-                                    : "Regenerate"}
-                            </Button>
-                          </PopoverTrigger>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <PopoverTrigger asChild>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  disabled={!!isQueuedForSelected}
+                                >
+                                  {isCurrentRegenerating ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : (
+                                    <RefreshCw className="h-4 w-4" />
+                                  )}
+                                  {isCurrentRegenerating
+                                    ? "Regenerating..."
+                                    : isQueuedForSelected
+                                      ? "Queued"
+                                      : isSkipped
+                                        ? "Generate"
+                                        : "Regenerate"}
+                                </Button>
+                              </PopoverTrigger>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              {isSkipped
+                                ? "Generate an answer for this question"
+                                : "Regenerate the answer with optional feedback"}
+                            </TooltipContent>
+                          </Tooltip>
                           <PopoverContent className="w-64" align="start">
                             <div className="space-y-3">
                               <p className="text-sm font-medium">
