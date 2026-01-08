@@ -83,7 +83,9 @@ export function ChatPanel({
   );
 
   const sendMessage = useAction(api.chat.sendMessageToTutor);
+  const warmTutor = useAction(api.chat.warmTutorClient);
   const isInitialMount = useRef(true);
+  const hasWarmedTutorClient = useRef(false);
 
   // Scroll to bottom on new messages or question change (for divider visibility)
   useEffect(() => {
@@ -95,6 +97,15 @@ export function ChatPanel({
     }, 150);
     return () => clearTimeout(timer);
   }, [chatHistory, questionId]);
+
+  // Warm the tutor client on mount to reduce first-turn latency
+  useEffect(() => {
+    if (!sessionId || !questionId || hasWarmedTutorClient.current) return;
+    hasWarmedTutorClient.current = true;
+    warmTutor({}).catch((err) =>
+      console.warn("Failed to warm tutor client", err),
+    );
+  }, [sessionId, questionId, warmTutor]);
 
   // Auto-resize textarea
   useEffect(() => {

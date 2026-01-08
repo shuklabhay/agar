@@ -14,6 +14,12 @@ function getClient(): GoogleGenAI {
   return new GoogleGenAI({ apiKey });
 }
 
+// Lightweight pre-initialization to avoid first-turn cold start
+export async function warmTutorClient() {
+  // Instantiates the client to prime any lazy initialization
+  getClient();
+}
+
 function detectMCQGuess(
   message: string,
   options?: string[],
@@ -111,7 +117,6 @@ const SYSTEM_INSTRUCTION = `<core_identity>
 
 <short_answer_questions>
 - Check for matching key ideas and non-ambiguous phrasing.
-- When the student gives a complete, correct short answer, immediately mark it correct without asking for submission confirmation.
 </short_answer_questions>
 
 <single_value_questions>

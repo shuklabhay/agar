@@ -382,6 +382,21 @@ export const getProgressForTutor = internalQuery({
   },
 });
 
+// PUBLIC: Warm up the tutor client to reduce first-turn latency
+export const warmTutorClient = action({
+  args: {},
+  handler: async () => {
+    try {
+      const { warmTutorClient: warm } = await import("./tutorLLM");
+      await warm();
+      return { warmed: true };
+    } catch (error) {
+      console.error("Failed to warm tutor client", error);
+      return { warmed: false };
+    }
+  },
+});
+
 // PUBLIC: Send message to tutor (action that calls LLM)
 export const sendMessageToTutor = action({
   args: {
