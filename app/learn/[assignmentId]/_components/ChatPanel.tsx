@@ -15,6 +15,7 @@ import {
 import { Send, Paperclip, X, FileText, Image as ImageIcon } from "lucide-react";
 import { ChatMessage } from "./ChatMessage";
 import { ChatQuestion } from "@/lib/types";
+import { cn } from "@/lib/utils";
 
 interface ChatPanelProps {
   sessionId: Id<"studentSessions"> | null;
@@ -330,7 +331,7 @@ export function ChatPanel({
   return (
     <>
       <div
-        className="h-full flex flex-col relative"
+        className="h-full flex flex-col relative min-h-0"
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
@@ -343,46 +344,60 @@ export function ChatPanel({
           </div>
         )}
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-4 pb-1.5 space-y-4">
-          {displayMessages?.map((msg, index) => {
-            const prevMsg = index > 0 ? displayMessages[index - 1] : null;
-            const nextMsg =
-              index < displayMessages.length - 1
-                ? displayMessages[index + 1]
-                : null;
-            const showDivider =
-              prevMsg && prevMsg.questionId !== msg.questionId;
-            const questionNum = getQuestionNumber(msg.questionId);
+        <div className="flex-1 overflow-y-auto px-4 pb-1.5 pt-2 min-h-0">
+          {chatHistory === undefined ? (
+            <div className="flex h-full items-center justify-center text-muted-foreground">
+              <div className="text-sm">Loading chat…</div>
+            </div>
+          ) : displayMessages.length === 0 ? (
+            <div className="flex h-full items-center justify-center text-muted-foreground text-sm text-center px-6">
+              Start the conversation for this question by sending a message or attaching a file.
+            </div>
+          ) : (
+            <div className="flex flex-col gap-4">
+              {displayMessages.map((msg, index) => {
+                const prevMsg = index > 0 ? displayMessages[index - 1] : null;
+                const nextMsg =
+                  index < displayMessages.length - 1
+                    ? displayMessages[index + 1]
+                    : null;
+                const showDivider =
+                  prevMsg && prevMsg.questionId !== msg.questionId;
+                const questionNum = getQuestionNumber(msg.questionId);
 
-            // Show Rio only on the last tutor message
-            const isLastTutorMessage =
-              msg.role === "tutor" &&
-              !displayMessages.slice(index + 1).some((m) => m.role === "tutor");
+                // Show Rio only on the last tutor message
+                const isLastTutorMessage =
+                  msg.role === "tutor" &&
+                  !displayMessages
+                    .slice(index + 1)
+                    .some((m) => m.role === "tutor");
 
-            // Check if this is the last message from this sender (next message is different role or doesn't exist)
-            const isLastFromSender = !nextMsg || nextMsg.role !== msg.role;
+                // Check if this is the last message from this sender (next message is different role or doesn't exist)
+                const isLastFromSender = !nextMsg || nextMsg.role !== msg.role;
 
-            return (
-              <div key={msg._id}>
-                {showDivider && (
-                  <div className="flex items-center gap-3 py-2">
-                    <div className="flex-1 h-px bg-border" />
-                    <span className="text-xs text-muted-foreground font-medium px-2">
-                      Question {questionNum}
-                    </span>
-                    <div className="flex-1 h-px bg-border" />
+                return (
+                  <div key={msg._id}>
+                    {showDivider && (
+                      <div className="flex items-center gap-3 py-2">
+                        <div className="flex-1 h-px bg-border" />
+                        <span className="text-xs text-muted-foreground font-medium px-2">
+                          Question {questionNum}
+                        </span>
+                        <div className="flex-1 h-px bg-border" />
+                      </div>
+                    )}
+                    <ChatMessage
+                      message={msg}
+                      showRio={isLastTutorMessage}
+                      isLastFromSender={isLastFromSender}
+                      isSending={isSending}
+                      onAttachmentClick={(att) => setPreviewAttachment(att)}
+                    />
                   </div>
-                )}
-                <ChatMessage
-                  message={msg}
-                  showRio={isLastTutorMessage}
-                  isLastFromSender={isLastFromSender}
-                  isSending={isSending}
-                  onAttachmentClick={(att) => setPreviewAttachment(att)}
-                />
-              </div>
-            );
-          })}
+                );
+              })}
+            </div>
+          )}
 
           {rateLimitInfo && (
             <div className="flex items-start gap-3 px-2">

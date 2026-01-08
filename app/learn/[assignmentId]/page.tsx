@@ -125,18 +125,22 @@ export default function LearnPage() {
   const questionPanelStyle = useMemo(
     () =>
       isMobile
-        ? { flexBasis: "55%" }
+        ? { flexBasis: "55%", flexGrow: 1, minWidth: 0 }
         : {
             flexBasis: `${leftPanelWidth}%`,
+            flexGrow: 0,
+            minWidth: 0,
           },
     [isMobile, leftPanelWidth],
   );
   const chatPanelStyle = useMemo(
     () =>
       isMobile
-        ? { flexBasis: "45%" }
+        ? { flexBasis: "45%", flexGrow: 1, minWidth: 0 }
         : {
             flexBasis: `${100 - leftPanelWidth}%`,
+            flexGrow: 0,
+            minWidth: 0,
           },
     [isMobile, leftPanelWidth],
   );
@@ -624,7 +628,7 @@ export default function LearnPage() {
   // Main learning interface
   return (
     <>
-      <div className="h-screen flex flex-col bg-background">
+      <div className="h-screen w-full flex flex-col bg-background overflow-x-hidden">
         {isTeacherView && (
           <div className="bg-amber-100 border-b border-amber-200 text-amber-900 px-4 py-2">
             <div className="max-w-7xl mx-auto flex items-center justify-center gap-2 text-sm font-medium text-center">
@@ -744,11 +748,11 @@ export default function LearnPage() {
         {/* Main content - split panel */}
         <main
           ref={isMobile ? undefined : containerRef}
-          className="flex-1 flex overflow-hidden flex-col md:flex-row"
+          className="flex-1 w-full flex overflow-hidden flex-col md:flex-row min-h-0"
         >
           {/* Top Panel (mobile) / Left Panel (desktop) - Question */}
           <div
-            className="overflow-y-auto bg-background flex-shrink-0 w-full"
+            className="overflow-y-auto bg-background flex-shrink-0 w-full min-h-0"
             ref={questionScrollRef}
             style={questionPanelStyle}
           >
@@ -780,7 +784,7 @@ export default function LearnPage() {
 
           {/* Bottom Panel (mobile) / Right Panel (desktop) - Chat */}
           <div
-            className="overflow-hidden bg-background flex-shrink-0 flex w-full"
+            className="overflow-hidden bg-background flex-shrink-0 flex w-full min-h-0"
             style={chatPanelStyle}
           >
             <ChatPanel

@@ -150,6 +150,7 @@ export const listQuestions = query({
         extractionOrder: q.extractionOrder,
         questionText: q.questionText,
         questionType: q.questionType,
+        answerOptionsMCQ: q.answerOptionsMCQ,
         answer: q.answer,
         keyPoints: q.keyPoints,
         source: q.source,
