@@ -35,7 +35,7 @@ export default function Home() {
           AI-Native Learning Platform
         </p>
         <h1 className="text-4xl sm:text-5xl font-bold tracking-tight max-w-3xl">
-          Classroom guidance that actually follows the curriculum
+          Understand, don&apos;t answer.
         </h1>
         <p className="mt-6 max-w-xl text-lg text-muted-foreground">
           Teachers upload their assignments and notes. Students get AI-powered
