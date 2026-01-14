@@ -98,7 +98,7 @@ export default function Home() {
                 <h3 className="font-medium">AI guides are generated</h3>
                 <p className="text-muted-foreground mt-1">
                   We create assignment-specific AI assistance grounded in your
-                  actual course content—not generic internet knowledge.
+                  actual course content.
                 </p>
               </div>
             </div>
@@ -109,8 +109,8 @@ export default function Home() {
               <div>
                 <h3 className="font-medium">Students learn with guardrails</h3>
                 <p className="text-muted-foreground mt-1">
-                  Students get help that guides them to understanding—not
-                  answers handed on a plate. Real learning, real accountability.
+                  Students get help that guides them to understanding,
+                  facilitating real learning, real accountability.
                 </p>
               </div>
             </div>
