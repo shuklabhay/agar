@@ -29,10 +29,9 @@ export default function Home() {
 
   return (
     <div className="min-h-screen">
-      {/* Hero */}
       <section className="flex flex-col items-center justify-center px-4 pt-24 pb-16 text-center">
         <p className="mb-4 text-sm font-medium text-muted-foreground uppercase tracking-wide">
-          AI-Native Learning Platform
+          Agar
         </p>
         <h1 className="text-4xl sm:text-5xl font-bold tracking-tight max-w-3xl">
           Understand, don&apos;t answer.
@@ -203,9 +202,8 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Footer */}
       <footer className="px-4 py-8 border-t text-center text-sm text-muted-foreground">
-        <p>Agar — AI-native learning, done right.</p>
+        <p>Agar | Understand, don't answer.</p>
       </footer>
     </div>
   );
