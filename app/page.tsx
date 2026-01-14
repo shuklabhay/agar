@@ -71,10 +71,6 @@ export default function Home() {
               students are actually learning. The teacher-student connection
               breaks down.
             </p>
-            <p>
-              Test scores are stagnating. Students aren&apos;t
-              learning—they&apos;re just getting answers.
-            </p>
           </div>
         </div>
       </section>
