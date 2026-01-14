@@ -54,7 +54,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* The Problem */}
       <section className="px-4 py-16 border-t">
         <div className="max-w-3xl mx-auto">
           <h2 className="text-2xl font-semibold mb-6">The Problem</h2>
@@ -75,7 +74,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* How It Works */}
       <section className="px-4 py-16 border-t bg-muted/30">
         <div className="max-w-3xl mx-auto">
           <h2 className="text-2xl font-semibold mb-8">How Agar Works</h2>
