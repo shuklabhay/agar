@@ -95,12 +95,14 @@ export const recordTimeSpent = mutation({
 
     if (!progress || !progress.lastViewedAt) return;
 
+    const MAX_IDLE_MS = 5 * 60 * 1000; // 5 minutes cap for idle accumulation
     const now = Date.now();
     const timeOnThisView = now - progress.lastViewedAt;
+    const effectiveTime = Math.max(0, Math.min(timeOnThisView, MAX_IDLE_MS));
     const totalTime = (progress.timeSpentMs ?? 0) + timeOnThisView;
 
     await ctx.db.patch(progress._id, {
-      timeSpentMs: totalTime,
+      timeSpentMs: (progress.timeSpentMs ?? 0) + effectiveTime,
       lastViewedAt: undefined, // Clear until they view again
     });
   },
@@ -120,9 +122,10 @@ export const restartTimeTracking = mutation({
       )
       .first();
 
-    if (progress && !progress.lastViewedAt) {
-      await ctx.db.patch(progress._id, { lastViewedAt: Date.now() });
-    }
+    if (!progress) return;
+
+    // When user returns/focuses, start a fresh timing window without adding idle time
+    await ctx.db.patch(progress._id, { lastViewedAt: Date.now() });
   },
 });
 
