@@ -139,8 +139,9 @@ export default function LearnPage() {
         ? { flexBasis: "45%", flexGrow: 1, minWidth: 0 }
         : {
             flexBasis: `${100 - leftPanelWidth}%`,
-            flexGrow: 0,
+            flexGrow: 1,
             minWidth: 0,
+            maxWidth: "100%",
           },
     [isMobile, leftPanelWidth],
   );
@@ -784,7 +785,7 @@ export default function LearnPage() {
 
           {/* Bottom Panel (mobile) / Right Panel (desktop) - Chat */}
           <div
-            className="overflow-hidden bg-background flex-shrink-0 flex w-full min-h-0"
+            className="overflow-hidden bg-background flex flex-1 flex-shrink-0 w-full min-h-0 min-w-0"
             style={chatPanelStyle}
           >
             <ChatPanel

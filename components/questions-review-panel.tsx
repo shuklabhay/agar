@@ -281,6 +281,24 @@ export function QuestionsReviewPanel({
     return enqueuePosition;
   };
 
+  const handleQuickRegenerate = () => {
+    if (!selectedQuestion) return;
+    const position = enqueueGeneration(selectedQuestion._id);
+    if (position === -1) {
+      toast("Already regenerating this question");
+      return;
+    }
+    if (position > 1 || isRegenerating || currentRegenId) {
+      toast.success(`Queued (#${position})`);
+      return;
+    }
+    toast.success(
+      selectedStatus === "pending" || isSkipped
+        ? "Starting generation"
+        : "Regenerating",
+    );
+  };
+
   const handleRequestChanges = async () => {
     if (!selectedQuestion) return;
     setChangePopoverOpen(false);
@@ -789,6 +807,41 @@ export function QuestionsReviewPanel({
 
                       {/* Right side: Approve/Undo + Delete */}
                       <div className="flex items-center gap-1">
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 text-xs"
+                              onClick={handleQuickRegenerate}
+                              disabled={
+                                isQueuedForSelected ||
+                                isSelectedProcessing ||
+                                (selectedStatus === "pending" && isProcessing)
+                              }
+                            >
+                              {isSelectedProcessing ? (
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                              ) : (
+                                <RefreshCw className="h-3 w-3" />
+                              )}
+                              <span className="ml-1">
+                                {isSelectedProcessing
+                                  ? "Generating..."
+                                  : isQueuedForSelected
+                                    ? "Queued"
+                                    : isSkipped || selectedStatus === "pending"
+                                      ? "Generate"
+                                      : "Regenerate"}
+                              </span>
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            {isSkipped || selectedStatus === "pending"
+                              ? "Generate an answer for this question"
+                              : "Regenerate the answer"}
+                          </TooltipContent>
+                        </Tooltip>
                         {!isPending &&
                           !isSkipped &&
                           (isApprovedQuestion ? (

@@ -331,7 +331,7 @@ export function ChatPanel({
   return (
     <>
       <div
-        className="h-full flex flex-col relative min-h-0"
+        className="h-full flex flex-col relative min-h-0 min-w-0 flex-1 w-full"
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
@@ -344,7 +344,7 @@ export function ChatPanel({
           </div>
         )}
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto px-4 pb-1.5 pt-2 min-h-0">
+        <div className="flex-1 overflow-y-auto px-4 pb-1.5 pt-2 min-h-0 min-w-0">
           {chatHistory === undefined ? (
             <div className="flex h-full items-center justify-center text-muted-foreground">
               <div className="text-sm">Loading chat…</div>
