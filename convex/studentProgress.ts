@@ -126,6 +126,31 @@ export const restartTimeTracking = mutation({
   },
 });
 
+// PUBLIC: Save draft text for long-form answers (without grading)
+export const saveDraftAnswer = mutation({
+  args: {
+    sessionId: v.id("studentSessions"),
+    questionId: v.id("questions"),
+    draftText: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const progress = await ctx.db
+      .query("studentProgress")
+      .withIndex("by_sessionId_questionId", (q) =>
+        q.eq("sessionId", args.sessionId).eq("questionId", args.questionId),
+      )
+      .first();
+
+    if (!progress) return;
+    if (progress.status === "correct") return;
+
+    await ctx.db.patch(progress._id, {
+      submittedText: args.draftText,
+      lastViewedAt: progress.lastViewedAt ?? Date.now(),
+    });
+  },
+});
+
 // PUBLIC: Submit answer for MCQ or single number (direct comparison)
 export const submitDirectAnswer = mutation({
   args: {

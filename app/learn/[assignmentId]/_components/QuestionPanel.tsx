@@ -44,6 +44,7 @@ export function QuestionPanel({
   const initProgress = useMutation(api.studentProgress.initializeProgress);
   const markInProgress = useMutation(api.studentProgress.markInProgress);
   const sendMessageToTutor = useAction(api.chat.sendMessageToTutor);
+  const saveDraftAnswer = useMutation(api.studentProgress.saveDraftAnswer);
   const questionId = question?._id;
   const questionType = question?.questionType;
 
@@ -74,9 +75,11 @@ export function QuestionPanel({
       if (questionType === "multiple_choice") {
         setSelectedOption(progress?.selectedAnswer ?? null);
         setTextAnswer("");
+        lastSavedDraft.current = "";
       } else {
         setSelectedOption(null);
         setTextAnswer(progress?.submittedText ?? "");
+        lastSavedDraft.current = progress?.submittedText ?? "";
       }
     }
   }, [
@@ -115,6 +118,55 @@ export function QuestionPanel({
       setSelectedOption(progress.selectedAnswer);
     }
   }, [progress?.status, progress?.selectedAnswer, questionType]);
+
+  // Persist draft answers for long-form questions
+  const draftSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastSavedDraft = useRef<string>("");
+
+  const knownCompleted = questionId
+    ? completedQuestions.has(questionId)
+    : false;
+  const isCorrect =
+    knownCompleted ||
+    progress?.status === "correct" ||
+    (questionId ? correctQuestions.has(questionId) : false);
+
+  const isIncorrect = !isCorrect && progress?.status === "incorrect";
+  const showSubmit = !isCorrect;
+
+  useEffect(() => {
+    if (
+      !questionId ||
+      !sessionId ||
+      questionType === "multiple_choice" ||
+      isCorrect
+    ) {
+      lastSavedDraft.current = textAnswer;
+      return;
+    }
+
+    if (draftSaveTimer.current) {
+      clearTimeout(draftSaveTimer.current);
+    }
+
+    draftSaveTimer.current = setTimeout(() => {
+      if (textAnswer === lastSavedDraft.current) return;
+      saveDraftAnswer({
+        sessionId,
+        questionId: questionId as Id<"questions">,
+        draftText: textAnswer,
+      }).catch((err) => {
+        console.error("Failed to save draft answer:", err);
+      });
+      lastSavedDraft.current = textAnswer;
+    }, 500);
+
+    return () => {
+      if (draftSaveTimer.current) {
+        clearTimeout(draftSaveTimer.current);
+      }
+    };
+  }, [isCorrect, questionId, questionType, saveDraftAnswer, sessionId, textAnswer]);
 
   // Mark as in progress when user starts interacting
   const handleInteraction = () => {
@@ -203,15 +255,6 @@ export function QuestionPanel({
     );
   }
 
-  const knownCompleted = questionId
-    ? completedQuestions.has(questionId)
-    : false;
-  const isCorrect =
-    knownCompleted ||
-    progress?.status === "correct" ||
-    (questionId ? correctQuestions.has(questionId) : false);
-  const isIncorrect = !isCorrect && progress?.status === "incorrect";
-  const showSubmit = !isCorrect;
   return (
     <div className="h-full flex flex-col">
       {/* Scrollable content area */}

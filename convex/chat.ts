@@ -612,8 +612,7 @@ export const sendMessageToTutor = action({
       !progressUpdated &&
       question.questionType === "multiple_choice" &&
       progress &&
-      parsedSelectedOption &&
-      (progress.attempts ?? 0) === 0
+      parsedSelectedOption
     ) {
       const correctLetters = deriveCorrectLetters(
         question.answer,

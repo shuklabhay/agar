@@ -42,7 +42,7 @@ const TUTOR_TOOLS: FunctionDeclaration[] = [
   {
     name: "evaluate_response",
     description:
-      "Evaluate the student's final answer. Always include isCorrect. For MCQ, include detectedAnswer letter to log/gray it out.",
+      "Evaluate the student's final answer. Always include isCorrect. For MCQ, include detectedAnswer letter to log it.",
     parameters: {
       type: Type.OBJECT,
       properties: {
@@ -110,10 +110,10 @@ const SYSTEM_INSTRUCTION = `<core_identity>
 <free_response_questions>
 - Help the user first form a clear thesis, then scaffold supporting evidence, and finally write the essay out.
 - The provided "answer" is a guide, not a strict requirement.
-- Encourage the user to write specific, nuanced, efficient arguments. 
-- Don't be overly pedantic scoring response -- a 10th or 11th grade knowledge level is enough. Once the main idea and key support points are present with no major errors, treat it as acceptable and ask if they want to submit or tweak a detail instead of pushing more revisions.
-- DO NOT GRADE ROUGH DRAFTS/MARK THEM AS COMPLETE: If the response is clearly incomplete, help them add what is missing. If it is already coherent and covers the key points, you may grade it without waiting for explicit permission.
-- An essay should only be marked as 'correct' when the essay is structurally complete (clear beginning/middle/end), contains little to no logical flaws or gramatical errors, fully addresses the prompt, contains minimal 'fluff' or redundancy, and meets the critieria in REQUIRED_METHODS (when criteria is present). If any of these are not met, inform the user about what they need to revise.
+- Encourage the user to write specific, nuanced, efficient arguments.
+- If the student says their essay is “good enough” / wants to submit / wants to move on, honor that request: call evaluate_response. If the essay is coherent and addresses the prompt without major gaps, mark it correct and confirm; keep any tweak suggestions optional and brief.
+- DO NOT mark rough drafts as complete. If it’s missing structure or key parts, say what’s missing and help them add it.
+- To mark a free response as correct, it should be coherent, on-prompt, and free of major logical/accuracy errors. Small polish issues (tightening prose, minor nuance) should not block marking it correct. Even if improvement is possible, allow submission once it meets those bars.
 </free_response_questions>
 
 <short_answer_questions>
@@ -126,10 +126,11 @@ const SYSTEM_INSTRUCTION = `<core_identity>
 </single_value_questions>
 
 <tools_and_logging>
-- Always call \`evaluate_response\` whenever the student gives a clear, gradable answer (letter, option text, or a committed short answer), even if they don’t explicitly ask for grading.
-- Do NOT call \`evaluate_response\` when the student only asks for reasoning, explanation, or hints.
-- Include isCorrect, missingPoints, and detectedAnswer (letter or short text) in every tool call.
+- ALWAYS call \`evaluate_response\` whenever the student gives ANY clear answer (letter, option text, or a committed short/free response), even if they don’t explicitly ask for grading. This is mandatory.
+- The ONLY time you skip the tool is when the student is purely asking for reasoning/explanation without supplying an answer.
+- Every tool call must include: isCorrect, missingPoints, and detectedAnswer (letter or concise text).
 - Do not ask for submission confirmation once an answer is complete; just mark it correct/incorrect and explain briefly.
+- If the student changes their answer in the same turn, grade the final choice only.
 </tools_and_logging>`;
 
 export async function callTutorLLM(input: TutorInput): Promise<TutorResponse> {
@@ -183,7 +184,7 @@ ${input.question.additionalInstructionsForWork ? `REQUIRED METHODS: Student must
       role: "user" as const,
       parts: [
         {
-          text: `${questionContext}\n\nStudent says: ${input.studentMessage}\n\nReminder: if the student has supplied a clear answer (letter, option text, or concise claim), you must call evaluate_response now with isCorrect, missingPoints, detectedAnswer.`,
+          text: `${questionContext}\n\nStudent says: ${input.studentMessage}`,
         },
         ...fileParts,
       ],
