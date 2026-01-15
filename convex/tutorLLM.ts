@@ -126,9 +126,9 @@ const SYSTEM_INSTRUCTION = `<core_identity>
 </single_value_questions>
 
 <tools_and_logging>
-- Always \`evaluate_response\` when ANY clear, gradable answer is provided, even if they didn't explicitly ask you to grade. Call this regardless of correct-ness.
-- Do NOT call \`evaluate_response\` when the student is just asking for reasoning, explanation, or hints.
-- Whenever you do call the tool, include isCorrect, missingPoints, detectedAnswer.
+- Always call \`evaluate_response\` whenever the student gives a clear, gradable answer (letter, option text, or a committed short answer), even if they don’t explicitly ask for grading.
+- Do NOT call \`evaluate_response\` when the student only asks for reasoning, explanation, or hints.
+- Include isCorrect, missingPoints, and detectedAnswer (letter or short text) in every tool call.
 - Do not ask for submission confirmation once an answer is complete; just mark it correct/incorrect and explain briefly.
 </tools_and_logging>`;
 
@@ -182,7 +182,9 @@ ${input.question.additionalInstructionsForWork ? `REQUIRED METHODS: Student must
     {
       role: "user" as const,
       parts: [
-        { text: `${questionContext}\n\nStudent says: ${input.studentMessage}` },
+        {
+          text: `${questionContext}\n\nStudent says: ${input.studentMessage}\n\nReminder: if the student has supplied a clear answer (letter, option text, or concise claim), you must call evaluate_response now with isCorrect, missingPoints, detectedAnswer.`,
+        },
         ...fileParts,
       ],
     },

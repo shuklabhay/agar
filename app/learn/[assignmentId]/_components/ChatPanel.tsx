@@ -162,6 +162,8 @@ export function ChatPanel({
     if (hasFiles) {
       e.preventDefault();
       setIsDraggingOver(true);
+    } else {
+      setIsDraggingOver(false);
     }
   };
 
@@ -169,6 +171,19 @@ export function ChatPanel({
     e.preventDefault();
     setIsDraggingOver(false);
   };
+
+  // Ensure drag overlay clears even if the drag leaves the window or is canceled
+  useEffect(() => {
+    const clearDrag = () => setIsDraggingOver(false);
+    window.addEventListener("dragend", clearDrag);
+    window.addEventListener("drop", clearDrag);
+    window.addEventListener("dragleave", clearDrag);
+    return () => {
+      window.removeEventListener("dragend", clearDrag);
+      window.removeEventListener("drop", clearDrag);
+      window.removeEventListener("dragleave", clearDrag);
+    };
+  }, []);
 
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
