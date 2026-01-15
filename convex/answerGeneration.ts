@@ -21,7 +21,10 @@ function formatError(error: unknown): string {
 }
 
 export const generateAnswers = action({
-  args: { assignmentId: v.id("assignments") },
+  args: {
+    assignmentId: v.id("assignments"),
+    allowResume: v.optional(v.boolean()),
+  },
   handler: async (
     ctx,
     args,
@@ -33,11 +36,18 @@ export const generateAnswers = action({
           assignmentId: args.assignmentId,
         },
       );
-      if (currentStatus?.status === "error") {
+      if (currentStatus?.status === "error" && !args.allowResume) {
         return {
           success: false,
           error: currentStatus.error ?? "Processing stopped",
         };
+      }
+      if (currentStatus?.status === "error" && args.allowResume) {
+        await ctx.runMutation(internal.questions.updateAssignmentStatus, {
+          assignmentId: args.assignmentId,
+          status: "pending",
+          error: undefined,
+        });
       }
 
       // Get pending questions
@@ -47,6 +57,11 @@ export const generateAnswers = action({
       );
 
       if (questions.length === 0) {
+        await ctx.runMutation(internal.questions.updateAssignmentStatus, {
+          assignmentId: args.assignmentId,
+          status: "ready",
+          error: undefined,
+        });
         return { success: true, processed: 0 };
       }
 

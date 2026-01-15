@@ -1184,11 +1184,15 @@ function ReviewAssignmentView({
 }) {
   const [copied, setCopied] = useState(false);
   const [isRetrying, setIsRetrying] = useState(false);
+  const [isResuming, setIsResuming] = useState(false);
   const [isStopping, setIsStopping] = useState(false);
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [showStopConfirm, setShowStopConfirm] = useState(false);
   const [showRegenConfirm, setShowRegenConfirm] = useState(false);
   const processAssignment = useAction(api.processAssignment.processAssignment);
+  const resumePendingAnswers = useAction(
+    api.answerGeneration.generateAnswers,
+  );
   const stopProcessing = useMutation(api.assignments.stopProcessing);
   const [editingQuestion, setEditingQuestion] = useState<{
     _id: Id<"questions">;
@@ -1259,6 +1263,31 @@ function ReviewAssignmentView({
       setShowStopConfirm(false);
     }
   }, [assignmentId, stopProcessing]);
+
+  const handleResumePending = useCallback(async () => {
+    setIsResuming(true);
+    try {
+      const result = await resumePendingAnswers({
+        assignmentId,
+        allowResume: true,
+      });
+      if (result.success) {
+        const processedCount = result.processed ?? 0;
+        toast.success(
+          processedCount > 0
+            ? `Resumed ${processedCount} pending question${processedCount === 1 ? "" : "s"}`
+            : "No pending questions to resume",
+        );
+      } else {
+        toast.error(result.error || "Resume failed");
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to resume generation");
+    } finally {
+      setIsResuming(false);
+    }
+  }, [assignmentId, resumePendingAnswers]);
 
   const handleRegenerateAll = useCallback(async () => {
     setIsRegenerating(true);
@@ -1499,38 +1528,58 @@ function ReviewAssignmentView({
                       "An error occurred while processing the assignment."}
                   </p>
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={isRetrying}
-                  onClick={async () => {
-                    setIsRetrying(true);
-                    try {
-                      const result = await processAssignment({ assignmentId });
-                      if (result.success) {
-                        toast.success(
-                          `Processed ${result.questionsExtracted} questions`,
-                        );
-                      } else {
-                        toast.error(result.error || "Processing failed");
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    disabled={isResuming || isRetrying}
+                    onClick={handleResumePending}
+                  >
+                    {isResuming ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                        Resuming...
+                      </>
+                    ) : (
+                      <>
+                        <RefreshCw className="h-4 w-4 mr-1" />
+                        Resume pending
+                      </>
+                    )}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={isRetrying || isResuming}
+                    onClick={async () => {
+                      setIsRetrying(true);
+                      try {
+                        const result = await processAssignment({ assignmentId });
+                        if (result.success) {
+                          toast.success(
+                            `Processed ${result.questionsExtracted} questions`,
+                          );
+                        } else {
+                          toast.error(result.error || "Processing failed");
+                        }
+                      } catch (error) {
+                        console.error(error);
+                        toast.error("Failed to retry processing");
+                      } finally {
+                        setIsRetrying(false);
                       }
-                    } catch (error) {
-                      console.error(error);
-                      toast.error("Failed to retry processing");
-                    } finally {
-                      setIsRetrying(false);
-                    }
-                  }}
-                >
-                  {isRetrying ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin mr-1" />
-                      Retrying...
-                    </>
-                  ) : (
-                    "Retry"
-                  )}
-                </Button>
+                    }}
+                  >
+                    {isRetrying ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                        Retrying...
+                      </>
+                    ) : (
+                      "Retry"
+                    )}
+                  </Button>
+                </div>
               </div>
             </CardContent>
           </Card>

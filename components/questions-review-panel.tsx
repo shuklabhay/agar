@@ -114,15 +114,11 @@ export function QuestionsReviewPanel({
   );
   const skippedCount = skippedQuestions.length;
   // Questions currently being processed
-  const processingQuestions = sortedQuestions.filter(
-    (q) =>
-      (q.status === "pending" || q.status === "processing") &&
-      q.questionType !== "skipped",
-  );
+  const processingQuestions = sortedQuestions.filter((q) => {
+    if (q.questionType === "skipped") return false;
+    return q.status === "pending" || q.status === "processing";
+  });
   const processingCount = processingQuestions.length;
-  const currentProcessingId =
-    isProcessing &&
-    (sortedQuestions.find((q) => q.status === "processing")?._id || null);
   // Exclude skipped from completed questions count
   const completedQuestions = sortedQuestions.filter(
     (q) =>
@@ -146,17 +142,11 @@ export function QuestionsReviewPanel({
   ).length;
 
   const getQuestionStatus = (question: ReviewQuestion) => {
-    const status =
-      !isProcessing && question.status === "processing"
-        ? "ready"
-        : question.status;
+    const status = question.status;
 
     if (question.questionType === "skipped") return "skipped";
     if (status === "approved") return "approved";
-    if (status === "pending" || status === "processing") {
-      // If nothing is processing globally, treat lingering processing as ready
-      return isProcessing ? status : "ready";
-    }
+    if (status === "pending" || status === "processing") return status;
     if (question.source && Array.isArray(question.source))
       return "needs_review";
     return "ready";
@@ -271,32 +261,47 @@ export function QuestionsReviewPanel({
     }
   };
 
+  const enqueueGeneration = (
+    questionId: Id<"questions">,
+    feedback?: string,
+  ): number => {
+    let enqueuePosition = 0;
+    setRegenQueue((prev) => {
+      if (
+        prev.some((item) => item.questionId === questionId) ||
+        currentRegenId === questionId
+      ) {
+        enqueuePosition = -1;
+        return prev;
+      }
+      const next = [...prev, { questionId, feedback }];
+      enqueuePosition = next.length;
+      return next;
+    });
+    return enqueuePosition;
+  };
+
   const handleRequestChanges = async () => {
     if (!selectedQuestion) return;
     setChangePopoverOpen(false);
     const feedback = changeRequest.trim() || undefined;
     setChangeRequest("");
 
-    let enqueuePosition = 0;
-    setRegenQueue((prev) => {
-      if (
-        prev.some((item) => item.questionId === selectedQuestion._id) ||
-        currentRegenId === selectedQuestion._id
-      ) {
-        enqueuePosition = -1;
-        return prev;
-      }
-      const next = [...prev, { questionId: selectedQuestion._id, feedback }];
-      enqueuePosition = next.length;
-      return next;
-    });
+    const enqueuePosition = enqueueGeneration(selectedQuestion._id, feedback);
 
     if (enqueuePosition === -1) {
       toast("Already regenerating this question");
     } else if (enqueuePosition > 1 || isRegenerating || currentRegenId) {
       toast.success(`Queued regeneration (#${enqueuePosition})`);
+    } else {
+      toast.success(
+        selectedStatus === "pending" || isSkipped
+          ? "Starting generation"
+          : "Starting regeneration",
+      );
     }
   };
+
 
   // Process queued regenerations sequentially
   useEffect(() => {
@@ -455,10 +460,11 @@ export function QuestionsReviewPanel({
       rowClass: "bg-red-100/80 dark:bg-red-900/30",
     },
     processing: {
-      label: "Processing",
+      label: "Generating",
       badgeClass:
-        "bg-slate-300 text-slate-900 border border-slate-500 dark:bg-slate-800/60 dark:text-slate-100 dark:border-slate-700",
-      rowClass: "bg-slate-200/80 dark:bg-slate-800/40",
+        "bg-emerald-100 text-emerald-800 border border-emerald-400 dark:bg-emerald-900/40 dark:text-emerald-100 dark:border-emerald-700",
+      rowClass:
+        "bg-emerald-50/80 dark:bg-emerald-900/30 border border-emerald-200/70 dark:border-emerald-800/60",
     },
     ready: {
       label: "Answer ready",
@@ -494,8 +500,8 @@ export function QuestionsReviewPanel({
   }
 
   const selectedStatus =
-    !isProcessing && selectedQuestion?.status === "processing"
-      ? "ready"
+    selectedQuestion?.status === "processing"
+      ? "processing"
       : selectedQuestion?.status;
   const isPending =
     selectedStatus === "pending" || selectedStatus === "processing";
@@ -509,6 +515,8 @@ export function QuestionsReviewPanel({
     ? isCurrentRegenerating ||
       regenQueue.some((item) => item.questionId === selectedQuestion._id)
     : false;
+  const isSelectedProcessing =
+    selectedQuestion?.status === "processing" || isCurrentRegenerating;
 
   return (
     <div className="space-y-0.5 min-w-0 w-full max-w-full overflow-hidden">
@@ -666,10 +674,12 @@ export function QuestionsReviewPanel({
                     const status = getQuestionStatus(question);
                     const isSelected = question._id === selectedQuestionId;
                     const statusStyle = statusStyles[status];
-                    const isActiveProcessing =
-                      isProcessing &&
-                      question.status === "processing" &&
-                      currentProcessingId === question._id;
+                    const isActiveProcessing = question.status === "processing";
+                    const highlightClass = isActiveProcessing
+                      ? "ring-2 ring-emerald-500 ring-inset"
+                      : isSelected
+                        ? "ring-2 ring-inset ring-black/50 dark:ring-white/60"
+                        : "";
                     return (
                       <div
                         key={question._id}
@@ -677,10 +687,9 @@ export function QuestionsReviewPanel({
                         className={cn(
                           "cursor-pointer transition-colors flex items-center justify-between px-3 py-2 rounded-none first:rounded-tl-xl last:rounded-bl-xl",
                           statusStyle?.rowClass,
-                          isSelected &&
-                            "ring-2 ring-inset ring-black/50 dark:ring-white/60",
+                          highlightClass,
                           isActiveProcessing &&
-                            "ring-2 ring-inset ring-primary/60 bg-primary/5 dark:bg-primary/10",
+                            "bg-emerald-50/80 dark:bg-emerald-950/30",
                         )}
                       >
                         <div className="flex items-center gap-2 min-w-0">
@@ -740,7 +749,13 @@ export function QuestionsReviewPanel({
             >
               {selectedQuestion ? (
                 <ScrollArea className="h-full [&>div>div]:!block">
-                  <div className="p-4 space-y-4 max-w-full overflow-hidden">
+                  <div
+                    className={cn(
+                      "p-4 space-y-4 max-w-full overflow-hidden",
+                      isSelectedProcessing &&
+                        "ring-2 ring-emerald-500 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/20",
+                    )}
+                  >
                     {/* Question Header with Delete icon top right */}
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex-1">
@@ -1066,141 +1081,157 @@ export function QuestionsReviewPanel({
                         </details>
                       )}
 
-                    {/* Actions - show for all non-pending questions including skipped */}
-                    {!isPending && (
-                      <div className="flex flex-wrap items-center gap-2 pt-2 border-t">
-                        {!isSkipped && (
+                    {/* Actions */}
+                    <div className="flex flex-wrap items-center gap-2 pt-2 border-t">
+                      {!isPending && (
+                        <>
+                          {!isSkipped && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  size="sm"
+                                  onClick={handleApprove}
+                                  disabled={isApproving || isApprovedQuestion}
+                                  className="gap-1"
+                                >
+                                  {isApproving ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : isApprovedQuestion ? (
+                                    <>
+                                      <Check className="h-4 w-4" />
+                                      Approved
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Check className="h-4 w-4" />
+                                      Approve
+                                    </>
+                                  )}
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Approve this answer</TooltipContent>
+                            </Tooltip>
+                          )}
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <Button
                                 size="sm"
-                                onClick={handleApprove}
-                                disabled={isApproving || isApprovedQuestion}
+                                variant="destructive"
+                                onClick={handleRemoveApproval}
+                                disabled={
+                                  isRejecting || isSkipped || !isApprovedQuestion
+                                }
                                 className="gap-1"
                               >
-                                {isApproving ? (
+                                {isRejecting ? (
                                   <Loader2 className="h-4 w-4 animate-spin" />
-                                ) : isApprovedQuestion ? (
+                                ) : isSkipped ? (
                                   <>
-                                    <Check className="h-4 w-4" />
-                                    Approved
+                                    <XCircle className="h-4 w-4" />
+                                    Removed
                                   </>
                                 ) : (
                                   <>
-                                    <Check className="h-4 w-4" />
-                                    Approve
+                                    <XCircle className="h-4 w-4" />
+                                    Remove Approval
                                   </>
                                 )}
                               </Button>
                             </TooltipTrigger>
-                            <TooltipContent>Approve this answer</TooltipContent>
+                            <TooltipContent>Remove approval for this answer</TooltipContent>
                           </Tooltip>
-                        )}
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              size="sm"
-                              variant="destructive"
-                              onClick={handleRemoveApproval}
-                              disabled={
-                                isRejecting || isSkipped || !isApprovedQuestion
-                              }
-                              className="gap-1"
-                            >
-                              {isRejecting ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                              ) : isSkipped ? (
-                                <>
-                                  <XCircle className="h-4 w-4" />
-                                  Removed
-                                </>
-                              ) : (
-                                <>
-                                  <XCircle className="h-4 w-4" />
-                                  Remove Approval
-                                </>
-                              )}
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>Remove approval for this answer</TooltipContent>
-                        </Tooltip>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => onEdit(selectedQuestion)}
-                            >
-                              <Pencil className="h-4 w-4" />
-                              Edit
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>Edit the question and answer</TooltipContent>
-                        </Tooltip>
-                        <Popover
-                          open={changePopoverOpen}
-                          onOpenChange={setChangePopoverOpen}
-                        >
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <PopoverTrigger asChild>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  disabled={!!isQueuedForSelected}
-                                >
-                                  {isCurrentRegenerating ? (
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                  ) : (
-                                    <RefreshCw className="h-4 w-4" />
-                                  )}
-                                  {isCurrentRegenerating
-                                    ? "Regenerating..."
-                                    : isQueuedForSelected
-                                      ? "Queued"
-                                      : isSkipped
-                                        ? "Generate"
-                                        : "Regenerate"}
-                                </Button>
-                              </PopoverTrigger>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              {isSkipped
-                                ? "Generate an answer for this question"
-                                : "Regenerate the answer with optional feedback"}
-                            </TooltipContent>
-                          </Tooltip>
-                          <PopoverContent className="w-64" align="start">
-                            <div className="space-y-3">
-                              <p className="text-sm font-medium">
-                                {isSkipped ? "Generate Answer" : "Regenerate"}
-                              </p>
-                              <Textarea
-                                placeholder={
-                                  isSkipped
-                                    ? "Describe what answer you want generated... (optional)"
-                                    : "Optional notes for regeneration..."
-                                }
-                                value={changeRequest}
-                                onChange={(e) =>
-                                  setChangeRequest(e.target.value)
-                                }
-                                rows={3}
-                              />
                               <Button
                                 size="sm"
-                                onClick={handleRequestChanges}
-                                className="w-full"
-                                disabled={!!isQueuedForSelected}
+                                variant="outline"
+                                onClick={() => onEdit(selectedQuestion)}
                               >
-                                <Send className="h-4 w-4" />
-                                {isQueuedForSelected ? "Queued" : "Regenerate"}
+                                <Pencil className="h-4 w-4" />
+                                Edit
                               </Button>
-                            </div>
-                          </PopoverContent>
-                        </Popover>
-                      </div>
-                    )}
+                            </TooltipTrigger>
+                            <TooltipContent>Edit the question and answer</TooltipContent>
+                          </Tooltip>
+                        </>
+                      )}
+                      <Popover
+                        open={changePopoverOpen}
+                        onOpenChange={setChangePopoverOpen}
+                      >
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <PopoverTrigger asChild>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                disabled={
+                                  isQueuedForSelected ||
+                                  isSelectedProcessing ||
+                                  (selectedStatus === "pending" && isProcessing)
+                                }
+                              >
+                                {isSelectedProcessing ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <RefreshCw className="h-4 w-4" />
+                                )}
+                                {isSelectedProcessing
+                                  ? "Generating..."
+                                  : isQueuedForSelected
+                                    ? "Queued"
+                                    : isSkipped || selectedStatus === "pending"
+                                      ? "Generate"
+                                      : "Regenerate"}
+                              </Button>
+                            </PopoverTrigger>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            {isSkipped || selectedStatus === "pending"
+                              ? "Generate an answer for this question"
+                              : "Regenerate the answer with optional feedback"}
+                          </TooltipContent>
+                        </Tooltip>
+                        <PopoverContent className="w-64" align="start">
+                          <div className="space-y-3">
+                            <p className="text-sm font-medium">
+                              {isSkipped || selectedStatus === "pending"
+                                ? "Generate Answer"
+                                : "Regenerate"}
+                            </p>
+                            <Textarea
+                              placeholder={
+                                isSkipped || selectedStatus === "pending"
+                                  ? "Describe what answer you want generated... (optional)"
+                                  : "Optional notes for regeneration..."
+                              }
+                              value={changeRequest}
+                              onChange={(e) =>
+                                setChangeRequest(e.target.value)
+                              }
+                              rows={3}
+                            />
+                            <Button
+                              size="sm"
+                              onClick={handleRequestChanges}
+                              className="w-full"
+                              disabled={
+                                !!isQueuedForSelected ||
+                                isSelectedProcessing ||
+                                (selectedStatus === "pending" && isProcessing)
+                              }
+                            >
+                              <Send className="h-4 w-4" />
+                              {isQueuedForSelected
+                                ? "Queued"
+                                : isSkipped || selectedStatus === "pending"
+                                  ? "Generate"
+                                  : "Regenerate"}
+                            </Button>
+                          </div>
+                        </PopoverContent>
+                      </Popover>
+                    </div>
                   </div>
                 </ScrollArea>
               ) : (

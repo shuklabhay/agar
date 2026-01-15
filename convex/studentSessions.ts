@@ -21,7 +21,11 @@ export const getAssignmentForStudent = query({
       .filter((q) => q.eq(q.field("status"), "approved"))
       .first();
 
-    const isReady = processingStatus === "ready" && Boolean(approvedQuestions);
+    const hasApprovedQuestions = Boolean(approvedQuestions);
+    const isGenerating =
+      processingStatus === "extracting" ||
+      processingStatus === "generating_answers";
+    const isReady = hasApprovedQuestions && !isGenerating;
 
     // Get class name for display
     const classDoc = await ctx.db.get(assignment.classId);
@@ -33,6 +37,7 @@ export const getAssignmentForStudent = query({
       processingStatus,
       processingError,
       isReady,
+      hasApprovedQuestions,
     };
   },
 });
@@ -86,7 +91,23 @@ export const getTeacherPreviewSession = query({
       return { isTeacher: false };
     }
 
-    if (assignment.isDraft || assignment.processingStatus !== "ready") {
+    if (assignment.isDraft) {
+      return { isTeacher: false };
+    }
+
+    const processingStatus = assignment.processingStatus || "pending";
+    const isGenerating =
+      processingStatus === "extracting" ||
+      processingStatus === "generating_answers";
+    const approvedQuestion = await ctx.db
+      .query("questions")
+      .withIndex("by_assignmentId", (q) =>
+        q.eq("assignmentId", args.assignmentId),
+      )
+      .filter((q) => q.eq(q.field("status"), "approved"))
+      .first();
+
+    if (isGenerating || !approvedQuestion) {
       return { isTeacher: false };
     }
 
@@ -117,9 +138,24 @@ export const startSession = mutation({
     const assignment = await ctx.db.get(args.assignmentId);
     if (
       !assignment ||
-      assignment.isDraft ||
-      assignment.processingStatus !== "ready"
+      assignment.isDraft
     ) {
+      throw new Error("Assignment not available");
+    }
+
+    const processingStatus = assignment.processingStatus || "pending";
+    const isGenerating =
+      processingStatus === "extracting" ||
+      processingStatus === "generating_answers";
+    const approvedQuestion = await ctx.db
+      .query("questions")
+      .withIndex("by_assignmentId", (q) =>
+        q.eq("assignmentId", args.assignmentId),
+      )
+      .filter((q) => q.eq(q.field("status"), "approved"))
+      .first();
+
+    if (!approvedQuestion || isGenerating) {
       throw new Error("Assignment not available");
     }
 
@@ -185,8 +221,7 @@ export const startTeacherPreviewSession = mutation({
     const assignment = await ctx.db.get(args.assignmentId);
     if (
       !assignment ||
-      assignment.isDraft ||
-      assignment.processingStatus !== "ready"
+      assignment.isDraft
     ) {
       throw new Error("Assignment not available");
     }
@@ -194,6 +229,22 @@ export const startTeacherPreviewSession = mutation({
     const classDoc = await ctx.db.get(assignment.classId);
     if (!classDoc || classDoc.teacherId !== userId) {
       throw new Error("Access denied");
+    }
+
+    const processingStatus = assignment.processingStatus || "pending";
+    const isGenerating =
+      processingStatus === "extracting" ||
+      processingStatus === "generating_answers";
+    const approvedQuestion = await ctx.db
+      .query("questions")
+      .withIndex("by_assignmentId", (q) =>
+        q.eq("assignmentId", args.assignmentId),
+      )
+      .filter((q) => q.eq(q.field("status"), "approved"))
+      .first();
+
+    if (isGenerating || !approvedQuestion) {
+      throw new Error("Assignment not available");
     }
 
     // Reuse an existing teacher preview session for this user and assignment
