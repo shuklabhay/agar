@@ -768,11 +768,7 @@ export function QuestionsReviewPanel({
               {selectedQuestion ? (
                 <ScrollArea className="h-full [&>div>div]:!block">
                   <div
-                    className={cn(
-                      "p-4 space-y-4 max-w-full overflow-hidden",
-                      isSelectedProcessing &&
-                        "ring-2 ring-emerald-500 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/20",
-                    )}
+                    className="p-4 space-y-4 max-w-full overflow-hidden"
                   >
                     {/* Question Header with Delete icon top right */}
                     <div className="flex items-start justify-between gap-4">
