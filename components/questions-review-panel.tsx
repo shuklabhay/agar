@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMutation, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
@@ -82,6 +82,7 @@ export function QuestionsReviewPanel({
   );
   const [changeRequest, setChangeRequest] = useState("");
   const [changePopoverOpen, setChangePopoverOpen] = useState(false);
+  const autoAdvanceTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Resizable panels
   const { containerRef, leftPanelWidth, handleMouseDown } = useResizablePanel({
@@ -144,11 +145,6 @@ export function QuestionsReviewPanel({
     (q) => q.questionType !== "skipped",
   ).length;
 
-  // Select first question when questions change and none selected
-  if (!selectedQuestion && sortedQuestions.length > 0) {
-    setSelectedQuestionId(sortedQuestions[0]._id);
-  }
-
   const getQuestionStatus = (question: ReviewQuestion) => {
     const status =
       !isProcessing && question.status === "processing"
@@ -166,30 +162,67 @@ export function QuestionsReviewPanel({
     return "ready";
   };
 
+  const clearAutoAdvance = () => {
+    if (autoAdvanceTimeout.current) {
+      clearTimeout(autoAdvanceTimeout.current);
+      autoAdvanceTimeout.current = null;
+    }
+  };
+
+  const scheduleAutoAdvance = (nextId: Id<"questions"> | null) => {
+    clearAutoAdvance();
+    if (!nextId) return;
+    autoAdvanceTimeout.current = setTimeout(() => {
+      setSelectedQuestionId(nextId);
+      autoAdvanceTimeout.current = null;
+    }, 500);
+  };
+
+  const findNextQuestionNeedingApproval = (
+    currentId?: Id<"questions"> | null,
+  ): Id<"questions"> | null => {
+    const needsReview = (q: ReviewQuestion) => {
+      const status = getQuestionStatus(q);
+      return status !== "approved" && status !== "skipped";
+    };
+    const currentIndex = currentId
+      ? sortedQuestions.findIndex((q) => q._id === currentId)
+      : -1;
+    const forward =
+      currentIndex >= 0
+        ? sortedQuestions.slice(currentIndex + 1)
+        : sortedQuestions;
+    const nextUnapproved =
+      forward.find(needsReview) ||
+      sortedQuestions.find(
+        (q, idx) => idx !== currentIndex && needsReview(q),
+      );
+    return nextUnapproved?._id || null;
+  };
+
+  const selectQuestion = (questionId: Id<"questions"> | null) => {
+    clearAutoAdvance();
+    setSelectedQuestionId(questionId);
+  };
+
+  useEffect(() => () => clearAutoAdvance(), []);
+
+  // Select first question when questions change and none selected
+  if (!selectedQuestion && sortedQuestions.length > 0) {
+    selectQuestion(sortedQuestions[0]._id);
+  }
+
   const handleApprove = async () => {
     if (!selectedQuestion) return;
+    clearAutoAdvance();
     setIsApproving(true);
     try {
       await approveQuestion({ questionId: selectedQuestion._id });
       toast.success("Question approved");
-      const currentIndex = sortedQuestions.findIndex(
-        (q) => q._id === selectedQuestion._id,
+      const nextSelection = findNextQuestionNeedingApproval(
+        selectedQuestion._id,
       );
-      const forward = currentIndex >= 0 ? sortedQuestions.slice(currentIndex + 1) : [];
-      const needsReview = (q: ReviewQuestion) => {
-        const status = getQuestionStatus(q);
-        return status !== "approved" && status !== "skipped";
-      };
-      const nextUnapproved =
-        forward.find(needsReview) ||
-        sortedQuestions.find(
-          (q, idx) => idx !== currentIndex && needsReview(q),
-        );
-      const fallbackNext = forward[0];
-      const nextSelection = nextUnapproved?._id || fallbackNext?._id;
-      if (nextSelection) {
-        setSelectedQuestionId(nextSelection);
-      }
+      scheduleAutoAdvance(nextSelection);
     } catch {
       toast.error("Failed to approve question");
     } finally {
@@ -199,6 +232,7 @@ export function QuestionsReviewPanel({
 
   const handleUnapprove = async () => {
     if (!selectedQuestion) return;
+    clearAutoAdvance();
     setIsApproving(true);
     try {
       await unapproveQuestion({ questionId: selectedQuestion._id });
@@ -296,6 +330,7 @@ export function QuestionsReviewPanel({
 
   const handleRemove = async () => {
     if (!selectedQuestion) return;
+    clearAutoAdvance();
     setIsRemoving(true);
     try {
       await removeQuestion({ questionId: selectedQuestion._id });
@@ -306,7 +341,7 @@ export function QuestionsReviewPanel({
       );
       const nextQuestion =
         sortedQuestions[currentIndex + 1] || sortedQuestions[currentIndex - 1];
-      setSelectedQuestionId(nextQuestion?._id || null);
+      selectQuestion(nextQuestion?._id || null);
     } catch {
       toast.error("Failed to remove question");
     } finally {
@@ -329,7 +364,7 @@ export function QuestionsReviewPanel({
 
   const navigateToFirstWebSourced = () => {
     if (unapprovedWebSourced.length > 0) {
-      setSelectedQuestionId(unapprovedWebSourced[0]._id);
+      selectQuestion(unapprovedWebSourced[0]._id);
     }
   };
 
@@ -638,7 +673,7 @@ export function QuestionsReviewPanel({
                     return (
                       <div
                         key={question._id}
-                        onClick={() => setSelectedQuestionId(question._id)}
+                        onClick={() => selectQuestion(question._id)}
                         className={cn(
                           "cursor-pointer transition-colors flex items-center justify-between px-3 py-2 rounded-none first:rounded-tl-xl last:rounded-bl-xl",
                           statusStyle?.rowClass,
