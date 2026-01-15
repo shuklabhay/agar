@@ -167,9 +167,7 @@ export function ChatPanel({
 
   const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
-    if (e.currentTarget === e.target) {
-      setIsDraggingOver(false);
-    }
+    setIsDraggingOver(false);
   };
 
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
@@ -335,6 +333,7 @@ export function ChatPanel({
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
+        onDragEnd={() => setIsDraggingOver(false)}
       >
         {isDraggingOver && (
           <div className="absolute inset-0 z-20 m-4 rounded-lg bg-background/90 border-2 border-dashed border-primary flex items-center justify-center pointer-events-none shadow-lg">
