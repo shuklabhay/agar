@@ -70,9 +70,7 @@ export function ChatPanel({
     sessionId ? { sessionId, includeAttachments: true } : "skip",
   );
   type ChatHistoryItem = NonNullable<typeof chatHistory>[number];
-  const [displayMessages, setDisplayMessages] = useState<ChatHistoryItem[]>(
-    [],
-  );
+  const [displayMessages, setDisplayMessages] = useState<ChatHistoryItem[]>([]);
 
   const addFiles = (files: File[]) => {
     if (!files.length) return;
@@ -219,7 +217,8 @@ export function ChatPanel({
     setRateLimitInfo(null);
 
     const filesToSend = attachedFiles;
-    const optimisticId = `optimistic-${Date.now()}-${Math.random().toString(16).slice(2)}` as unknown as Id<"chatMessages">;
+    const optimisticId =
+      `optimistic-${Date.now()}-${Math.random().toString(16).slice(2)}` as unknown as Id<"chatMessages">;
     const optimisticMessage: ChatHistoryItem = {
       _id: optimisticId,
       _creationTime: Date.now(),
@@ -365,7 +364,8 @@ export function ChatPanel({
             </div>
           ) : displayMessages.length === 0 ? (
             <div className="flex h-full items-center justify-center text-muted-foreground text-sm text-center px-6">
-              Start the conversation for this question by sending a message or attaching a file.
+              Start the conversation for this question by sending a message or
+              attaching a file.
             </div>
           ) : (
             <div className="flex flex-col gap-4">

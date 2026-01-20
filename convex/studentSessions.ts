@@ -136,10 +136,7 @@ export const startSession = mutation({
   handler: async (ctx, args) => {
     // Verify assignment exists and is ready
     const assignment = await ctx.db.get(args.assignmentId);
-    if (
-      !assignment ||
-      assignment.isDraft
-    ) {
+    if (!assignment || assignment.isDraft) {
       throw new Error("Assignment not available");
     }
 
@@ -219,10 +216,7 @@ export const startTeacherPreviewSession = mutation({
     }
 
     const assignment = await ctx.db.get(args.assignmentId);
-    if (
-      !assignment ||
-      assignment.isDraft
-    ) {
+    if (!assignment || assignment.isDraft) {
       throw new Error("Assignment not available");
     }
 

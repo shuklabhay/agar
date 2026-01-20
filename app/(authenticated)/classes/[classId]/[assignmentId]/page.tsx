@@ -1190,9 +1190,7 @@ function ReviewAssignmentView({
   const [showStopConfirm, setShowStopConfirm] = useState(false);
   const [showRegenConfirm, setShowRegenConfirm] = useState(false);
   const processAssignment = useAction(api.processAssignment.processAssignment);
-  const resumePendingAnswers = useAction(
-    api.answerGeneration.generateAnswers,
-  );
+  const resumePendingAnswers = useAction(api.answerGeneration.generateAnswers);
   const stopProcessing = useMutation(api.assignments.stopProcessing);
   const [editingQuestion, setEditingQuestion] = useState<{
     _id: Id<"questions">;
@@ -1554,7 +1552,9 @@ function ReviewAssignmentView({
                     onClick={async () => {
                       setIsRetrying(true);
                       try {
-                        const result = await processAssignment({ assignmentId });
+                        const result = await processAssignment({
+                          assignmentId,
+                        });
                         if (result.success) {
                           toast.success(
                             `Processed ${result.questionsExtracted} questions`,

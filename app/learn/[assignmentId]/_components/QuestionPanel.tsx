@@ -166,7 +166,14 @@ export function QuestionPanel({
         clearTimeout(draftSaveTimer.current);
       }
     };
-  }, [isCorrect, questionId, questionType, saveDraftAnswer, sessionId, textAnswer]);
+  }, [
+    isCorrect,
+    questionId,
+    questionType,
+    saveDraftAnswer,
+    sessionId,
+    textAnswer,
+  ]);
 
   // Mark as in progress when user starts interacting
   const handleInteraction = () => {

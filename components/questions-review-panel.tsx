@@ -184,9 +184,7 @@ export function QuestionsReviewPanel({
         : sortedQuestions;
     const nextUnapproved =
       forward.find(needsReview) ||
-      sortedQuestions.find(
-        (q, idx) => idx !== currentIndex && needsReview(q),
-      );
+      sortedQuestions.find((q, idx) => idx !== currentIndex && needsReview(q));
     return nextUnapproved?._id || null;
   };
 
@@ -319,7 +317,6 @@ export function QuestionsReviewPanel({
       );
     }
   };
-
 
   // Process queued regenerations sequentially
   useEffect(() => {
@@ -601,7 +598,8 @@ export function QuestionsReviewPanel({
                         ) : hasUnapprovedWebSources ? (
                           <>
                             <AlertTriangle className="h-4 w-4 mr-1" />
-                            Review Outside Sources ({unapprovedWebSourced.length})
+                            Review Outside Sources (
+                            {unapprovedWebSourced.length})
                           </>
                         ) : (
                           <>
@@ -657,7 +655,9 @@ export function QuestionsReviewPanel({
                             className="gap-2"
                           >
                             <CheckCheck className="h-4 w-4" />
-                            <span>Approve All incl. Web ({readyAll.length})</span>
+                            <span>
+                              Approve All incl. Web ({readyAll.length})
+                            </span>
                           </DropdownMenuItem>
                         </TooltipTrigger>
                         <TooltipContent side="left">
@@ -767,9 +767,7 @@ export function QuestionsReviewPanel({
             >
               {selectedQuestion ? (
                 <ScrollArea className="h-full [&>div>div]:!block">
-                  <div
-                    className="p-4 space-y-4 max-w-full overflow-hidden"
-                  >
+                  <div className="p-4 space-y-4 max-w-full overflow-hidden">
                     {/* Question Header with Delete icon top right */}
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex-1">
@@ -1163,7 +1161,9 @@ export function QuestionsReviewPanel({
                                   )}
                                 </Button>
                               </TooltipTrigger>
-                              <TooltipContent>Approve this answer</TooltipContent>
+                              <TooltipContent>
+                                Approve this answer
+                              </TooltipContent>
                             </Tooltip>
                           )}
                           <Tooltip>
@@ -1173,7 +1173,9 @@ export function QuestionsReviewPanel({
                                 variant="destructive"
                                 onClick={handleRemoveApproval}
                                 disabled={
-                                  isRejecting || isSkipped || !isApprovedQuestion
+                                  isRejecting ||
+                                  isSkipped ||
+                                  !isApprovedQuestion
                                 }
                                 className="gap-1"
                               >
@@ -1192,7 +1194,9 @@ export function QuestionsReviewPanel({
                                 )}
                               </Button>
                             </TooltipTrigger>
-                            <TooltipContent>Remove approval for this answer</TooltipContent>
+                            <TooltipContent>
+                              Remove approval for this answer
+                            </TooltipContent>
                           </Tooltip>
                           <Tooltip>
                             <TooltipTrigger asChild>
@@ -1205,7 +1209,9 @@ export function QuestionsReviewPanel({
                                 Edit
                               </Button>
                             </TooltipTrigger>
-                            <TooltipContent>Edit the question and answer</TooltipContent>
+                            <TooltipContent>
+                              Edit the question and answer
+                            </TooltipContent>
                           </Tooltip>
                         </>
                       )}
@@ -1260,9 +1266,7 @@ export function QuestionsReviewPanel({
                                   : "Optional notes for regeneration..."
                               }
                               value={changeRequest}
-                              onChange={(e) =>
-                                setChangeRequest(e.target.value)
-                              }
+                              onChange={(e) => setChangeRequest(e.target.value)}
                               rows={3}
                             />
                             <Button
