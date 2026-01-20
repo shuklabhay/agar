@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
@@ -33,6 +34,7 @@ import Link from "next/link";
 import { toast } from "sonner";
 
 export default function ClassesPage() {
+  const router = useRouter();
   const classes = useQuery(api.classes.listClasses);
   const createClass = useMutation(api.classes.createClass);
   const renameClass = useMutation(api.classes.renameClass);
@@ -63,13 +65,14 @@ export default function ClassesPage() {
 
     setIsSubmitting(true);
     try {
-      await createClass({
+      const classId = await createClass({
         name: name.trim(),
         section: section.trim() || undefined,
       });
       setName("");
       setSection("");
       setIsDialogOpen(false);
+      router.push(`/classes/${classId}`);
     } finally {
       setIsSubmitting(false);
     }
