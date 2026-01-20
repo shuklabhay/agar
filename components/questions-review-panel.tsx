@@ -694,16 +694,16 @@ export function QuestionsReviewPanel({
                     const statusStyle = statusStyles[status];
                     const isActiveProcessing = question.status === "processing";
                     const highlightClass = isActiveProcessing
-                      ? "ring-2 ring-emerald-500 ring-inset"
+                      ? "border-emerald-500"
                       : isSelected
-                        ? "ring-2 ring-inset ring-black/50 dark:ring-white/60"
+                        ? "border-black/50 dark:border-white/60"
                         : "";
                     return (
                       <div
                         key={question._id}
                         onClick={() => selectQuestion(question._id)}
                         className={cn(
-                          "cursor-pointer transition-colors flex items-center justify-between px-3 py-2 rounded-none first:rounded-tl-xl last:rounded-bl-xl",
+                          "cursor-pointer transition-colors flex items-center justify-between px-3 py-2 rounded-none first:rounded-tl-xl last:rounded-bl-xl border-2 border-transparent",
                           statusStyle?.rowClass,
                           highlightClass,
                           isActiveProcessing &&
@@ -941,7 +941,12 @@ export function QuestionsReviewPanel({
 
                     {/* Skipped Question Message */}
                     {isSkipped && (
-                      <div className="flex items-center gap-2 rounded-lg bg-slate-100 dark:bg-slate-900 px-4 py-3 text-slate-600 dark:text-slate-400">
+                      <div
+                        className={cn(
+                          "flex items-center gap-2 rounded-lg px-4 py-3",
+                          statusStyles.skipped.badgeClass,
+                        )}
+                      >
                         <AlertCircle className="h-4 w-4 shrink-0" />
                         <span className="text-sm">
                           You marked this question to be skipped
