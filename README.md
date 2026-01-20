@@ -2,7 +2,7 @@
 
 [![Prettier](https://github.com/shuklabhay/agar/actions/workflows/prettier.yml/badge.svg)](https://github.com/shuklabhay/agar/actions/workflows/prettier.yml)
 
-AI-native classroom companion that grounds tutoring in the assignments and notes teachers upload, keeping students on track and teachers in the loop.
+Personalized, curriculum-grounded ‘AI companions’ for classrooms.
 
 ## What’s inside
 
