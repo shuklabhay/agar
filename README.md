@@ -2,6 +2,8 @@
 
 [![Prettier](https://github.com/shuklabhay/agar/actions/workflows/prettier.yml/badge.svg)](https://github.com/shuklabhay/agar/actions/workflows/prettier.yml)
 
+[![Agar banner](assets/banner.png)](https://tryagar.me)
+
 Personalized, curriculum-grounded ‘AI companions’ for classrooms.
 
 ## What’s inside
